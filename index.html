@@ -148,6 +148,7 @@
     justify-content:center;
     padding:18px;
     padding-top: calc(18px + env(safe-area-inset-top) + var(--global-offset-y));
+    padding-top: calc(18px + var(--global-offset-y));
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
     background: rgba(216, 211, 210, 0.96);
     backdrop-filter: blur(2px);
@@ -163,6 +164,7 @@
     box-shadow:0 10px 24px var(--shadow);
     padding:18px 18px 14px;
     max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--global-offset-y));
+    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom) - var(--global-offset-y));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
