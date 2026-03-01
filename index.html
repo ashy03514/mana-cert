@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <link rel="manifest" href="manifest.webmanifest">
@@ -7,8 +7,6 @@
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta charset="UTF-8" />
@@ -23,6 +21,8 @@
     --gold:#A68147;
     --shadow: rgba(0,0,0,.14);
     --global-offset-y: 50px;
+    --viewport-w: 100vw;
+    --viewport-h: 100vh;
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
@@ -42,8 +42,8 @@
     opacity: 1;
     transition: opacity 240ms ease;
   }
-  canvas#particleCanvas { position:absolute; inset:0; width:100vw; height:100vh; z-index:0; }
-  .circle { position:absolute; left:50%; top:calc(50% + var(--global-offset-y)); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
+  canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
+  .circle { position:absolute; left:50%; top:calc((var(--viewport-h) / 2) + var(--global-offset-y)); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
   .outline-145 { width:145px; height:145px; z-index:4; }
   .outline-510 { width:510px; height:510px; z-index:3; }
   .outline-600 { width:600px; height:600px; z-index:2; }
@@ -94,14 +94,14 @@
   .core-canvas{
     position:absolute;
     inset:0;
-    width:100vw;
-    height:100vh;
+    width:var(--viewport-w);
+    height:var(--viewport-h);
     z-index:6;
     pointer-events:none;
   }
 
   canvas#fxCanvas {
-    position:absolute; inset:0; width:100vw; height:100vh;
+    position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
     z-index:7; pointer-events:none;
   }
 
@@ -575,15 +575,27 @@
   const core=document.getElementById('coreCanvas');
   const coreCtx=core.getContext('2d');
 
+  function getViewportSize(){
+    if(window.visualViewport){
+      return { w: window.visualViewport.width, h: window.visualViewport.height };
+    }
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
+  function syncViewportVars(){
+    const {w,h}=getViewportSize();
+    document.documentElement.style.setProperty('--viewport-w', `${w}px`);
+    document.documentElement.style.setProperty('--viewport-h', `${h}px`);
+  }
   function getCenter(){
     const yOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--global-offset-y')) || 0;
-    return {x:innerWidth/2,y:innerHeight/2 + yOffset};
+    const {w,h}=getViewportSize();
+    return {x:w/2,y:h/2 + yOffset};
   }
   let center=getCenter();
 
   function fitCanvasToScreen(){
     const dpr=Math.max(1,devicePixelRatio||1);
-    const {innerWidth:w,innerHeight:h}=window;
+    const {w,h}=getViewportSize();
     canvas.width=Math.floor(w*dpr);
     canvas.height=Math.floor(h*dpr);
     canvas.style.width=w+'px';
@@ -592,7 +604,7 @@
   }
   function fitFxCanvas(){
     const dpr = Math.max(1, devicePixelRatio || 1);
-    const { innerWidth:w, innerHeight:h } = window;
+    const { w, h } = getViewportSize();
     fxCanvas.width  = Math.floor(w * dpr);
     fxCanvas.height = Math.floor(h * dpr);
     fxCanvas.style.width  = w + 'px';
@@ -612,6 +624,7 @@
   }
 
   function onViewportChange(){
+    syncViewportVars();
     center=getCenter();
     fitCanvasToScreen();
     fitCoreCanvas();
@@ -619,6 +632,10 @@
   }
   addEventListener('resize', onViewportChange);
   addEventListener('orientationchange', onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', onViewportChange);
+    window.visualViewport.addEventListener('scroll', onViewportChange);
+  }
   onViewportChange();
 
   /* ===== 粒子 ===== */
