@@ -1,6 +1,11 @@
 <meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#A68147">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>魔力鑑定儀（階級表常駐版）</title>
@@ -1752,6 +1757,9 @@ backBtn.addEventListener('pointerdown', (e)=>{
   RAF.particle = requestAnimationFrame(drawParticles);
 
 })();
+	  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js");
+  }
 </script>
 </body>
 </html>
