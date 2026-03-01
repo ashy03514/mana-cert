@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <link rel="manifest" href="manifest.webmanifest">
@@ -7,8 +7,6 @@
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta charset="UTF-8" />
@@ -22,6 +20,10 @@
     --text:#AB8448;
     --gold:#A68147;
     --shadow: rgba(0,0,0,.14);
+    --global-offset-y: 50px;
+    --viewport-w: 100vw;
+    --viewport-h: 100vh;
+    --effect-center-y: 50vh;
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
@@ -41,8 +43,8 @@
     opacity: 1;
     transition: opacity 240ms ease;
   }
-  canvas#particleCanvas { position:absolute; inset:0; width:100vw; height:100vh; z-index:0; }
-  .circle { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
+  canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
+  .circle { position:absolute; left:50%; top:var(--effect-center-y); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
   .outline-145 { width:145px; height:145px; z-index:4; }
   .outline-510 { width:510px; height:510px; z-index:3; }
   .outline-600 { width:600px; height:600px; z-index:2; }
@@ -93,14 +95,14 @@
   .core-canvas{
     position:absolute;
     inset:0;
-    width:100vw;
-    height:100vh;
+    width:var(--viewport-w);
+    height:var(--viewport-h);
     z-index:6;
     pointer-events:none;
   }
 
   canvas#fxCanvas {
-    position:absolute; inset:0; width:100vw; height:100vh;
+    position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
     z-index:7; pointer-events:none;
   }
 
@@ -114,7 +116,7 @@
     pointer-events: none; transition: all 0.5s ease; white-space: nowrap;
   }
   .rank-info {
-    top: 4%;
+    top: calc(4% + var(--global-offset-y));
     font-size: 15px;
     font-weight: bold;
     letter-spacing: 0.05em;
@@ -123,7 +125,7 @@
     opacity: 0.9;
   }
   .guide-text {
-    top: 18%;
+    top: calc(18% + var(--global-offset-y));
     font-size: 22px;
     font-weight: bold;
     letter-spacing: 0.1em;
@@ -146,6 +148,7 @@
     align-items:flex-start;
     justify-content:center;
     padding:18px;
+    padding-top: calc(18px + env(safe-area-inset-top) + var(--global-offset-y));
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
     background: rgba(216, 211, 210, 0.96);
     backdrop-filter: blur(2px);
@@ -160,7 +163,7 @@
     border-radius:20px;
     box-shadow:0 10px 24px var(--shadow);
     padding:18px 18px 14px;
-    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--global-offset-y));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -280,7 +283,7 @@
   }
 
   /* ===== 結果卡 ===== */
-  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; }
+  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; transform: translateY(var(--global-offset-y)); }
   .resultCard{ width:min(92vw,560px); background:var(--panel); border-radius:20px; padding:22px 20px 18px; box-shadow:0 10px 24px var(--shadow); color:var(--text); transform: translateY(12px) scale(.98); opacity:0; transition: all 320ms cubic-bezier(.2,.9,.3,1); }
   .resultCard.show{ opacity:1; transform: translateY(0) scale(1); }
   .r-title{ font-size:12px; letter-spacing:.22em; margin:2px 2px 8px; opacity:.9; }
@@ -573,12 +576,30 @@
   const core=document.getElementById('coreCanvas');
   const coreCtx=core.getContext('2d');
 
-  function getCenter(){return {x:innerWidth/2,y:innerHeight/2}}
-  let center=getCenter();
+  function getViewportSize(){
+    if(window.visualViewport){
+      return { w: window.visualViewport.width, h: window.visualViewport.height };
+    }
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
+  function syncViewportVars(){
+    const {w,h}=getViewportSize();
+    document.documentElement.style.setProperty('--viewport-w', `${w}px`);
+    document.documentElement.style.setProperty('--viewport-h', `${h}px`);
+  }
+  function getCoreCenter(){
+    const {w,h}=getViewportSize();
+    return {x:w/2,y:h/2};
+  }
+  function getEffectCenter(){
+    const coreCenter=getCoreCenter();
+    return {x:coreCenter.x,y:coreCenter.y};
+  }
+  let center=getEffectCenter();
 
   function fitCanvasToScreen(){
     const dpr=Math.max(1,devicePixelRatio||1);
-    const {innerWidth:w,innerHeight:h}=window;
+    const {w,h}=getViewportSize();
     canvas.width=Math.floor(w*dpr);
     canvas.height=Math.floor(h*dpr);
     canvas.style.width=w+'px';
@@ -587,7 +608,7 @@
   }
   function fitFxCanvas(){
     const dpr = Math.max(1, devicePixelRatio || 1);
-    const { innerWidth:w, innerHeight:h } = window;
+    const { w, h } = getViewportSize();
     fxCanvas.width  = Math.floor(w * dpr);
     fxCanvas.height = Math.floor(h * dpr);
     fxCanvas.style.width  = w + 'px';
@@ -607,13 +628,19 @@
   }
 
   function onViewportChange(){
-    center=getCenter();
+    syncViewportVars();
+    center=getEffectCenter();
+    document.documentElement.style.setProperty('--effect-center-y', `${center.y}px`);
     fitCanvasToScreen();
     fitCoreCanvas();
     fitFxCanvas();
   }
   addEventListener('resize', onViewportChange);
   addEventListener('orientationchange', onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', onViewportChange);
+    window.visualViewport.addEventListener('scroll', onViewportChange);
+  }
   onViewportChange();
 
   /* ===== 粒子 ===== */
@@ -919,6 +946,7 @@ function setRankUI(code){
 
   /* ===== 核心液態圓 ===== */
   const BASE_R=50;
+  const CORE_NUDGE_Y=-5; // 核心微調：往上 5px，對齊波動中心
   const HARMONICS_BASE=[{amp:.06,freq:3,speed:.8},{amp:.04,freq:5,speed:-1.1},{amp:.02,freq:9,speed:1.6}];
   const BREATH={amp:.03,speed:.7};
   const neutralInner='#B89254', neutralOuter='#F4EFE9';
@@ -938,9 +966,9 @@ function setRankUI(code){
     const {width,height}=core;
     coreCtx.clearRect(0,0,width,height);
 
-    const cssPX=1/(devicePixelRatio||1);
     coreCtx.save();
-    coreCtx.translate(width*cssPX/2, height*cssPX/2);
+    const coreCenter=getCoreCenter();
+    coreCtx.translate(coreCenter.x, coreCenter.y + CORE_NUDGE_Y);
 
     const pr=phaseProgress();
     let ampMul=1, scaleNow=1, harmSpeedMul=1, breathMul=1;
