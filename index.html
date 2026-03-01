@@ -23,6 +23,7 @@
     --global-offset-y: 50px;
     --viewport-w: 100vw;
     --viewport-h: 100vh;
+    --effect-center-y: 50vh;
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
@@ -43,7 +44,7 @@
     transition: opacity 240ms ease;
   }
   canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
-  .circle { position:absolute; left:50%; top:calc((var(--viewport-h) / 2) + var(--global-offset-y)); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
+  .circle { position:absolute; left:50%; top:var(--effect-center-y); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
   .outline-145 { width:145px; height:145px; z-index:4; }
   .outline-510 { width:510px; height:510px; z-index:3; }
   .outline-600 { width:600px; height:600px; z-index:2; }
@@ -586,12 +587,15 @@
     document.documentElement.style.setProperty('--viewport-w', `${w}px`);
     document.documentElement.style.setProperty('--viewport-h', `${h}px`);
   }
-  function getCenter(){
-    const yOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--global-offset-y')) || 0;
+  function getCoreCenter(){
     const {w,h}=getViewportSize();
-    return {x:w/2,y:h/2 + yOffset};
+    return {x:w/2,y:h/2};
   }
-  let center=getCenter();
+  function getEffectCenter(){
+    const coreCenter=getCoreCenter();
+    return {x:coreCenter.x,y:coreCenter.y};
+  }
+  let center=getEffectCenter();
 
   function fitCanvasToScreen(){
     const dpr=Math.max(1,devicePixelRatio||1);
@@ -625,7 +629,8 @@
 
   function onViewportChange(){
     syncViewportVars();
-    center=getCenter();
+    center=getEffectCenter();
+    document.documentElement.style.setProperty('--effect-center-y', `${center.y}px`);
     fitCanvasToScreen();
     fitCoreCanvas();
     fitFxCanvas();
@@ -962,7 +967,8 @@ function setRankUI(code){
     coreCtx.clearRect(0,0,width,height);
 
     coreCtx.save();
-    coreCtx.translate(center.x, center.y + CORE_NUDGE_Y);
+    const coreCenter=getCoreCenter();
+    coreCtx.translate(coreCenter.x, coreCenter.y + CORE_NUDGE_Y);
 
     const pr=phaseProgress();
     let ampMul=1, scaleNow=1, harmSpeedMul=1, breathMul=1;
