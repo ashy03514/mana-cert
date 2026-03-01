@@ -115,15 +115,6 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     pointer-events: none; transition: all 0.5s ease; white-space: nowrap;
   }
-  .rank-info {
-    top: calc(4% + var(--global-offset-y));
-    font-size: 15px;
-    font-weight: bold;
-    letter-spacing: 0.05em;
-    padding: 10px 24px;
-    line-height: 1.5;
-    opacity: 0.9;
-  }
   .guide-text {
     top: calc(18% + var(--global-offset-y));
     font-size: 22px;
@@ -491,7 +482,6 @@
   </div>
 </div>
 
-<div id="rankChart" class="floating-box rank-info">階級表<br>E-D-C-B-A-S-SS</div>
 <div id="guideText" class="floating-box guide-text">請將手指放在核心上<br>並保持不動</div>
 
 <div id="animLayer" title="按住開始鑑定">
@@ -790,7 +780,6 @@
 
   /* ===== UI ===== */
   const guideTextEl = document.getElementById('guideText');
-  const rankChartEl = document.getElementById('rankChart');
   const animLayerEl = document.getElementById('animLayer');
 
   function setHoldPulse(on){
@@ -880,7 +869,6 @@ function setRankUI(code){
 
   function showSettingsPage(){
     settingsPage.style.display='flex';
-    rankChartEl.style.display='none';
     guideTextEl.style.display='none';
     animLayerEl.style.display='none';
     resultCard.classList.remove('show');
@@ -894,7 +882,6 @@ function setRankUI(code){
 
   function enterIdleScreen(){
     settingsPage.style.display='none';
-    rankChartEl.style.display='block';
     guideTextEl.style.display='block';
     animLayerEl.style.display='block';
     animLayerEl.style.opacity='1';
