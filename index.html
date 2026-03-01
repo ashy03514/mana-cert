@@ -148,7 +148,6 @@
     justify-content:center;
     padding:18px;
     padding-top: calc(18px + env(safe-area-inset-top) + var(--global-offset-y));
-    padding-top: calc(18px + var(--global-offset-y));
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
     background: rgba(216, 211, 210, 0.96);
     backdrop-filter: blur(2px);
@@ -164,7 +163,6 @@
     box-shadow:0 10px 24px var(--shadow);
     padding:18px 18px 14px;
     max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--global-offset-y));
-    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom) - var(--global-offset-y));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -926,6 +924,7 @@ function setRankUI(code){
 
   /* ===== 核心液態圓 ===== */
   const BASE_R=50;
+  const CORE_NUDGE_Y=-5; // 核心微調：往上 5px，對齊波動中心
   const HARMONICS_BASE=[{amp:.06,freq:3,speed:.8},{amp:.04,freq:5,speed:-1.1},{amp:.02,freq:9,speed:1.6}];
   const BREATH={amp:.03,speed:.7};
   const neutralInner='#B89254', neutralOuter='#F4EFE9';
@@ -946,7 +945,7 @@ function setRankUI(code){
     coreCtx.clearRect(0,0,width,height);
 
     coreCtx.save();
-    coreCtx.translate(center.x, center.y);
+    coreCtx.translate(center.x, center.y + CORE_NUDGE_Y);
 
     const pr=phaseProgress();
     let ampMul=1, scaleNow=1, harmSpeedMul=1, breathMul=1;
