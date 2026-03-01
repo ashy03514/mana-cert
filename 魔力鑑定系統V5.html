@@ -1,0 +1,1757 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>魔力鑑定儀（階級表常駐版）</title>
+
+<style>
+  :root{
+    --bg:#D8D3D2;
+    --panel:#D9D4D3;
+    --text:#AB8448;
+    --gold:#A68147;
+    --shadow: rgba(0,0,0,.14);
+  }
+  html, body {
+    margin:0; padding:0; width:100%; height:100%;
+    background:var(--bg); color:var(--text);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:rgba(0,0,0,0);
+    touch-action:none;
+  }
+  *{ box-sizing:border-box; }
+
+  /* ===== 動畫層 ===== */
+  #animLayer{
+    position:fixed; inset:0; z-index:10;
+    opacity: 1;
+    transition: opacity 240ms ease;
+  }
+  canvas#particleCanvas { position:absolute; inset:0; width:100vw; height:100vh; z-index:0; }
+  .circle { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
+  .outline-145 { width:145px; height:145px; z-index:4; }
+  .outline-510 { width:510px; height:510px; z-index:3; }
+  .outline-600 { width:600px; height:600px; z-index:2; }
+  .outline-650 { width:650px; height:650px; z-index:1; }
+
+  /* ✅ 按住後：同心圓「魔力波動」動畫（待機不動；按住才動） */
+  #animLayer.holding .circle{
+    will-change: transform, opacity;
+  }
+  #animLayer.holding .outline-145{ animation: manaPulseA 1150ms ease-in-out infinite; }
+  #animLayer.holding .outline-510{ animation: manaPulseB 1320ms ease-in-out infinite; animation-delay: -180ms; }
+  #animLayer.holding .outline-600{ animation: manaPulseC 980ms  ease-in-out infinite; animation-delay: -90ms; }
+  #animLayer.holding .outline-650{ animation: manaPulseD 1480ms ease-in-out infinite; animation-delay: -260ms; }
+
+  @keyframes manaPulseA{
+    0%   { transform: translate(-50%,-50%) scale(1);    opacity: .55; }
+    14%  { transform: translate(-50%,-50%) scale(1.12); opacity: .95; }
+    34%  { transform: translate(-50%,-50%) scale(.93);  opacity: .65; }
+    54%  { transform: translate(-50%,-50%) scale(1.07); opacity: .90; }
+    74%  { transform: translate(-50%,-50%) scale(.97);  opacity: .70; }
+    100% { transform: translate(-50%,-50%) scale(1.04); opacity: .82; }
+  }
+  @keyframes manaPulseB{
+    0%   { transform: translate(-50%,-50%) scale(1);    opacity: .40; }
+    16%  { transform: translate(-50%,-50%) scale(1.09); opacity: .80; }
+    38%  { transform: translate(-50%,-50%) scale(.95);  opacity: .55; }
+    58%  { transform: translate(-50%,-50%) scale(1.05); opacity: .75; }
+    78%  { transform: translate(-50%,-50%) scale(.98);  opacity: .58; }
+    100% { transform: translate(-50%,-50%) scale(1.03); opacity: .70; }
+  }
+  @keyframes manaPulseC{
+    0%   { transform: translate(-50%,-50%) scale(1);    opacity: .35; }
+    13%  { transform: translate(-50%,-50%) scale(1.10); opacity: .72; }
+    33%  { transform: translate(-50%,-50%) scale(.92);  opacity: .45; }
+    55%  { transform: translate(-50%,-50%) scale(1.06); opacity: .70; }
+    76%  { transform: translate(-50%,-50%) scale(.96);  opacity: .48; }
+    100% { transform: translate(-50%,-50%) scale(1.03); opacity: .62; }
+  }
+  @keyframes manaPulseD{
+    0%   { transform: translate(-50%,-50%) scale(1);    opacity: .28; }
+    18%  { transform: translate(-50%,-50%) scale(1.07); opacity: .60; }
+    40%  { transform: translate(-50%,-50%) scale(.96);  opacity: .40; }
+    60%  { transform: translate(-50%,-50%) scale(1.04); opacity: .56; }
+    82%  { transform: translate(-50%,-50%) scale(.98);  opacity: .42; }
+    100% { transform: translate(-50%,-50%) scale(1.02); opacity: .52; }
+  }
+
+  .core-canvas{
+    position:absolute;
+    inset:0;
+    width:100vw;
+    height:100vh;
+    z-index:6;
+    pointer-events:none;
+  }
+
+  canvas#fxCanvas {
+    position:absolute; inset:0; width:100vw; height:100vh;
+    z-index:7; pointer-events:none;
+  }
+
+  /* ===== 共用白框樣式 ===== */
+  .floating-box {
+    position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+    text-align: center; color: var(--text);
+    background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.6); border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    pointer-events: none; transition: all 0.5s ease; white-space: nowrap;
+  }
+  .rank-info {
+    top: 4%;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    padding: 10px 24px;
+    line-height: 1.5;
+    opacity: 0.9;
+  }
+  .guide-text {
+    top: 18%;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    line-height: 1.6;
+    padding: 16px 32px;
+    animation: pulse 2s infinite ease-in-out;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+
+  /* ✅ 失敗紅字（鑑定失敗） */
+  .guide-text.fail{
+    color: #C0392B;
+    animation: none !important;
+  }
+
+  /* ===== 設定頁 ===== */
+  #settingsPage{
+    position:fixed; inset:0; z-index:50;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:18px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    background: rgba(216, 211, 210, 0.96);
+    backdrop-filter: blur(2px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settingsCard{
+    pointer-events:auto;
+    width:min(92vw,560px);
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.75);
+    border-radius:20px;
+    box-shadow:0 10px 24px var(--shadow);
+    padding:18px 18px 14px;
+    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settingsTitle{
+    font-weight:900;
+    letter-spacing:.12em;
+    font-size:16px;
+    margin:4px 2px 12px;
+    text-align:center;
+  }
+  .settingsHint{
+    font-size:12px;
+    opacity:.85;
+    line-height:1.6;
+    margin:0 2px 14px;
+    text-align:center;
+  }
+  .sliderRow{
+    display:grid;
+    grid-template-columns: 70px 1fr 62px;
+    gap:12px;
+    align-items:center;
+    padding: 12px 2px;
+  }
+  .sLabel{
+    font-weight:900;
+    letter-spacing:.06em;
+    font-size:14px;
+  }
+  .sValue{
+    text-align:right;
+    font-weight:900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"]{
+    width:100%;
+    height: 44px;
+    background: transparent;
+    accent-color: var(--gold);
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: pan-x;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.18);
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    border: 3px solid rgba(166,129,71,0.95);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+    margin-top: -12px;
+  }
+  input[type="range"]::-moz-range-track{
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.18);
+  }
+  input[type="range"]::-moz-range-thumb{
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.95);
+    border: 3px solid rgba(166,129,71,0.95);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+  }
+
+  .settingsFooter{
+    margin-top:10px;
+    padding-top:12px;
+    border-top: 1px dashed rgba(0,0,0,.15);
+    display:flex;
+    gap:10px;
+    flex-direction:column;
+  }
+  .sumLine{
+    display:flex; justify-content:space-between; align-items:center;
+    font-weight:900;
+    letter-spacing:.04em;
+    font-size:13px;
+  }
+  .sumNote{
+    font-size:12px;
+    opacity:.8;
+    line-height:1.5;
+  }
+  .btnRow{
+    display:flex;
+    gap:10px;
+    width:100%;
+    justify-content:space-between;
+    margin-top:10px;
+  }
+  .btn{
+    pointer-events:auto;
+    border:none;
+    border-radius:14px;
+    padding:12px 14px;
+    font-weight:900;
+    letter-spacing:.08em;
+    cursor:pointer;
+    min-width: 0;
+    flex: 1 1 0;
+    box-shadow:0 8px 18px rgba(0,0,0,.12);
+  }
+  .btnPrimary{ background: linear-gradient(180deg,#B89254,#9E763E); color:#fff; }
+  .btnGhost{
+    background: rgba(255,255,255,0.45);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.7);
+  }
+
+  /* ===== 結果卡 ===== */
+  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; }
+  .resultCard{ width:min(92vw,560px); background:var(--panel); border-radius:20px; padding:22px 20px 18px; box-shadow:0 10px 24px var(--shadow); color:var(--text); transform: translateY(12px) scale(.98); opacity:0; transition: all 320ms cubic-bezier(.2,.9,.3,1); }
+  .resultCard.show{ opacity:1; transform: translateY(0) scale(1); }
+  .r-title{ font-size:12px; letter-spacing:.22em; margin:2px 2px 8px; opacity:.9; }
+  .ritual{ font-size:14px; line-height:1.35; margin:0 2px 10px; letter-spacing:.04em; }
+  .divider{ height:1px; border-top:1px dashed rgba(0,0,0,.15); margin:10px 2px 14px; }
+
+/* ✅ 全卡片閃白 overlay（像相機閃光） */
+.resultCard{ position: relative; } /* 重要：讓 overlay 以卡片為定位 */
+
+#rankFlashOverlay{
+  position:absolute;
+  inset:0;
+  border-radius:20px;           /* 跟卡片同圓角 */
+  background: rgba(255,255,255,0.95);
+  opacity:0;
+  pointer-events:none;
+  z-index:5;                    /* 蓋在內容上面 */
+}
+
+#rankFlashOverlay.flash{
+  animation: cardFlash 80ms ease-out;
+}
+
+@keyframes cardFlash{
+  from { opacity: 0.95; }
+  to   { opacity: 0; }
+}
+
+  /* ===== 階級樣式 ===== */
+  .rank-E { --bg-grad: linear-gradient(45deg, #939393 0%, #939393 40%, #FFFFFF 50%, #7F7F7F 60%,#7F7F7F 100%); --stroke-col: #494949; }
+  .rank-D { --bg-grad: linear-gradient(45deg, #5D9F39 0%, #5D9F39 40%, #FFFFFF 50%, #448E1D 60%,#448E1D 100%); --stroke-col: #016E3C; }
+  .rank-C { --bg-grad: linear-gradient(45deg, #9C774A 0%, #9C774A 40%, #FFFFFF 50%, #8A622F 60%,#8A622F 100%); --stroke-col: #704200; }
+  .rank-B { --bg-grad: linear-gradient(45deg, #816DBA 0%, #816DBA 40%, #FFFFFF 50%, #6C56AC 60%,#6C56AC 100%); --stroke-col: #4E3986; }
+  .rank-A { --bg-grad: linear-gradient(45deg, #6193BC 0%, #6193BC 40%, #FFFFFF 50%, #497FAE 60%,#497FAE 100%); --stroke-col: #274998; }
+  .rank-S {
+    --bg-grad: linear-gradient(45deg, #FFF5C3 0%, #FFD700 45%, #DAA520 100%);
+    --stroke-col: #FFFFFF;
+    filter: drop-shadow(0 0 15px rgba(255,215,0,0.6));
+  }
+  .rank-SS {
+    --bg-grad: linear-gradient(45deg, #FF0000, #FFFF00, #00FF00, #00FFFF, #0000FF, #FF00FF);
+    --stroke-col: #FFFFFF;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.9));
+  }
+
+  .rank-badge {
+    position: relative; display: block; text-align: center;
+    font-weight: 900; font-size: 140px; line-height: 1;
+    margin: 10px auto; z-index: 1;
+    color: var(--stroke-col, #333);
+    -webkit-text-stroke: 5px var(--stroke-col, #333);
+  }
+  .rank-badge::after {
+    content: attr(data-rank); position: absolute; left: 0; top: 0;
+    width: 100%; height: 100%; z-index: 2;
+    background: var(--bg-grad, #888);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    -webkit-text-stroke: 0;
+  }
+
+	/* ✅ 跳階瞬間：彈一下 + 閃光 */
+.rank-badge.rank-pop{
+  animation: rankPop 260ms cubic-bezier(.2,.9,.2,1);
+}
+
+.rank-badge.rank-pop::after{
+  animation: rankFlash 260ms ease-out;
+}
+
+/* 文字本體彈一下 */
+@keyframes rankPop{
+  0%   { transform: scale(0.88); filter: brightness(1); }
+  45%  { transform: scale(1.14); filter: brightness(1.25); }
+  100% { transform: scale(1.00); filter: brightness(1); }
+}
+
+/* 漸層層閃一下（看起來像瞬間放光） */
+@keyframes rankFlash{
+  0%   { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+  35%  { filter: drop-shadow(0 0 18px rgba(255,255,255,0.85)); }
+  100% { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+}
+
+  .attr-pill{
+    display:block; width:100%; max-width:360px;
+    margin:8px auto 8px; padding:10px 18px;
+    text-align:center; border-radius:999px;
+    font-weight:800; letter-spacing:.08em;
+    color:#fff; box-shadow: inset 0 -6px 14px rgba(0,0,0,.15);
+  }
+  .pill-fire{  background:linear-gradient(180deg,#B24A2C,#7E321D); }
+  .pill-water{ background:linear-gradient(180deg,#2D6D8C,#1E4E66); }
+  .pill-wind{  background:linear-gradient(180deg,#2F7A5C,#215742); }
+  .pill-earth{ background:linear-gradient(180deg,#7C5C2E,#5A431F); }
+  .pill-light{ background:linear-gradient(180deg,#F6E7A8,#D8B85A); }
+  .pill-dark{  background:linear-gradient(180deg,#4B3B6A,#2B2140); }
+
+  .kv{ display:flex; justify-content:space-between; align-items:center; padding:8px 2px; }
+  .kv .label{ font-size:22px; opacity:.9; letter-spacing:.03em; }
+  .kv .value{ font-size:56px; font-weight:900; letter-spacing:.02em; }
+  .remark{ text-align:center; font-style:italic; font-size:20px; margin:0 6px 16px; line-height:1.6; }
+  .footer{ text-align:center; font-size:12px; opacity:.6; margin-top:24px; }
+
+  /* ===== 結果頁：長按回設定按鈕（按住放大版） ===== */
+  #backToSettingsBtn{
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) scale(0.8);
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    border: 2px solid rgba(166,129,71,0.95);
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.14);
+    z-index: 80;
+    display: none;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    touch-action: none;
+    transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  }
+  #backToSettingsBtn .holdRing{ position: absolute; inset: 7px; width: calc(100% - 14px); height: calc(100% - 14px); }
+  #backToSettingsBtn .holdRing .bg{ fill: none; stroke: rgba(255,255,255,0.30); stroke-width: 11; }
+  #backToSettingsBtn .holdRing .fg{
+    fill: none; stroke: rgba(255,255,255,0.95); stroke-width: 11; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 50% 50%;
+    stroke-dasharray: 276; stroke-dashoffset: 276;
+  }
+  #backToSettingsBtn.holding{
+    transform: translateX(-50%) scale(1.5);
+    background: rgba(255,255,255,0.28);
+    box-shadow:
+      0 14px 28px rgba(0,0,0,0.18),
+      0 0 0 10px rgba(255,255,255,0.12),
+      0 0 28px rgba(255,255,255,0.35);
+  }
+/* 兩段長按：第一圈 0.5s、第二圈 1s */
+#backToSettingsBtn.holding.stage1 .holdRing .fg{ animation: hold2s 0.5s linear forwards; }
+#backToSettingsBtn.holding.stage2 .holdRing .fg{ animation: hold2s 1s   linear forwards; }
+  @keyframes hold2s{ from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
+  @media (max-width:360px){
+    #backToSettingsBtn{ width: 62px; height: 62px; bottom: 20px; }
+    #backToSettingsBtn.holding{ transform: translateX(-50%) scale(1.30); }
+  }
+</style>
+</head>
+
+<body>
+
+<div id="settingsPage">
+  <div class="settingsCard" role="dialog" aria-label="設定屬性出現機率">
+    <div class="settingsTitle">屬性出現機率設定</div>
+    <div class="settingsHint">
+      拉桿每次跳 5%<br>
+      六屬性加總不可超過 100%
+    </div>
+
+    <div class="sliderRow">
+      <div class="sLabel">火</div>
+      <input id="s_fire" type="range" min="0" max="100" step="5" value="20" />
+      <div class="sValue" id="v_fire">20%</div>
+    </div>
+    <div class="sliderRow">
+      <div class="sLabel">水</div>
+      <input id="s_water" type="range" min="0" max="100" step="5" value="20" />
+      <div class="sValue" id="v_water">20%</div>
+    </div>
+    <div class="sliderRow">
+      <div class="sLabel">風</div>
+      <input id="s_wind" type="range" min="0" max="100" step="5" value="20" />
+      <div class="sValue" id="v_wind">20%</div>
+    </div>
+    <div class="sliderRow">
+      <div class="sLabel">土</div>
+      <input id="s_earth" type="range" min="0" max="100" step="5" value="20" />
+      <div class="sValue" id="v_earth">20%</div>
+    </div>
+    <div class="sliderRow">
+      <div class="sLabel">光</div>
+      <input id="s_light" type="range" min="0" max="100" step="5" value="10" />
+      <div class="sValue" id="v_light">10%</div>
+    </div>
+    <div class="sliderRow">
+      <div class="sLabel">暗</div>
+      <input id="s_dark" type="range" min="0" max="100" step="5" value="10" />
+      <div class="sValue" id="v_dark">10%</div>
+    </div>
+
+    <div class="settingsFooter">
+      <div class="sumLine">
+        <div>目前總和</div>
+        <div id="sumText">100%</div>
+      </div>
+      <div class="sumNote" id="sumNote"></div>
+
+      <div class="btnRow">
+        <button class="btn btnGhost" id="btnReset" type="button">預設值</button>
+        <button class="btn btnGhost" id="btnZero" type="button">全部歸零</button>
+        <button class="btn btnPrimary" id="btnStart" type="button">開始鑑定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="rankChart" class="floating-box rank-info">階級表<br>E-D-C-B-A-S-SS</div>
+<div id="guideText" class="floating-box guide-text">請將手指放在核心上<br>並保持不動</div>
+
+<div id="animLayer" title="按住開始鑑定">
+  <canvas id="particleCanvas"></canvas>
+  <canvas id="fxCanvas"></canvas>
+  <canvas id="coreCanvas" class="core-canvas"></canvas>
+  <div class="circle outline-145"></div>
+  <div class="circle outline-510"></div>
+  <div class="circle outline-600"></div>
+  <div class="circle outline-650"></div>
+</div>
+
+<div id="resultWrap" aria-live="polite">
+  <div id="resultCard" class="resultCard" role="group" aria-label="鑑定結果">
+	<div id="rankFlashOverlay" aria-hidden="true"></div>
+    <div id="remark" class="remark">...</div>
+    <div class="divider"></div>
+    <div id="rankBadge" class="rank-badge rank-SS" data-rank="SS">SS</div>
+    <div id="attrPill" class="attr-pill pill-wind">---</div>
+    <div class="divider" style="margin-top:8px"></div>
+    <div class="kv"><div class="label">魔力值</div><div id="manaValue" class="value">0</div></div>
+
+    <div style="margin-top: 20px;">
+      <div class="r-title">MANA CERTIFICATION RECORD</div>
+      <div class="ritual">經大公會魔導聖所正式鑑定<br>您的魔力鑑定結果</div>
+    </div>
+
+    <div class="footer">本系統由狐狸樹屋開發</div>
+  </div>
+</div>
+
+<button id="backToSettingsBtn" type="button" aria-label="回到設定頁">
+  <svg viewBox="0 0 100 100" class="holdRing" aria-hidden="true">
+    <circle class="bg" cx="50" cy="50" r="44"></circle>
+    <circle class="fg" cx="50" cy="50" r="44"></circle>
+  </svg>
+</button>
+
+<script>
+/**
+ * ✅ 本版包含兩個需求：
+ * 1) 修正「爆炸前放開後又馬上按」會誤判失敗：加 input lock + failing guard
+ * 2) 結果卡新增「數字向上捲動」動畫 + 階級隨數字門檻跳階
+ *    - 數字從 1 開始高速跑
+ *    - 最後 5 格開始變慢並停住
+ *    - SS：跑到 1000 後顯示 ???? 並階級 SS
+ */
+
+(function(){
+  // ===== 0) 全域 RAF Registry：強制清掉上一輪 =====
+  const RAF = window.__MANA_RAF || (window.__MANA_RAF = {});
+  if (RAF.particle) { cancelAnimationFrame(RAF.particle); RAF.particle = null; }
+  if (RAF.core)     { cancelAnimationFrame(RAF.core);     RAF.core = null; }
+  if (RAF.fx)       { cancelAnimationFrame(RAF.fx);       RAF.fx = null; }
+
+  // 清掉上一輪 timeout
+  const TIM = window.__MANA_TIM || (window.__MANA_TIM = []);
+  TIM.forEach(clearTimeout);
+  TIM.length = 0;
+
+  /* ===== 工具 ===== */
+  const clamp01=x=>Math.max(0,Math.min(1,x));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const rand=(min,max)=>Math.random()*(max-min)+min;
+  const randInt=(min,max)=>Math.floor(rand(min,max+1));
+  const randSign=()=>Math.random()<0.5?-1:1;
+  const easeOutCubic=x=>{x=clamp01(x);return 1-Math.pow(1-x,3)};
+  const easeInOutCubic=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+  const easeOutBack=x=>{x=clamp01(x);const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+
+  function hexToRgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}}
+  function rgbToHex(r,g,b){const h=(v)=>v.toString(16).padStart(2,'0');return `#${h(r)}${h(g)}${h(b)}`;}
+  function lerpHex(a,b,t){const A=hexToRgb(a),B=hexToRgb(b);return rgbToHex(Math.round(lerp(A.r,B.r,t)),Math.round(lerp(A.g,B.g,t)),Math.round(lerp(A.b,B.b,t)))}
+
+  /* ===== 畫布 ===== */
+  const canvas=document.getElementById('particleCanvas');
+  const ctx=canvas.getContext('2d');
+
+  const fxCanvas=document.getElementById('fxCanvas');
+  const fxCtx=fxCanvas.getContext('2d');
+
+  const core=document.getElementById('coreCanvas');
+  const coreCtx=core.getContext('2d');
+
+  function getCenter(){return {x:innerWidth/2,y:innerHeight/2}}
+  let center=getCenter();
+
+  function fitCanvasToScreen(){
+    const dpr=Math.max(1,devicePixelRatio||1);
+    const {innerWidth:w,innerHeight:h}=window;
+    canvas.width=Math.floor(w*dpr);
+    canvas.height=Math.floor(h*dpr);
+    canvas.style.width=w+'px';
+    canvas.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function fitFxCanvas(){
+    const dpr = Math.max(1, devicePixelRatio || 1);
+    const { innerWidth:w, innerHeight:h } = window;
+    fxCanvas.width  = Math.floor(w * dpr);
+    fxCanvas.height = Math.floor(h * dpr);
+    fxCanvas.style.width  = w + 'px';
+    fxCanvas.style.height = h + 'px';
+    fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function fxSize(){
+    const dpr = Math.max(1, devicePixelRatio || 1);
+    return { W: fxCanvas.width / dpr, H: fxCanvas.height / dpr };
+  }
+  function fitCoreCanvas(){
+    const dpr=Math.max(1,devicePixelRatio||1);
+    const rect=core.getBoundingClientRect();
+    core.width=Math.floor(rect.width*dpr);
+    core.height=Math.floor(rect.height*dpr);
+    coreCtx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function onViewportChange(){
+    center=getCenter();
+    fitCanvasToScreen();
+    fitCoreCanvas();
+    fitFxCanvas();
+  }
+  addEventListener('resize', onViewportChange);
+  addEventListener('orientationchange', onViewportChange);
+  onViewportChange();
+
+  /* ===== 粒子 ===== */
+  const PARTICLE_COUNT=500, MIN_R=100, MAX_R=250, MIN_SIZE=3, MAX_SIZE=5;
+  const particles=Array.from({length:PARTICLE_COUNT}).map(()=>( {
+    layer:randInt(0,3),
+    radius0:rand(MIN_R,MAX_R),
+    angle:rand(0,Math.PI*2),
+    size0:rand(MIN_SIZE,MAX_SIZE),
+    speed: (0.005*(0.6+0.8*(rand(MIN_R,MAX_R)-MIN_R)/(MAX_R-MIN_R))*rand(0.8,1.2))*randSign(),
+    breathAmp:rand(2,10),
+    breathFreq:rand(0.4,1.2),
+    ellipseA:rand(0.85,1.15),
+    ellipseB:rand(0.85,1.15),
+    ellipseRot:rand(0,Math.PI),
+    wobbleAmp:rand(0.08,0.22),
+    wobbleFreq:rand(2.0,4.0),
+    twinklePhase:rand(0,Math.PI*2),
+    twinkleFreq:rand(0.8,1.6),
+    startRadius:null,
+    targetRadius:null,
+    absorbed:false
+  }));
+
+  /* ===== 狀態機 ===== */
+  const PHASE={IDLE:0, SPIN:1, CORE_INTENSE:2, COLLAPSE:3, EXPAND:4};
+  let phase=PHASE.IDLE, phaseStart=0, phaseDur=0;
+  const DUR={ SPIN:700, CORE_INTENSE:900, COLLAPSE:1200, EXPAND:1200 };
+  const SPIN_MUL_1=3.0, SPIN_MUL_2=5.0;
+  const TARGET_RADIUS_RANGE=[10,18];
+  let rippleActive=false, rippleStart=0;
+  const RIPPLE_DURATION=1200;
+
+  // ✅ 爆炸階段鎖旋轉用：進入 EXPAND 時把 time freeze
+  let expandFreezeT = 0;
+
+  function setPhase(p,dur){
+    phase=p;
+    phaseStart=performance.now();
+    phaseDur=dur;
+
+    if(p===PHASE.EXPAND){
+      expandFreezeT = performance.now()/1000;
+      exploded = true; // ✅ 核心爆炸後才放開就不算失敗
+    }
+  }
+  function phaseProgress(){return clamp01((performance.now()-phaseStart)/Math.max(1,phaseDur))}
+
+  /* ===== 機率設定 ===== */
+  const ELEMENT_KEYS = ['火','水','風','土','光','暗'];
+  let elementPercents = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+
+  const settingsPage = document.getElementById('settingsPage');
+  const btnStart = document.getElementById('btnStart');
+  const btnReset = document.getElementById('btnReset');
+  const sumText = document.getElementById('sumText');
+  const btnZero = document.getElementById('btnZero');
+  const sumNote = document.getElementById('sumNote');
+
+  btnZero.addEventListener('click', ()=>{
+    elementPercents = { 火:0, 水:0, 風:0, 土:0, 光:0, 暗:0 };
+    applyPercentsToSliders();
+  }, {passive:true});
+
+  const sliders = {
+    火: document.getElementById('s_fire'),
+    水: document.getElementById('s_water'),
+    風: document.getElementById('s_wind'),
+    土: document.getElementById('s_earth'),
+    光: document.getElementById('s_light'),
+    暗: document.getElementById('s_dark'),
+  };
+  const values = {
+    火: document.getElementById('v_fire'),
+    水: document.getElementById('v_water'),
+    風: document.getElementById('v_wind'),
+    土: document.getElementById('v_earth'),
+    光: document.getElementById('v_light'),
+    暗: document.getElementById('v_dark'),
+  };
+  const prevValue = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+
+  function readSlidersToPercents(){
+    for(const k of ELEMENT_KEYS){
+      elementPercents[k] = parseInt(sliders[k].value,10) || 0;
+    }
+  }
+  function totalPercent(){
+    return ELEMENT_KEYS.reduce((s,k)=>s + (elementPercents[k]||0), 0);
+  }
+  function renderPercents(){
+    for(const k of ELEMENT_KEYS){
+      values[k].textContent = `${elementPercents[k]||0}%`;
+    }
+    const sum = totalPercent();
+    sumText.textContent = `${sum}%`;
+    sumNote.style.opacity = (sum < 100) ? '0.9' : '0.0';
+    sumNote.style.height = (sum < 100) ? 'auto' : '0px';
+    sumNote.style.overflow = 'hidden';
+  }
+  function updateSliderLimits(){
+    const sum = totalPercent();
+    const remain = Math.max(0, 100 - sum);
+    for(const k of ELEMENT_KEYS){
+      const cur = elementPercents[k] || 0;
+      sliders[k].max = String(cur + remain);
+    }
+  }
+  function enforceNotOver100(changedKey){
+    const sum = totalPercent();
+    if(sum <= 100) return;
+    sliders[changedKey].value = String(prevValue[changedKey] ?? 0);
+    readSlidersToPercents();
+  }
+  function onSliderInput(k){
+    readSlidersToPercents();
+    enforceNotOver100(k);
+    prevValue[k] = elementPercents[k];
+    renderPercents();
+    updateSliderLimits();
+  }
+  function applyPercentsToSliders(){
+    for(const k of ELEMENT_KEYS){ sliders[k].max="100"; }
+    for(const k of ELEMENT_KEYS){
+      sliders[k].value=String(elementPercents[k] ?? 0);
+      prevValue[k]=elementPercents[k] ?? 0;
+    }
+    readSlidersToPercents();
+    renderPercents();
+    updateSliderLimits();
+  }
+  for(const k of ELEMENT_KEYS){
+    sliders[k].addEventListener('input', ()=>onSliderInput(k), {passive:true});
+  }
+
+  function pickElementByPercents(){
+    const sum = totalPercent();
+    if(sum <= 0) return ELEMENT_KEYS[Math.floor(Math.random()*ELEMENT_KEYS.length)];
+    let r = Math.random() * sum;
+    for(const k of ELEMENT_KEYS){
+      const w = elementPercents[k] || 0;
+      if(r < w) return k;
+      r -= w;
+    }
+    return ELEMENT_KEYS[ELEMENT_KEYS.length - 1];
+  }
+
+  /* ===== UI ===== */
+  const guideTextEl = document.getElementById('guideText');
+  const rankChartEl = document.getElementById('rankChart');
+  const animLayerEl = document.getElementById('animLayer');
+
+  function setHoldPulse(on){
+    animLayerEl.classList.toggle('holding', !!on);
+  }
+
+  const resultWrap=document.getElementById('resultWrap');
+  const resultCard=document.getElementById('resultCard');
+  const rankBadge=document.getElementById('rankBadge');
+  const attrPill=document.getElementById('attrPill');
+  const manaValueEl=document.getElementById('manaValue');
+  const remarkEl=document.getElementById('remark');
+	const rankFlashOverlay = document.getElementById('rankFlashOverlay');
+  const backBtn = document.getElementById('backToSettingsBtn');
+  let holdTimer = null;
+
+  // ✅ 長按鑑定控制
+  let activePointerId = null;
+  let exploded = false;
+
+  // ✅【輸入鎖】避免 failSequence/結果顯示時又立刻按造成交錯
+  let isFailing = false;
+  let lockInputUntil = 0;
+  function lockInput(ms){
+    lockInputUntil = performance.now() + ms;
+  }
+  function inputLocked(){
+    return isFailing || performance.now() < lockInputUntil;
+  }
+
+  // ✅【結果數字捲動動畫】狀態
+  let rollAnimRAF = null;
+  let rollToken = 0;
+
+  function stopRollAnim(){
+    rollToken++;
+    if(rollAnimRAF){ cancelAnimationFrame(rollAnimRAF); rollAnimRAF = null; }
+  }
+
+function flashCardOnce(){
+  if(!rankFlashOverlay) return;
+  rankFlashOverlay.classList.remove('flash');
+  void rankFlashOverlay.offsetWidth; // reflow 讓動畫可重播
+  rankFlashOverlay.classList.add('flash');
+  setTimeout(()=>rankFlashOverlay.classList.remove('flash'), 120);
+}
+
+let lastRankShown = null;
+
+function setRankUI(code){
+  if(code === lastRankShown) return;
+
+  lastRankShown = code;
+
+  // ✅ 階級跨門檻：閃白一下
+  
+
+  rankBadge.textContent = code;
+  rankBadge.setAttribute('data-rank', code);
+
+  rankBadge.className = 'rank-badge rank-' + code;
+  rankBadge.classList.remove('rank-pop');
+  void rankBadge.offsetWidth;
+  rankBadge.classList.add('rank-pop');
+  setTimeout(()=>rankBadge.classList.remove('rank-pop'), 280);
+}
+
+  /* ===== timers：集中管理 ===== */
+  function setSeqTimeout(fn, ms){
+    const id = setTimeout(fn, ms);
+    TIM.push(id);
+    return id;
+  }
+  function clearSeqTimers(){
+    TIM.forEach(clearTimeout);
+    TIM.length = 0;
+  }
+
+  /* ===== FX ===== */
+  let fxToken = 0;
+  function stopFx(){
+    fxToken++;
+    if (RAF.fx) { cancelAnimationFrame(RAF.fx); RAF.fx=null; }
+    const {W,H}=fxSize();
+    fxCtx.clearRect(0,0,W,H);
+  }
+
+  function showSettingsPage(){
+    settingsPage.style.display='flex';
+    rankChartEl.style.display='none';
+    guideTextEl.style.display='none';
+    animLayerEl.style.display='none';
+    resultCard.classList.remove('show');
+    resultWrap.style.pointerEvents='none';
+    backBtn.style.display='none';
+    backBtn.classList.remove('holding');
+    stopFx();
+    setHoldPulse(false);
+    stopRollAnim();
+  }
+
+  function enterIdleScreen(){
+    settingsPage.style.display='none';
+    rankChartEl.style.display='block';
+    guideTextEl.style.display='block';
+    animLayerEl.style.display='block';
+    animLayerEl.style.opacity='1';
+    setHoldPulse(false);
+
+    backBtn.style.display='none';
+    backBtn.classList.remove('holding');
+
+    guideTextEl.classList.remove('fail');
+    guideTextEl.innerHTML='請將手指放在核心上<br>並保持不動';
+    guideTextEl.style.display='block';
+    guideTextEl.style.opacity='0.9';
+    guideTextEl.style.animation='pulse 2s infinite ease-in-out';
+    guideTextEl.style.transform='translateX(-50%)';
+
+    resultCard.classList.remove('show');
+    resultWrap.style.pointerEvents='none';
+
+    stopRollAnim();
+    onViewportChange();
+  }
+
+  let hasRun=false;
+  let resultShown=false;
+  let selectedElement=null;
+
+  function resetToIdleState(){
+    clearSeqTimers();
+    stopFx();
+    stopRollAnim();
+    setHoldPulse(false);
+    hasRun=false;
+    resultShown=false;
+    selectedElement=null;
+    rippleActive=false;
+    exploded=false;
+    activePointerId=null;
+    isFailing=false;
+    lockInputUntil=0;
+    particles.forEach(p=>{
+      p.absorbed=false;
+      p.startRadius=null;
+      p.targetRadius=null;
+    });
+    setPhase(PHASE.IDLE, 1);
+    animLayerEl.style.display='block';
+    animLayerEl.style.opacity='1';
+  }
+
+  /* ===== 核心液態圓 ===== */
+  const BASE_R=50;
+  const HARMONICS_BASE=[{amp:.06,freq:3,speed:.8},{amp:.04,freq:5,speed:-1.1},{amp:.02,freq:9,speed:1.6}];
+  const BREATH={amp:.03,speed:.7};
+  const neutralInner='#B89254', neutralOuter='#F4EFE9';
+
+  const elementColors={
+    '火':{inner:'#B24A2C',outer:'#F1C7BA'},
+    '水':{inner:'#2D6D8C',outer:'#CFE3EF'},
+    '風':{inner:'#2F7A5C',outer:'#CFE8DB'},
+    '土':{inner:'#7C5C2E',outer:'#E8DCC5'},
+    '光':{inner:'#F6E7A8',outer:'#FFFFFF'},
+    '暗':{inner:'#3B2B55',outer:'#D9CFF0'},
+  };
+
+  function drawCore(ts){
+    const t = (phase===PHASE.EXPAND) ? expandFreezeT : (ts?ts/1000:0);
+
+    const {width,height}=core;
+    coreCtx.clearRect(0,0,width,height);
+
+    const cssPX=1/(devicePixelRatio||1);
+    coreCtx.save();
+    coreCtx.translate(width*cssPX/2, height*cssPX/2);
+
+    const pr=phaseProgress();
+    let ampMul=1, scaleNow=1, harmSpeedMul=1, breathMul=1;
+
+    if(phase===PHASE.SPIN){ ampMul=lerp(1,2.2,easeInOutCubic(pr)); harmSpeedMul=1.6; breathMul=1.4; }
+    else if(phase===PHASE.CORE_INTENSE){ ampMul=lerp(2.2,3.0,easeInOutCubic(pr)); harmSpeedMul=2.2; breathMul=1.8; }
+    else if(phase===PHASE.COLLAPSE){ ampMul=lerp(3.0,3.6,easeInOutCubic(pr)); scaleNow=lerp(1,0.85,easeInOutCubic(pr)); harmSpeedMul=2.6; breathMul=2.2; }
+    else if(phase===PHASE.EXPAND){
+      ampMul=lerp(3.6,1.05,easeOutCubic(pr));
+      const diag = Math.hypot(innerWidth, innerHeight);
+      const maxScale = (diag * 0.58) / (BASE_R * 1.05);
+      scaleNow = lerp(0.85, maxScale, easeOutBack(pr));
+      harmSpeedMul=0;
+      breathMul=0.9;
+    }
+
+    coreCtx.scale(scaleNow, scaleNow);
+
+    let cInner=neutralInner, cOuter=neutralOuter;
+    if(selectedElement && phase>=PHASE.EXPAND){
+      const target=elementColors[selectedElement];
+      const tcol=easeOutCubic(pr);
+      cInner=lerpHex(neutralInner, target.inner, tcol);
+      cOuter=lerpHex(neutralOuter, target.outer, tcol);
+    }
+
+    const HARMONICS=HARMONICS_BASE.map(h=>({...h, amp: h.amp*ampMul, speed: h.speed*harmSpeedMul }));
+    coreCtx.beginPath();
+    const steps=160;
+    for(let i=0;i<=steps;i++){
+      const theta=(i/steps)*Math.PI*2;
+      let r=BASE_R*(1+BREATH.amp*Math.sin(BREATH.speed*breathMul*t));
+      HARMONICS.forEach(h=>{ r*=1+h.amp*Math.sin(h.freq*theta + h.speed*t) });
+      const x=r*Math.cos(theta), y=r*Math.sin(theta);
+      if(i===0) coreCtx.moveTo(x,y); else coreCtx.lineTo(x,y);
+    }
+    coreCtx.closePath();
+
+    const g=coreCtx.createRadialGradient(0,0,BASE_R*.2, 0,0,BASE_R*1.05);
+    g.addColorStop(0,cInner); g.addColorStop(1,cOuter);
+    coreCtx.fillStyle=g;
+    coreCtx.fill();
+
+    coreCtx.restore();
+
+    RAF.core = requestAnimationFrame(drawCore);
+  }
+
+  /* ===== 粒子渲染 ===== */
+  let lastParticleTs = null;
+  function drawParticles(ts){
+    if(lastParticleTs == null) lastParticleTs = ts;
+    let dt = (ts - lastParticleTs) / 16.6667;
+    lastParticleTs = ts;
+    dt = Math.max(0, Math.min(dt, 3));
+
+    const t=ts?ts/1000:0;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const p=phaseProgress();
+    ctx.shadowBlur=8;
+    ctx.shadowColor='rgba(255,255,255,0.6)';
+
+    particles.forEach(pt=>{
+      let speedMul=1;
+      if(phase===PHASE.SPIN) speedMul=lerp(1,SPIN_MUL_1,easeInOutCubic(p));
+      else if(phase===PHASE.CORE_INTENSE) speedMul=lerp(SPIN_MUL_1,SPIN_MUL_2,easeInOutCubic(p));
+      else if(phase===PHASE.COLLAPSE) speedMul=SPIN_MUL_2;
+      else if(phase===PHASE.EXPAND) speedMul=0;
+
+      pt.angle += pt.speed * speedMul * dt;
+
+      let r=pt.radius0;
+      if(phase===PHASE.COLLAPSE||phase===PHASE.EXPAND){
+        const k=(phase===PHASE.COLLAPSE)? easeOutCubic(p):1;
+        r=lerp(pt.startRadius??r, pt.targetRadius??r, k);
+        if(phase===PHASE.COLLAPSE && p>=1) pt.absorbed=true;
+      }
+
+      let x,y;
+      switch(pt.layer){
+        case 0:
+          x=center.x + r*Math.cos(pt.angle);
+          y=center.y + r*Math.sin(pt.angle);
+          break;
+        case 1:{
+          const r2=r + pt.breathAmp*Math.sin(2*Math.PI*pt.breathFreq*t + pt.twinklePhase) * (phase>=PHASE.COLLAPSE?0.2:1);
+          x=center.x + r2*Math.cos(pt.angle);
+          y=center.y + r2*Math.sin(pt.angle);
+          break;
+        }
+        case 2:{
+          const ca=Math.cos(pt.angle),sa=Math.sin(pt.angle);
+          let ex=r*pt.ellipseA*ca, ey=r*pt.ellipseB*sa;
+          const cr=Math.cos(pt.ellipseRot), sr=Math.sin(pt.ellipseRot);
+          const rx=ex*cr - ey*sr, ry=ex*sr + ey*cr;
+          x=center.x + rx;
+          y=center.y + ry;
+          break;
+        }
+        case 3:{
+          const ang=pt.angle + pt.wobbleAmp*Math.sin(pt.wobbleFreq*pt.angle + pt.twinklePhase) * (phase>=PHASE.COLLAPSE?0.3:1);
+          x=center.x + r*Math.cos(ang);
+          y=center.y + r*Math.sin(ang);
+          break;
+        }
+      }
+
+      const tw=0.75 + 0.25*Math.abs(Math.sin(2*Math.PI*pt.twinkleFreq*t + pt.twinklePhase)) * (phase>=PHASE.COLLAPSE?0.5:1);
+      const size=pt.size0*(0.9 + 0.2*tw);
+      const alpha=(0.7 + 0.3*tw) * (pt.absorbed && phase>=PHASE.EXPAND ? 0.7 : 1);
+
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle='#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(x,y,size/2,0,Math.PI*2);
+      ctx.fill();
+    });
+
+    if(rippleActive){
+      const period=RIPPLE_DURATION;
+      const elapsed=performance.now()-rippleStart;
+      const pr=(elapsed%period)/period;
+      const fade=1-pr;
+      const maxR=Math.min(innerWidth,innerHeight)*0.65;
+      const rr=lerp(80,maxR,easeOutCubic(pr));
+      ctx.save();
+      ctx.lineWidth=2;
+      ctx.shadowBlur=10;
+      ctx.shadowColor='rgba(255,255,255,0.6)';
+      ctx.strokeStyle=`rgba(255,255,255,${0.35*fade})`;
+      ctx.beginPath();
+      ctx.arc(center.x,center.y,rr,0,Math.PI*2);
+      ctx.stroke();
+      ctx.lineWidth=1;
+      ctx.strokeStyle=`rgba(255,255,255,${0.22*fade})`;
+      ctx.beginPath();
+      ctx.arc(center.x,center.y,rr*0.86,0,Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.globalAlpha=1;
+    RAF.particle = requestAnimationFrame(drawParticles);
+  }
+
+  /* ===== 光/暗特效 ===== */
+  function playLightStarFlash(done, dur = DUR.EXPAND){
+    const myToken = ++fxToken;
+    if (RAF.fx) { cancelAnimationFrame(RAF.fx); RAF.fx=null; }
+
+    const start = performance.now();
+    const {W, H} = fxSize();
+
+    const sparkleCount = 90;
+    const sparkles = Array.from({length: sparkleCount}).map(() => ({
+      x: center.x + rand(-240, 240),
+      y: center.y + rand(-240, 240),
+      t0: rand(0, Math.max(10, dur - 260)),
+      life: rand(180, 320),
+      r: rand(10, 25),
+      rot: rand(0, Math.PI),
+      spikes: randInt(4, 6),
+    }));
+
+    function drawStar(x, y, spikes, outerR, innerR, rot){
+      let a = rot;
+      fxCtx.beginPath();
+      for(let i=0;i<spikes;i++){
+        fxCtx.lineTo(x + Math.cos(a) * outerR, y + Math.sin(a) * outerR);
+        a += Math.PI / spikes;
+        fxCtx.lineTo(x + Math.cos(a) * innerR, y + Math.sin(a) * innerR);
+        a += Math.PI / spikes;
+      }
+      fxCtx.closePath();
+    }
+
+    (function frame(now){
+      if(myToken !== fxToken) return;
+      const t = now - start;
+      fxCtx.clearRect(0, 0, W, H);
+
+      if(t >= dur){
+        fxCtx.clearRect(0, 0, W, H);
+        done && done();
+        RAF.fx = null;
+        return;
+      }
+
+      const breath = 0.65 + 0.35 * Math.sin((t/dur) * Math.PI * 4);
+
+      fxCtx.save();
+      fxCtx.globalCompositeOperation = 'lighter';
+
+      fxCtx.globalAlpha = 0.12 * breath;
+      fxCtx.fillStyle = 'rgba(255,250,235,1)';
+      fxCtx.beginPath();
+      fxCtx.arc(center.x, center.y, 210, 0, Math.PI*2);
+      fxCtx.fill();
+
+      for(const s of sparkles){
+        const local = t - s.t0;
+        if(local < 0 || local > s.life) continue;
+
+        const p = local / s.life;
+        const fade = 1 - Math.pow(p, 1.4);
+        const pop  = 0.85 + 0.35 * Math.sin(p * Math.PI);
+
+        const jx = s.x + rand(-2.5, 2.5);
+        const jy = s.y + rand(-2.5, 2.5);
+
+        fxCtx.shadowBlur = 22;
+        fxCtx.shadowColor = 'rgba(255,255,255,0.95)';
+
+        fxCtx.globalAlpha = 0.25 * fade * breath;
+        fxCtx.fillStyle = 'rgba(255,244,200,1)';
+        drawStar(jx, jy, s.spikes, s.r * 1.25 * pop, s.r * 0.55 * pop, s.rot);
+        fxCtx.fill();
+
+        fxCtx.globalAlpha = 0.55 * fade * breath;
+        fxCtx.fillStyle = 'rgba(255,255,255,1)';
+        drawStar(jx, jy, s.spikes, s.r * 0.85 * pop, s.r * 0.35 * pop, s.rot + 0.2);
+        fxCtx.fill();
+      }
+
+      fxCtx.restore();
+      RAF.fx = requestAnimationFrame(frame);
+    })(performance.now());
+  }
+
+  function makeLightningPath(x0, y0, x1, y1, segments, amp){
+    const pts = [[x0, y0]];
+    for(let i=1;i<segments;i++){
+      const tt = i/segments;
+      pts.push([
+        lerp(x0, x1, tt) + rand(-amp, amp),
+        lerp(y0, y1, tt) + rand(-amp, amp),
+      ]);
+    }
+    pts.push([x1, y1]);
+    return pts;
+  }
+  function strokePath(path){
+    fxCtx.beginPath();
+    for(let i=0;i<path.length;i++){
+      const p = path[i];
+      if(i===0) fxCtx.moveTo(p[0], p[1]);
+      else fxCtx.lineTo(p[0], p[1]);
+    }
+    fxCtx.stroke();
+  }
+
+  function playDarkLightningFlash(done, dur = DUR.EXPAND){
+    const myToken = ++fxToken;
+    if (RAF.fx) { cancelAnimationFrame(RAF.fx); RAF.fx=null; }
+
+    const start = performance.now();
+    const {W, H} = fxSize();
+
+    const boltCount = 12;
+    const boltLifeMin = 140;
+    const boltLifeMax = 240;
+
+    const bolts = Array.from({length: boltCount}).map((_,i)=>{
+      const t0 = i * (dur / boltCount) + rand(-40, 80);
+      const life = rand(boltLifeMin, boltLifeMax);
+
+      const xTop = center.x + rand(-260, 260);
+      const xBot = center.x + rand(-220, 220);
+
+      const main = makeLightningPath(
+        xTop, -10,
+        xBot, H + 10,
+        randInt(9, 12),
+        rand(55, 95)
+      );
+
+      let branch = null;
+      if(Math.random() < 0.55){
+        const bi = randInt(3, main.length - 4);
+        branch = makeLightningPath(
+          main[bi][0], main[bi][1],
+          main[bi][0] + rand(-220, 220),
+          main[bi][1] + rand(80, 180),
+          randInt(4, 6),
+          rand(35, 60)
+        );
+      }
+
+      return { t0, life, main, branch };
+    });
+
+    (function frame(now){
+      if(myToken !== fxToken) return;
+      const t = now - start;
+      fxCtx.clearRect(0, 0, W, H);
+
+      if(t >= dur){
+        fxCtx.clearRect(0, 0, W, H);
+        done && done();
+        RAF.fx = null;
+        return;
+      }
+
+      fxCtx.save();
+      fxCtx.globalCompositeOperation = 'lighter';
+
+      fxCtx.globalAlpha = 0.10;
+      fxCtx.fillStyle = 'rgba(30,10,50,1)';
+      fxCtx.fillRect(0, 0, W, H);
+
+      for(const b of bolts){
+        const local = t - b.t0;
+        if(local < 0 || local > b.life) continue;
+
+        const p = local / b.life;
+        const fade = 1 - Math.pow(p, 1.6);
+        const flicker = 0.65 + Math.random() * 0.35;
+        const alpha = fade * flicker;
+
+        fxCtx.lineCap = 'round';
+        fxCtx.lineJoin = 'round';
+
+        fxCtx.globalAlpha = 0.55 * alpha;
+        fxCtx.shadowBlur = 28;
+        fxCtx.shadowColor = 'rgba(180,90,255,0.95)';
+        fxCtx.strokeStyle = 'rgba(150,40,255,0.95)';
+        fxCtx.lineWidth = 7;
+        strokePath(b.main);
+        if(b.branch) strokePath(b.branch);
+
+        fxCtx.globalAlpha = 0.70 * alpha;
+        fxCtx.shadowBlur = 10;
+        fxCtx.shadowColor = 'rgba(255,240,255,0.85)';
+        fxCtx.strokeStyle = 'rgba(245,235,255,1)';
+        fxCtx.lineWidth = 2.2;
+        strokePath(b.main);
+      }
+
+      fxCtx.restore();
+      RAF.fx = requestAnimationFrame(frame);
+    })(performance.now());
+  }
+
+  /* ===== 結果與評語 ===== */
+  const TIERS=[
+    {code:'SS',range:null,chance:0.04,note:'魔力已超出可檢測範圍<br>系統懷疑你開外掛！'},
+    {code:'S', range:[900,999],chance:0.10,note:'魔力如暴風般湧動<br>所有任務都難不倒你！'},
+    {code:'A', range:[750,899],chance:0.20,note:'高階魔法使認證<br>請收下榮譽徽章。'},
+    {code:'B', range:[550,749],chance:0.20,note:'勤加鍛鍊<br>有望突破A級門檻！'},
+    {code:'C', range:[350,549],chance:0.20,note:'魔力穩定<br>偶爾放個小法術。'},
+    {code:'D', range:[200,349],chance:0.20,note:'初學者光環<br>閃閃發亮！'},
+    {code:'E', range:[1,199],chance:0.06,note:'魔力稀薄<br>似乎是個麻瓜！'}
+  ];
+  const LIGHT_DARK_TIERS = [
+    { code:'A', range:[750,899], chance:0.60 },
+    { code:'S', range:[900,999], chance:0.30 },
+    { code:'SS', range:null,      chance:0.10 }
+  ];
+  const TIER_BY_CODE = Object.fromEntries(TIERS.map(t=>[t.code,t]));
+
+  function weightedPick(list){
+    const total=list.reduce((s,i)=>s+i.chance,0);
+    let r=Math.random()*total;
+    for(const i of list){ if(r<i.chance) return i; r-=i.chance; }
+    return list[list.length-1];
+  }
+  function manaForTier(t){
+    if(!t.range) return null;
+    const [min,max]=t.range;
+    return Math.floor(Math.random()*(max-min+1))+min;
+  }
+
+  const pillClass={
+    '火':'pill-fire','風':'pill-wind','水':'pill-water','土':'pill-earth',
+    '光':'pill-light','暗':'pill-dark'
+  };
+
+  // ✅ 用 TIERS range 建立門檻：數字到某段起始值就跳到該階
+  function buildRankThresholds(){
+    const thresholds = {};
+    for(const t of TIERS){
+      if(t.range) thresholds[t.code] = t.range[0];
+    }
+    thresholds['SS'] = 1000;
+    return thresholds;
+  }
+  const RANK_THRESHOLDS = buildRankThresholds();
+
+function rankForNumber(n){
+  // ✅ 1000~9999 仍顯示 S
+  if(n >= 10000) return 'SS';   // 這行其實不一定會用到（看你最後怎麼切）
+  if(n >= 1000) return 'S';
+
+  if(n >= (RANK_THRESHOLDS['S'] ?? 900)) return 'S';
+  if(n >= (RANK_THRESHOLDS['A'] ?? 750)) return 'A';
+  if(n >= (RANK_THRESHOLDS['B'] ?? 550)) return 'B';
+  if(n >= (RANK_THRESHOLDS['C'] ?? 350)) return 'C';
+  if(n >= (RANK_THRESHOLDS['D'] ?? 200)) return 'D';
+  return 'E';
+}
+
+  // ✅ 結果「捲動」動畫：數字從 1 高速跑，最後 5 格變慢，停在目標；SS 跑到 1000 後顯示 ????
+  function startRollingResult(targetCode, targetMana){
+    stopRollAnim();
+    const myToken = ++rollToken;
+
+    const isSS = (targetCode === 'SS');
+const targetN = Math.max(1, Math.floor(targetMana ?? 1)); // 非SS用
+const SS_STAGE1 = 1000;
+const SS_STAGE2 = 9999;
+    
+const slowStart = isSS ? 1 : Math.max(1, targetN - 30);
+    let n = 1;
+    let lastTs = performance.now();
+    
+    let flashedAt1000 = false;
+let flashedAtFinal = false;
+
+const FAST_RATE = 520;
+const SLOW_RATE = 5;
+const SS_RUSH_RATE = 10000; // ✅ SS 第二段超極速（可再調更大）
+
+    function easeOutQuad(x){ x=clamp01(x); return 1-(1-x)*(1-x); }
+
+    function frame(ts){
+      if(myToken !== rollToken) return;
+      const dt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+
+      let rate;
+
+if(isSS){
+  // ✅ SS：1→1000 用原本高速；1000→9999 用超極速
+  rate = (n < SS_STAGE1) ? FAST_RATE : SS_RUSH_RATE;
+}else{
+  if(n < slowStart){
+    rate = FAST_RATE;
+  }else{
+    const p = (n - slowStart) / Math.max(1, (targetN - slowStart));
+    rate = FAST_RATE + (SLOW_RATE - FAST_RATE) * easeOutQuad(p);
+  }
+}
+n += rate * dt;
+
+const cap = isSS ? SS_STAGE2 : targetN;
+if(n >= cap) n = cap;
+
+const shown = Math.floor(n);
+
+      // 階級隨數字門檻跳
+      setRankUI(rankForNumber(shown));
+
+ if(isSS){
+  // 1 → 999：正常跑
+  if(shown < SS_STAGE1){
+    manaValueEl.textContent = String(shown);
+    setRankUI(rankForNumber(shown));
+  }
+  // 1000 → 9998：進入暴衝，維持 S
+  else if(shown < SS_STAGE2){
+
+    // ✅ 剛到 1000 的瞬間：閃一下（只閃一次）
+    if(!flashedAt1000){
+      flashedAt1000 = true;
+      flashCardOnce();
+    }
+
+    manaValueEl.textContent = String(shown);
+    setRankUI('S');
+  }
+  // 9999：瞬間 ??? + SS
+  else{
+    // ✅ 最後切 SS 前再閃一下（只閃一次）
+    if(!flashedAtFinal){
+      flashedAtFinal = true;
+      flashCardOnce();
+    }
+
+    manaValueEl.textContent = '????';
+    setRankUI('SS');
+    stopRollAnim();
+    return;
+  }
+}
+      if(!isSS){
+  manaValueEl.textContent = String(shown);
+  setRankUI(rankForNumber(shown));
+}
+
+if(!isSS && shown >= targetN){
+  manaValueEl.textContent = String(targetN);
+  setRankUI(targetCode);
+  stopRollAnim();
+  return;
+}
+
+      rollAnimRAF = requestAnimationFrame(frame);
+    }
+
+    // 初始狀態：E + 1
+    setRankUI('E');
+    manaValueEl.textContent = '1';
+    rollAnimRAF = requestAnimationFrame(frame);
+  }
+
+  function showResult(){
+    const elem = selectedElement || '火';
+
+    let tier;
+    if(elem === '光' || elem === '暗'){
+      const pick = weightedPick(LIGHT_DARK_TIERS);
+      const base = TIER_BY_CODE[pick.code] || pick;
+      tier = { ...base, ...pick };
+    }else{
+      tier = weightedPick(TIERS);
+    }
+
+    const mana = manaForTier(tier);
+
+    guideTextEl.style.opacity = '0';
+    setSeqTimeout(() => { guideTextEl.style.display = 'none'; }, 500);
+
+    // ✅ 階級與數字交給動畫（先不直接寫死）
+    setRankUI('E');
+    manaValueEl.textContent = '1';
+
+    attrPill.textContent = elem + '屬性';
+    attrPill.className = 'attr-pill ' + (pillClass[elem]||'pill-fire');
+
+    remarkEl.innerHTML = tier.note;
+
+    resultWrap.style.pointerEvents='auto';
+    resultCard.classList.add('show');
+    animLayerEl.style.display='none';
+    setHoldPulse(false);
+
+    backBtn.style.display = 'block';
+
+    // ✅ 開始捲動（SS 會跑到 1000 後顯示 ????）
+    startRollingResult(tier.code, mana);
+
+    // ✅ 結果畫面鎖一下輸入，避免手勢殘留
+    lockInput(250);
+  }
+
+  function beginExpandWithOptionalFx(){
+    resultShown = false;
+    const isLD = (selectedElement === '光' || selectedElement === '暗');
+    let coreDone = false;
+    let fxDone = !isLD;
+
+    const tryFinish = ()=>{
+      if(resultShown) return;
+      if(coreDone && fxDone){
+        resultShown = true;
+        showResult();
+      }
+    };
+
+    setSeqTimeout(()=>{ coreDone=true; tryFinish(); }, DUR.EXPAND + 80);
+
+    if(isLD){
+      if(selectedElement === '光'){
+        playLightStarFlash(()=>{ fxDone=true; tryFinish(); }, DUR.EXPAND);
+      }else{
+        playDarkLightningFlash(()=>{ fxDone=true; tryFinish(); }, DUR.EXPAND);
+      }
+    }
+  }
+
+  function startSequence(){
+    if(hasRun) return;
+    if(settingsPage.style.display !== 'none') return;
+    if(inputLocked()) return;
+
+    clearSeqTimers();
+    stopFx();
+
+    hasRun=true;
+    setHoldPulse(true);
+
+    guideTextEl.classList.remove('fail');
+    guideTextEl.innerHTML = '魔力鑑定中...<br>請保持不動';
+    guideTextEl.style.animation = 'none';
+    guideTextEl.style.opacity = '1';
+    guideTextEl.style.transform = 'translateX(-50%) scale(0.9)';
+
+    selectedElement = pickElementByPercents();
+
+    particles.forEach(p=>p.absorbed=false);
+    setPhase(PHASE.SPIN, DUR.SPIN);
+
+    setSeqTimeout(()=>{
+      setPhase(PHASE.CORE_INTENSE, DUR.CORE_INTENSE);
+      rippleActive=true;
+      rippleStart=performance.now();
+    }, DUR.SPIN);
+
+    setSeqTimeout(()=>{
+      particles.forEach(p=>{
+        p.startRadius=p.radius0;
+        p.targetRadius=rand(TARGET_RADIUS_RANGE[0],TARGET_RADIUS_RANGE[1]);
+      });
+      setPhase(PHASE.COLLAPSE, DUR.COLLAPSE);
+    }, DUR.SPIN + DUR.CORE_INTENSE);
+
+    setSeqTimeout(()=>{
+      rippleActive=false;
+      setPhase(PHASE.EXPAND, DUR.EXPAND);
+      beginExpandWithOptionalFx();
+    }, DUR.SPIN + DUR.CORE_INTENSE + DUR.COLLAPSE);
+  }
+
+  /* ✅ 失敗流程：爆炸前放開 => 淡出 + 紅字 + 2 秒回待機 */
+  function failSequence(){
+    if(resultCard.classList.contains('show')) return;
+    if(isFailing) return;
+
+    // ✅【關鍵修正】一進入 fail 就鎖住，避免你放開又立刻按造成交錯
+    isFailing = true;
+    lockInput(2200);
+    exploded = true;
+    activePointerId = null;
+
+    clearSeqTimers();
+    stopFx();
+    setHoldPulse(false);
+
+    rippleActive = false;
+    particles.forEach(p=>{
+      p.absorbed=false;
+      p.startRadius=null;
+      p.targetRadius=null;
+    });
+
+    hasRun = false;
+    resultShown = false;
+    selectedElement = null;
+
+    animLayerEl.style.opacity = '0';
+    guideTextEl.style.opacity = '0';
+
+    setSeqTimeout(()=>{
+      animLayerEl.style.display = 'none';
+
+      guideTextEl.classList.add('fail');
+      guideTextEl.innerHTML = '鑑定失敗!<br>請將手指放在核心上<br>並保持不動';
+      guideTextEl.style.display = 'block';
+      guideTextEl.style.opacity = '1';
+      guideTextEl.style.transform = 'translateX(-50%)';
+    }, 260);
+
+    setSeqTimeout(()=>{
+      guideTextEl.classList.remove('fail');
+      animLayerEl.style.display = 'block';
+      animLayerEl.style.opacity = '1';
+
+      resetToIdleState();
+      enterIdleScreen();
+
+      isFailing = false;
+    }, 2000);
+  }
+
+  /* ✅ 必須按住：pointerdown 開始 / 爆炸前放開 => fail */
+  function onHoldStart(e){
+    if(settingsPage.style.display !== 'none') return;
+    if(resultCard.classList.contains('show')) return;
+    if(activePointerId !== null) return;
+    if(inputLocked()) return;
+
+    e.preventDefault();
+    activePointerId = e.pointerId;
+
+    exploded = false;
+
+    try{ animLayerEl.setPointerCapture(e.pointerId); }catch(_){}
+
+    startSequence();
+  }
+
+  function onHoldEnd(e){
+    if(isFailing) return;
+    if(e.pointerId !== activePointerId) return;
+
+    e.preventDefault();
+    activePointerId = null;
+
+    if(!exploded && hasRun){
+      failSequence();
+    }
+  }
+
+  animLayerEl.addEventListener('pointerdown', onHoldStart, {passive:false});
+  window.addEventListener('pointerup', onHoldEnd, {passive:false});
+  window.addEventListener('pointercancel', onHoldEnd, {passive:false});
+
+  // 返回設定：長按
+  function goBackToSettings(){
+    clearSeqTimers();
+    stopFx();
+    stopRollAnim();
+    backBtn.style.display='none';
+    backBtn.classList.remove('holding');
+    applyPercentsToSliders();
+    showSettingsPage();
+  }
+
+let holdTimer1 = null;
+let holdTimer2 = null;
+let holdStage = 0; // 0=未過第一圈, 1=已過第一圈(進等待), 2=已回設定
+
+function goBackToIdle(){
+  // 回到等待鑑定畫面（不是設定頁）
+  clearSeqTimers();
+  stopFx();
+  stopRollAnim();
+
+  // ✅ 關鍵：回待機但「不要把 backBtn 隱藏」，因為還要給你繼續按第二圈
+  resetToIdleState();
+  enterIdleScreen();
+  // ✅ 把第二圈狀態「補回來」，避免 enterIdleScreen() 把按鈕縮回去
+  backBtn.style.display = 'block';
+  backBtn.classList.add('holding', 'stage2');
+  backBtn.classList.remove('stage1');
+  backBtn.style.display = 'block';  // 讓按鈕仍留在底部
+}
+
+function startHoldBack(){
+  if(holdTimer1 || holdTimer2) return;
+
+  holdStage = 0;
+
+  // 進入第一圈：0.5s
+  backBtn.classList.add('holding', 'stage1');
+  backBtn.classList.remove('stage2');
+
+  // 讓動畫每次都能重播（重置圈圈）
+  const fg = backBtn.querySelector('.holdRing .fg');
+  if(fg){
+    fg.style.animation = 'none';
+    void fg.getBoundingClientRect();
+    fg.style.animation = '';
+  }
+
+  holdTimer1 = setTimeout(()=>{
+    holdTimer1 = null;
+    holdStage = 1;
+
+    // ✅ 第一圈轉完：回到等待鑑定畫面
+    goBackToIdle();
+
+    // 進入第二圈：1s（繼續按住才會跑）
+    backBtn.classList.remove('stage1');
+    backBtn.classList.add('stage2');
+
+    // 重播第二圈動畫（再轉一圈）
+    if(fg){
+      fg.style.animation = 'none';
+      void fg.getBoundingClientRect();
+      fg.style.animation = '';
+    }
+
+    holdTimer2 = setTimeout(()=>{
+      holdTimer2 = null;
+      holdStage = 2;
+      goBackToSettings(); // ✅ 第二圈轉完：回設定頁
+    }, 1000);
+
+  }, 500);
+}
+
+function cancelHoldBack(){
+  if(holdTimer1){ clearTimeout(holdTimer1); holdTimer1=null; }
+  if(holdTimer2){ clearTimeout(holdTimer2); holdTimer2=null; }
+
+  backBtn.classList.remove('holding','stage1','stage2');
+
+  // ✅ 只要你已經過第一圈（0.5s）但沒到第二圈（1s），放開就停在等待鑑定畫面
+  //（此時 goBackToIdle 已經做了）
+  if(holdStage >= 1 && holdStage < 2){
+    // 放開後不需要再顯示這顆按鈕，避免干擾
+    backBtn.style.display = 'none';
+  }
+}
+
+backBtn.addEventListener('pointerdown', (e)=>{
+  e.preventDefault();
+  try{ backBtn.setPointerCapture(e.pointerId); }catch(_){}
+  startHoldBack();
+}, {passive:false});
+  ['pointerup','pointercancel','pointerleave','pointerout'].forEach(ev=>{
+    backBtn.addEventListener(ev, cancelHoldBack, {passive:true});
+  });
+
+  // 設定頁按鈕
+  btnReset.addEventListener('click', ()=>{
+    elementPercents = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+    applyPercentsToSliders();
+  }, {passive:true});
+
+  btnStart.addEventListener('click', ()=>{
+    readSlidersToPercents();
+    if(totalPercent() > 100){
+      renderPercents();
+      updateSliderLimits();
+      return;
+    }
+    resetToIdleState();
+    enterIdleScreen();
+  }, {passive:true});
+
+  // 初始化
+  applyPercentsToSliders();
+  showSettingsPage();
+
+  // 啟動 loop
+  RAF.core = requestAnimationFrame(drawCore);
+  RAF.particle = requestAnimationFrame(drawParticles);
+
+})();
+</script>
+</body>
+</html>
