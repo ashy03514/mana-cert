@@ -22,6 +22,7 @@
     --text:#AB8448;
     --gold:#A68147;
     --shadow: rgba(0,0,0,.14);
+    --global-offset-y: 50px;
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
@@ -42,7 +43,7 @@
     transition: opacity 240ms ease;
   }
   canvas#particleCanvas { position:absolute; inset:0; width:100vw; height:100vh; z-index:0; }
-  .circle { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
+  .circle { position:absolute; left:50%; top:calc(50% + var(--global-offset-y)); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
   .outline-145 { width:145px; height:145px; z-index:4; }
   .outline-510 { width:510px; height:510px; z-index:3; }
   .outline-600 { width:600px; height:600px; z-index:2; }
@@ -114,7 +115,7 @@
     pointer-events: none; transition: all 0.5s ease; white-space: nowrap;
   }
   .rank-info {
-    top: 4%;
+    top: calc(4% + var(--global-offset-y));
     font-size: 15px;
     font-weight: bold;
     letter-spacing: 0.05em;
@@ -123,7 +124,7 @@
     opacity: 0.9;
   }
   .guide-text {
-    top: 18%;
+    top: calc(18% + var(--global-offset-y));
     font-size: 22px;
     font-weight: bold;
     letter-spacing: 0.1em;
@@ -146,6 +147,7 @@
     align-items:flex-start;
     justify-content:center;
     padding:18px;
+    padding-top: calc(18px + var(--global-offset-y));
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
     background: rgba(216, 211, 210, 0.96);
     backdrop-filter: blur(2px);
@@ -160,7 +162,7 @@
     border-radius:20px;
     box-shadow:0 10px 24px var(--shadow);
     padding:18px 18px 14px;
-    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom) - var(--global-offset-y));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -280,7 +282,7 @@
   }
 
   /* ===== 結果卡 ===== */
-  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; }
+  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; transform: translateY(var(--global-offset-y)); }
   .resultCard{ width:min(92vw,560px); background:var(--panel); border-radius:20px; padding:22px 20px 18px; box-shadow:0 10px 24px var(--shadow); color:var(--text); transform: translateY(12px) scale(.98); opacity:0; transition: all 320ms cubic-bezier(.2,.9,.3,1); }
   .resultCard.show{ opacity:1; transform: translateY(0) scale(1); }
   .r-title{ font-size:12px; letter-spacing:.22em; margin:2px 2px 8px; opacity:.9; }
@@ -573,7 +575,10 @@
   const core=document.getElementById('coreCanvas');
   const coreCtx=core.getContext('2d');
 
-  function getCenter(){return {x:innerWidth/2,y:innerHeight/2}}
+  function getCenter(){
+    const yOffset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--global-offset-y')) || 0;
+    return {x:innerWidth/2,y:innerHeight/2 + yOffset};
+  }
   let center=getCenter();
 
   function fitCanvasToScreen(){
