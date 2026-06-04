@@ -172,7 +172,7 @@
     margin:0 2px 14px;
     text-align:center;
   }
-  .sliderRow{
+  .toggleRow{
     display:grid;
     grid-template-columns: 70px 1fr 62px;
     gap:12px;
@@ -189,44 +189,51 @@
     font-weight:900;
     font-variant-numeric: tabular-nums;
   }
-
-  input[type="range"]{
-    width: calc(100% - 20px);
-    margin: 0 10px;
-    height: 44px;
-    background: transparent;
-    accent-color: var(--gold);
-    -webkit-appearance: none;
-    appearance: none;
-    touch-action: pan-x;
+  .toggleSwitch{
+    position:relative;
+    display:block;
+    width:88px;
+    height:44px;
+    justify-self:center;
   }
-  input[type="range"]::-webkit-slider-runnable-track{
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.18);
+  .toggleSwitch input{
+    position:absolute;
+    opacity:0;
+    width:1px;
+    height:1px;
   }
-  input[type="range"]::-webkit-slider-thumb{
-    -webkit-appearance: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.95);
-    border: 3px solid rgba(166,129,71,0.95);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
-    margin-top: -12px;
+  .toggleTrack{
+    position:absolute;
+    inset:0;
+    border-radius:999px;
+    background:rgba(0,0,0,0.18);
+    border:1px solid rgba(255,255,255,0.55);
+    box-shadow:inset 0 2px 7px rgba(0,0,0,0.12);
+    transition:background 180ms ease, box-shadow 180ms ease;
   }
-  input[type="range"]::-moz-range-track{
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.18);
+  .toggleTrack::after{
+    content:'';
+    position:absolute;
+    top:4px;
+    left:4px;
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.95);
+    border:3px solid rgba(166,129,71,0.95);
+    box-shadow:0 6px 14px rgba(0,0,0,0.18);
+    transition:transform 180ms ease;
   }
-  input[type="range"]::-moz-range-thumb{
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.95);
-    border: 3px solid rgba(166,129,71,0.95);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+  .toggleSwitch input:checked + .toggleTrack{
+    background:linear-gradient(180deg,rgba(184,146,84,0.92),rgba(158,118,62,0.92));
+    box-shadow:inset 0 -4px 10px rgba(0,0,0,0.12);
+  }
+  .toggleSwitch input:checked + .toggleTrack::after{
+    transform:translateX(44px);
+  }
+  .toggleSwitch input:focus-visible + .toggleTrack{
+    outline:3px solid rgba(166,129,71,0.35);
+    outline-offset:3px;
   }
 
   .settingsFooter{
@@ -268,6 +275,7 @@
     box-shadow:0 8px 18px rgba(0,0,0,.12);
   }
   .btnPrimary{ background: linear-gradient(180deg,#B89254,#9E763E); color:#fff; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
   .btnGhost{
     background: rgba(255,255,255,0.45);
     color: var(--text);
@@ -427,11 +435,14 @@
     }
     .settingsTitle{ font-size:14px; margin:2px 2px 8px; }
     .settingsHint{ font-size:11px; margin:0 2px 10px; }
-    .sliderRow{
+    .toggleRow{
       grid-template-columns: 48px 1fr 52px;
       gap:8px;
       padding: 8px 0;
     }
+    .toggleSwitch{ width:76px; height:38px; }
+    .toggleTrack::after{ width:28px; height:28px; }
+    .toggleSwitch input:checked + .toggleTrack::after{ transform:translateX(38px); }
     .sLabel{ font-size:12px; }
     .sValue{ font-size:12px; }
     .btn{ padding:10px 10px; }
@@ -447,54 +458,72 @@
 <body>
 
 <div id="settingsPage">
-  <div class="settingsCard" role="dialog" aria-label="設定屬性出現機率">
-    <div class="settingsTitle">屬性出現機率設定</div>
+  <div class="settingsCard" role="dialog" aria-label="設定鑑定屬性開關">
+    <div class="settingsTitle">鑑定屬性開關設定</div>
     <div class="settingsHint">
-      拉桿每次跳 5%<br>
-      六屬性加總不可超過 100%
+      關閉的屬性不會被鑑定出<br>
+      預設機率：火水風土各 20%，光闇各 10%
     </div>
 
-    <div class="sliderRow">
+    <div class="toggleRow">
       <div class="sLabel">火</div>
-      <input id="s_fire" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_fire">20%</div>
+      <label class="toggleSwitch" aria-label="火屬性開關">
+        <input id="s_fire" type="checkbox" checked />
+        <span class="toggleTrack" aria-hidden="true"></span>
+      </label>
+      <div class="sValue" id="v_fire">開</div>
     </div>
-    <div class="sliderRow">
+    <div class="toggleRow">
       <div class="sLabel">水</div>
-      <input id="s_water" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_water">20%</div>
+      <label class="toggleSwitch" aria-label="水屬性開關">
+        <input id="s_water" type="checkbox" checked />
+        <span class="toggleTrack" aria-hidden="true"></span>
+      </label>
+      <div class="sValue" id="v_water">開</div>
     </div>
-    <div class="sliderRow">
+    <div class="toggleRow">
       <div class="sLabel">風</div>
-      <input id="s_wind" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_wind">20%</div>
+      <label class="toggleSwitch" aria-label="風屬性開關">
+        <input id="s_wind" type="checkbox" checked />
+        <span class="toggleTrack" aria-hidden="true"></span>
+      </label>
+      <div class="sValue" id="v_wind">開</div>
     </div>
-    <div class="sliderRow">
+    <div class="toggleRow">
       <div class="sLabel">土</div>
-      <input id="s_earth" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_earth">20%</div>
+      <label class="toggleSwitch" aria-label="土屬性開關">
+        <input id="s_earth" type="checkbox" checked />
+        <span class="toggleTrack" aria-hidden="true"></span>
+      </label>
+      <div class="sValue" id="v_earth">開</div>
     </div>
-    <div class="sliderRow">
+    <div class="toggleRow">
       <div class="sLabel">光</div>
-      <input id="s_light" type="range" min="0" max="100" step="5" value="10" />
-      <div class="sValue" id="v_light">10%</div>
+      <label class="toggleSwitch" aria-label="光屬性開關">
+        <input id="s_light" type="checkbox" checked />
+        <span class="toggleTrack" aria-hidden="true"></span>
+      </label>
+      <div class="sValue" id="v_light">開</div>
     </div>
-    <div class="sliderRow">
+    <div class="toggleRow">
       <div class="sLabel">暗</div>
-      <input id="s_dark" type="range" min="0" max="100" step="5" value="10" />
-      <div class="sValue" id="v_dark">10%</div>
+      <label class="toggleSwitch" aria-label="暗屬性開關">
+        <input id="s_dark" type="checkbox" checked />
+        <span class="toggleTrack" aria-hidden="true"></span>
+      </label>
+      <div class="sValue" id="v_dark">開</div>
     </div>
 
     <div class="settingsFooter">
       <div class="sumLine">
-        <div>目前總和</div>
-        <div id="sumText">100%</div>
+        <div>已啟用屬性</div>
+        <div id="sumText">6/6</div>
       </div>
       <div class="sumNote" id="sumNote"></div>
 
       <div class="btnRow">
-        <button class="btn btnGhost" id="btnReset" type="button">預設值</button>
-        <button class="btn btnGhost" id="btnZero" type="button">全部歸零</button>
+        <button class="btn btnGhost" id="btnReset" type="button">全部開啟</button>
+        <button class="btn btnGhost" id="btnZero" type="button">全部關閉</button>
         <button class="btn btnPrimary" id="btnStart" type="button">開始鑑定</button>
       </div>
     </div>
@@ -698,9 +727,10 @@
   }
   function phaseProgress(){return clamp01((performance.now()-phaseStart)/Math.max(1,phaseDur))}
 
-  /* ===== 機率設定 ===== */
+  /* ===== 屬性開關設定 ===== */
   const ELEMENT_KEYS = ['火','水','風','土','光','暗'];
-  let elementPercents = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+  const DEFAULT_ELEMENT_WEIGHTS = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+  let elementEnabled = { 火:true, 水:true, 風:true, 土:true, 光:true, 暗:true };
 
   const settingsPage = document.getElementById('settingsPage');
   const btnStart = document.getElementById('btnStart');
@@ -709,12 +739,7 @@
   const btnZero = document.getElementById('btnZero');
   const sumNote = document.getElementById('sumNote');
 
-  btnZero.addEventListener('click', ()=>{
-    elementPercents = { 火:0, 水:0, 風:0, 土:0, 光:0, 暗:0 };
-    applyPercentsToSliders();
-  }, {passive:true});
-
-  const sliders = {
+  const toggles = {
     火: document.getElementById('s_fire'),
     水: document.getElementById('s_water'),
     風: document.getElementById('s_wind'),
@@ -730,71 +755,68 @@
     光: document.getElementById('v_light'),
     暗: document.getElementById('v_dark'),
   };
-  const prevValue = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
 
-  function readSlidersToPercents(){
+  function readTogglesToEnabled(){
     for(const k of ELEMENT_KEYS){
-      elementPercents[k] = parseInt(sliders[k].value,10) || 0;
+      elementEnabled[k] = !!toggles[k].checked;
     }
   }
-  function totalPercent(){
-    return ELEMENT_KEYS.reduce((s,k)=>s + (elementPercents[k]||0), 0);
+  function enabledCount(){
+    return ELEMENT_KEYS.reduce((count,k)=>count + (elementEnabled[k] ? 1 : 0), 0);
   }
-  function renderPercents(){
+  function enabledWeightTotal(){
+    return ELEMENT_KEYS.reduce((sum,k)=>sum + (elementEnabled[k] ? DEFAULT_ELEMENT_WEIGHTS[k] : 0), 0);
+  }
+  function renderToggles(){
     for(const k of ELEMENT_KEYS){
-      values[k].textContent = `${elementPercents[k]||0}%`;
+      const on = !!elementEnabled[k];
+      values[k].textContent = on ? '開' : '關';
+      values[k].style.opacity = on ? '1' : '.55';
     }
-    const sum = totalPercent();
-    sumText.textContent = `${sum}%`;
-    sumNote.style.opacity = (sum < 100) ? '0.9' : '0.0';
-    sumNote.style.height = (sum < 100) ? 'auto' : '0px';
-    sumNote.style.overflow = 'hidden';
+    const count = enabledCount();
+    sumText.textContent = `${count}/${ELEMENT_KEYS.length}`;
+    sumNote.textContent = count > 0 ? '關閉的屬性不會出現在鑑定結果中。' : '請至少開啟一個屬性才能開始鑑定。';
+    sumNote.style.opacity = count > 0 ? '0.75' : '0.95';
+    sumNote.style.height = 'auto';
+    sumNote.style.overflow = 'visible';
+    btnStart.disabled = count === 0;
+    btnStart.setAttribute('aria-disabled', String(count === 0));
   }
-  function updateSliderLimits(){
-    const sum = totalPercent();
-    const remain = Math.max(0, 100 - sum);
+  function applyEnabledToToggles(){
     for(const k of ELEMENT_KEYS){
-      const cur = elementPercents[k] || 0;
-      sliders[k].max = String(cur + remain);
+      toggles[k].checked = !!elementEnabled[k];
     }
+    readTogglesToEnabled();
+    renderToggles();
   }
-  function enforceNotOver100(changedKey){
-    const sum = totalPercent();
-    if(sum <= 100) return;
-    sliders[changedKey].value = String(prevValue[changedKey] ?? 0);
-    readSlidersToPercents();
-  }
-  function onSliderInput(k){
-    readSlidersToPercents();
-    enforceNotOver100(k);
-    prevValue[k] = elementPercents[k];
-    renderPercents();
-    updateSliderLimits();
-  }
-  function applyPercentsToSliders(){
-    for(const k of ELEMENT_KEYS){ sliders[k].max="100"; }
+  function setAllElementsEnabled(on){
     for(const k of ELEMENT_KEYS){
-      sliders[k].value=String(elementPercents[k] ?? 0);
-      prevValue[k]=elementPercents[k] ?? 0;
+      elementEnabled[k] = !!on;
     }
-    readSlidersToPercents();
-    renderPercents();
-    updateSliderLimits();
+    applyEnabledToToggles();
   }
   for(const k of ELEMENT_KEYS){
-    sliders[k].addEventListener('input', ()=>onSliderInput(k), {passive:true});
+    toggles[k].addEventListener('change', ()=>{
+      readTogglesToEnabled();
+      renderToggles();
+    }, {passive:true});
   }
 
+  btnZero.addEventListener('click', ()=>{
+    setAllElementsEnabled(false);
+  }, {passive:true});
+
   function pickElementByPercents(){
-    const sum = totalPercent();
-    if(sum <= 0) return ELEMENT_KEYS[Math.floor(Math.random()*ELEMENT_KEYS.length)];
-    let r = Math.random() * sum;
+    const totalWeight = enabledWeightTotal();
+    if(totalWeight <= 0) return null;
+    let r = Math.random() * totalWeight;
     for(const k of ELEMENT_KEYS){
-      const w = elementPercents[k] || 0;
+      if(!elementEnabled[k]) continue;
+      const w = DEFAULT_ELEMENT_WEIGHTS[k] || 0;
       if(r < w) return k;
       r -= w;
     }
-    return ELEMENT_KEYS[ELEMENT_KEYS.length - 1];
+    return ELEMENT_KEYS.find(k=>elementEnabled[k]) || null;
   }
 
   /* ===== UI ===== */
@@ -1679,7 +1701,7 @@ if(!isSS && shown >= targetN){
     stopRollAnim();
     backBtn.style.display='none';
     backBtn.classList.remove('holding');
-    applyPercentsToSliders();
+    applyEnabledToToggles();
     showSettingsPage();
   }
 
@@ -1772,23 +1794,19 @@ backBtn.addEventListener('pointerdown', (e)=>{
 
   // 設定頁按鈕
   btnReset.addEventListener('click', ()=>{
-    elementPercents = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
-    applyPercentsToSliders();
+    setAllElementsEnabled(true);
   }, {passive:true});
 
   btnStart.addEventListener('click', ()=>{
-    readSlidersToPercents();
-    if(totalPercent() > 100){
-      renderPercents();
-      updateSliderLimits();
-      return;
-    }
+    readTogglesToEnabled();
+    renderToggles();
+    if(enabledCount() === 0) return;
     resetToIdleState();
     enterIdleScreen();
   }, {passive:true});
 
   // 初始化
-  applyPercentsToSliders();
+  applyEnabledToToggles();
   showSettingsPage();
 
   // 啟動 loop
