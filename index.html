@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <link rel="manifest" href="manifest.webmanifest">
@@ -7,8 +7,6 @@
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta charset="UTF-8" />
@@ -22,6 +20,10 @@
     --text:#AB8448;
     --gold:#A68147;
     --shadow: rgba(0,0,0,.14);
+    --global-offset-y: 50px;
+    --viewport-w: 100vw;
+    --viewport-h: 100vh;
+    --effect-center-y: 50vh;
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
@@ -41,8 +43,8 @@
     opacity: 1;
     transition: opacity 240ms ease;
   }
-  canvas#particleCanvas { position:absolute; inset:0; width:100vw; height:100vh; z-index:0; }
-  .circle { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
+  canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
+  .circle { position:absolute; left:50%; top:var(--effect-center-y); transform:translate(-50%,-50%); border:1pt solid var(--gold); border-radius:50%; pointer-events:none; }
   .outline-145 { width:145px; height:145px; z-index:4; }
   .outline-510 { width:510px; height:510px; z-index:3; }
   .outline-600 { width:600px; height:600px; z-index:2; }
@@ -93,14 +95,14 @@
   .core-canvas{
     position:absolute;
     inset:0;
-    width:100vw;
-    height:100vh;
+    width:var(--viewport-w);
+    height:var(--viewport-h);
     z-index:6;
     pointer-events:none;
   }
 
   canvas#fxCanvas {
-    position:absolute; inset:0; width:100vw; height:100vh;
+    position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
     z-index:7; pointer-events:none;
   }
 
@@ -113,17 +115,8 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     pointer-events: none; transition: all 0.5s ease; white-space: nowrap;
   }
-  .rank-info {
-    top: 4%;
-    font-size: 15px;
-    font-weight: bold;
-    letter-spacing: 0.05em;
-    padding: 10px 24px;
-    line-height: 1.5;
-    opacity: 0.9;
-  }
   .guide-text {
-    top: 18%;
+    top: calc(18% + var(--global-offset-y));
     font-size: 22px;
     font-weight: bold;
     letter-spacing: 0.1em;
@@ -146,6 +139,7 @@
     align-items:flex-start;
     justify-content:center;
     padding:18px;
+    padding-top: calc(18px + env(safe-area-inset-top) + var(--global-offset-y));
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
     background: rgba(216, 211, 210, 0.96);
     backdrop-filter: blur(2px);
@@ -160,7 +154,7 @@
     border-radius:20px;
     box-shadow:0 10px 24px var(--shadow);
     padding:18px 18px 14px;
-    max-height: calc(100dvh - 36px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -178,12 +172,27 @@
     margin:0 2px 14px;
     text-align:center;
   }
-  .sliderRow{
+  .toggleGrid{
     display:grid;
-    grid-template-columns: 70px 1fr 62px;
-    gap:12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:12px 10px;
+    margin: 4px 0 2px;
+  }
+  .toggleCell{
+    display:grid;
+    grid-template-columns: auto auto auto;
+    gap:6px;
     align-items:center;
-    padding: 12px 2px;
+    justify-content:center;
+    min-height:44px;
+    padding:8px 4px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.22);
+    border:1px solid rgba(255,255,255,0.36);
+  }
+  .toggleCell.empty{
+    visibility:hidden;
+    pointer-events:none;
   }
   .sLabel{
     font-weight:900;
@@ -191,47 +200,56 @@
     font-size:14px;
   }
   .sValue{
-    text-align:right;
+    text-align:left;
     font-weight:900;
+    font-size:13px;
     font-variant-numeric: tabular-nums;
   }
-
-  input[type="range"]{
-    width:100%;
-    height: 44px;
-    background: transparent;
-    accent-color: var(--gold);
-    -webkit-appearance: none;
-    appearance: none;
-    touch-action: pan-x;
+  .toggleSwitch{
+    position:relative;
+    display:block;
+    width:58px;
+    height:32px;
+    justify-self:center;
   }
-  input[type="range"]::-webkit-slider-runnable-track{
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.18);
+  .toggleSwitch input{
+    position:absolute;
+    opacity:0;
+    width:1px;
+    height:1px;
   }
-  input[type="range"]::-webkit-slider-thumb{
-    -webkit-appearance: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.95);
-    border: 3px solid rgba(166,129,71,0.95);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
-    margin-top: -12px;
+  .toggleTrack{
+    position:absolute;
+    inset:0;
+    border-radius:999px;
+    background:rgba(0,0,0,0.18);
+    border:1px solid rgba(255,255,255,0.55);
+    box-shadow:inset 0 2px 7px rgba(0,0,0,0.12);
+    transition:background 180ms ease, box-shadow 180ms ease;
   }
-  input[type="range"]::-moz-range-track{
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.18);
+  .toggleTrack::after{
+    content:'';
+    position:absolute;
+    top:4px;
+    left:4px;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.95);
+    border:3px solid rgba(166,129,71,0.95);
+    box-shadow:0 6px 14px rgba(0,0,0,0.18);
+    transition:transform 180ms ease;
   }
-  input[type="range"]::-moz-range-thumb{
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.95);
-    border: 3px solid rgba(166,129,71,0.95);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+  .toggleSwitch input:checked + .toggleTrack{
+    background:linear-gradient(180deg,rgba(184,146,84,0.92),rgba(158,118,62,0.92));
+    box-shadow:inset 0 -4px 10px rgba(0,0,0,0.12);
+  }
+  .toggleSwitch input:checked + .toggleTrack::after{
+    transform:translateX(26px);
+  }
+  .toggleSwitch input:focus-visible + .toggleTrack{
+    outline:3px solid rgba(166,129,71,0.35);
+    outline-offset:3px;
   }
 
   .settingsFooter{
@@ -273,6 +291,7 @@
     box-shadow:0 8px 18px rgba(0,0,0,.12);
   }
   .btnPrimary{ background: linear-gradient(180deg,#B89254,#9E763E); color:#fff; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
   .btnGhost{
     background: rgba(255,255,255,0.45);
     color: var(--text);
@@ -280,7 +299,7 @@
   }
 
   /* ===== 結果卡 ===== */
-  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; }
+  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; transform: translateY(var(--global-offset-y)); }
   .resultCard{ width:min(92vw,560px); background:var(--panel); border-radius:20px; padding:22px 20px 18px; box-shadow:0 10px 24px var(--shadow); color:var(--text); transform: translateY(12px) scale(.98); opacity:0; transition: all 320ms cubic-bezier(.2,.9,.3,1); }
   .resultCard.show{ opacity:1; transform: translateY(0) scale(1); }
   .r-title{ font-size:12px; letter-spacing:.22em; margin:2px 2px 8px; opacity:.9; }
@@ -424,6 +443,24 @@
 #backToSettingsBtn.holding.stage1 .holdRing .fg{ animation: hold2s 0.5s linear forwards; }
 #backToSettingsBtn.holding.stage2 .holdRing .fg{ animation: hold2s 1s   linear forwards; }
   @keyframes hold2s{ from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
+
+  @media (max-width: 430px){
+    .settingsCard{
+      width:min(96vw,560px);
+      padding:14px 12px 12px;
+    }
+    .settingsTitle{ font-size:14px; margin:2px 2px 8px; }
+    .settingsHint{ font-size:11px; margin:0 2px 10px; }
+    .toggleGrid{ gap:8px 6px; }
+    .toggleCell{ gap:4px; padding:7px 2px; min-height:40px; }
+    .toggleSwitch{ width:50px; height:28px; }
+    .toggleTrack::after{ top:4px; left:4px; width:20px; height:20px; border-width:2px; }
+    .toggleSwitch input:checked + .toggleTrack::after{ transform:translateX(22px); }
+    .sLabel{ font-size:12px; }
+    .sValue{ font-size:12px; }
+    .btn{ padding:10px 10px; }
+  }
+
   @media (max-width:360px){
     #backToSettingsBtn{ width: 62px; height: 62px; bottom: 20px; }
     #backToSettingsBtn.holding{ transform: translateX(-50%) scale(1.30); }
@@ -434,61 +471,83 @@
 <body>
 
 <div id="settingsPage">
-  <div class="settingsCard" role="dialog" aria-label="設定屬性出現機率">
-    <div class="settingsTitle">屬性出現機率設定</div>
+  <div class="settingsCard" role="dialog" aria-label="設定鑑定屬性開關">
+    <div class="settingsTitle">鑑定屬性開關設定</div>
     <div class="settingsHint">
-      拉桿每次跳 5%<br>
-      六屬性加總不可超過 100%
+      關閉的屬性不會被鑑定出<br>
+      預設機率：火水風土各 20%，光闇各 10%
     </div>
 
-    <div class="sliderRow">
-      <div class="sLabel">火</div>
-      <input id="s_fire" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_fire">20%</div>
-    </div>
-    <div class="sliderRow">
-      <div class="sLabel">水</div>
-      <input id="s_water" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_water">20%</div>
-    </div>
-    <div class="sliderRow">
-      <div class="sLabel">風</div>
-      <input id="s_wind" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_wind">20%</div>
-    </div>
-    <div class="sliderRow">
-      <div class="sLabel">土</div>
-      <input id="s_earth" type="range" min="0" max="100" step="5" value="20" />
-      <div class="sValue" id="v_earth">20%</div>
-    </div>
-    <div class="sliderRow">
-      <div class="sLabel">光</div>
-      <input id="s_light" type="range" min="0" max="100" step="5" value="10" />
-      <div class="sValue" id="v_light">10%</div>
-    </div>
-    <div class="sliderRow">
-      <div class="sLabel">暗</div>
-      <input id="s_dark" type="range" min="0" max="100" step="5" value="10" />
-      <div class="sValue" id="v_dark">10%</div>
+    <div class="toggleGrid" aria-label="鑑定屬性開關九宮格">
+      <div class="toggleCell">
+        <div class="sLabel">火</div>
+        <label class="toggleSwitch" aria-label="火屬性開關">
+          <input id="s_fire" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_fire">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">水</div>
+        <label class="toggleSwitch" aria-label="水屬性開關">
+          <input id="s_water" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_water">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">風</div>
+        <label class="toggleSwitch" aria-label="風屬性開關">
+          <input id="s_wind" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_wind">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">土</div>
+        <label class="toggleSwitch" aria-label="土屬性開關">
+          <input id="s_earth" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_earth">開</div>
+      </div>
+      <div class="toggleCell empty" aria-hidden="true"></div>
+      <div class="toggleCell empty" aria-hidden="true"></div>
+      <div class="toggleCell">
+        <div class="sLabel">光</div>
+        <label class="toggleSwitch" aria-label="光屬性開關">
+          <input id="s_light" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_light">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">暗</div>
+        <label class="toggleSwitch" aria-label="暗屬性開關">
+          <input id="s_dark" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_dark">開</div>
+      </div>
+      <div class="toggleCell empty" aria-hidden="true"></div>
     </div>
 
     <div class="settingsFooter">
       <div class="sumLine">
-        <div>目前總和</div>
-        <div id="sumText">100%</div>
+        <div>已啟用屬性</div>
+        <div id="sumText">6/6</div>
       </div>
       <div class="sumNote" id="sumNote"></div>
 
       <div class="btnRow">
-        <button class="btn btnGhost" id="btnReset" type="button">預設值</button>
-        <button class="btn btnGhost" id="btnZero" type="button">全部歸零</button>
+        <button class="btn btnGhost" id="btnReset" type="button">全部開啟</button>
+        <button class="btn btnGhost" id="btnZero" type="button">全部關閉</button>
         <button class="btn btnPrimary" id="btnStart" type="button">開始鑑定</button>
       </div>
     </div>
   </div>
 </div>
 
-<div id="rankChart" class="floating-box rank-info">階級表<br>E-D-C-B-A-S-SS</div>
 <div id="guideText" class="floating-box guide-text">請將手指放在核心上<br>並保持不動</div>
 
 <div id="animLayer" title="按住開始鑑定">
@@ -573,12 +632,30 @@
   const core=document.getElementById('coreCanvas');
   const coreCtx=core.getContext('2d');
 
-  function getCenter(){return {x:innerWidth/2,y:innerHeight/2}}
-  let center=getCenter();
+  function getViewportSize(){
+    if(window.visualViewport){
+      return { w: window.visualViewport.width, h: window.visualViewport.height };
+    }
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
+  function syncViewportVars(){
+    const {w,h}=getViewportSize();
+    document.documentElement.style.setProperty('--viewport-w', `${w}px`);
+    document.documentElement.style.setProperty('--viewport-h', `${h}px`);
+  }
+  function getCoreCenter(){
+    const {w,h}=getViewportSize();
+    return {x:w/2,y:h/2};
+  }
+  function getEffectCenter(){
+    const coreCenter=getCoreCenter();
+    return {x:coreCenter.x,y:coreCenter.y};
+  }
+  let center=getEffectCenter();
 
   function fitCanvasToScreen(){
     const dpr=Math.max(1,devicePixelRatio||1);
-    const {innerWidth:w,innerHeight:h}=window;
+    const {w,h}=getViewportSize();
     canvas.width=Math.floor(w*dpr);
     canvas.height=Math.floor(h*dpr);
     canvas.style.width=w+'px';
@@ -587,7 +664,7 @@
   }
   function fitFxCanvas(){
     const dpr = Math.max(1, devicePixelRatio || 1);
-    const { innerWidth:w, innerHeight:h } = window;
+    const { w, h } = getViewportSize();
     fxCanvas.width  = Math.floor(w * dpr);
     fxCanvas.height = Math.floor(h * dpr);
     fxCanvas.style.width  = w + 'px';
@@ -607,13 +684,19 @@
   }
 
   function onViewportChange(){
-    center=getCenter();
+    syncViewportVars();
+    center=getEffectCenter();
+    document.documentElement.style.setProperty('--effect-center-y', `${center.y}px`);
     fitCanvasToScreen();
     fitCoreCanvas();
     fitFxCanvas();
   }
   addEventListener('resize', onViewportChange);
   addEventListener('orientationchange', onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', onViewportChange);
+    window.visualViewport.addEventListener('scroll', onViewportChange);
+  }
   onViewportChange();
 
   /* ===== 粒子 ===== */
@@ -662,9 +745,10 @@
   }
   function phaseProgress(){return clamp01((performance.now()-phaseStart)/Math.max(1,phaseDur))}
 
-  /* ===== 機率設定 ===== */
+  /* ===== 屬性開關設定 ===== */
   const ELEMENT_KEYS = ['火','水','風','土','光','暗'];
-  let elementPercents = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+  const DEFAULT_ELEMENT_WEIGHTS = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
+  let elementEnabled = { 火:true, 水:true, 風:true, 土:true, 光:true, 暗:true };
 
   const settingsPage = document.getElementById('settingsPage');
   const btnStart = document.getElementById('btnStart');
@@ -673,12 +757,7 @@
   const btnZero = document.getElementById('btnZero');
   const sumNote = document.getElementById('sumNote');
 
-  btnZero.addEventListener('click', ()=>{
-    elementPercents = { 火:0, 水:0, 風:0, 土:0, 光:0, 暗:0 };
-    applyPercentsToSliders();
-  }, {passive:true});
-
-  const sliders = {
+  const toggles = {
     火: document.getElementById('s_fire'),
     水: document.getElementById('s_water'),
     風: document.getElementById('s_wind'),
@@ -694,76 +773,72 @@
     光: document.getElementById('v_light'),
     暗: document.getElementById('v_dark'),
   };
-  const prevValue = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
 
-  function readSlidersToPercents(){
+  function readTogglesToEnabled(){
     for(const k of ELEMENT_KEYS){
-      elementPercents[k] = parseInt(sliders[k].value,10) || 0;
+      elementEnabled[k] = !!toggles[k].checked;
     }
   }
-  function totalPercent(){
-    return ELEMENT_KEYS.reduce((s,k)=>s + (elementPercents[k]||0), 0);
+  function enabledCount(){
+    return ELEMENT_KEYS.reduce((count,k)=>count + (elementEnabled[k] ? 1 : 0), 0);
   }
-  function renderPercents(){
+  function enabledWeightTotal(){
+    return ELEMENT_KEYS.reduce((sum,k)=>sum + (elementEnabled[k] ? DEFAULT_ELEMENT_WEIGHTS[k] : 0), 0);
+  }
+  function renderToggles(){
     for(const k of ELEMENT_KEYS){
-      values[k].textContent = `${elementPercents[k]||0}%`;
+      const on = !!elementEnabled[k];
+      values[k].textContent = on ? '開' : '關';
+      values[k].style.opacity = on ? '1' : '.55';
     }
-    const sum = totalPercent();
-    sumText.textContent = `${sum}%`;
-    sumNote.style.opacity = (sum < 100) ? '0.9' : '0.0';
-    sumNote.style.height = (sum < 100) ? 'auto' : '0px';
-    sumNote.style.overflow = 'hidden';
+    const count = enabledCount();
+    sumText.textContent = `${count}/${ELEMENT_KEYS.length}`;
+    sumNote.textContent = count > 0 ? '關閉的屬性不會出現在鑑定結果中。' : '請至少開啟一個屬性才能開始鑑定。';
+    sumNote.style.opacity = count > 0 ? '0.75' : '0.95';
+    sumNote.style.height = 'auto';
+    sumNote.style.overflow = 'visible';
+    btnStart.disabled = count === 0;
+    btnStart.setAttribute('aria-disabled', String(count === 0));
   }
-  function updateSliderLimits(){
-    const sum = totalPercent();
-    const remain = Math.max(0, 100 - sum);
+  function applyEnabledToToggles(){
     for(const k of ELEMENT_KEYS){
-      const cur = elementPercents[k] || 0;
-      sliders[k].max = String(cur + remain);
+      toggles[k].checked = !!elementEnabled[k];
     }
+    readTogglesToEnabled();
+    renderToggles();
   }
-  function enforceNotOver100(changedKey){
-    const sum = totalPercent();
-    if(sum <= 100) return;
-    sliders[changedKey].value = String(prevValue[changedKey] ?? 0);
-    readSlidersToPercents();
-  }
-  function onSliderInput(k){
-    readSlidersToPercents();
-    enforceNotOver100(k);
-    prevValue[k] = elementPercents[k];
-    renderPercents();
-    updateSliderLimits();
-  }
-  function applyPercentsToSliders(){
-    for(const k of ELEMENT_KEYS){ sliders[k].max="100"; }
+  function setAllElementsEnabled(on){
     for(const k of ELEMENT_KEYS){
-      sliders[k].value=String(elementPercents[k] ?? 0);
-      prevValue[k]=elementPercents[k] ?? 0;
+      elementEnabled[k] = !!on;
     }
-    readSlidersToPercents();
-    renderPercents();
-    updateSliderLimits();
+    applyEnabledToToggles();
   }
   for(const k of ELEMENT_KEYS){
-    sliders[k].addEventListener('input', ()=>onSliderInput(k), {passive:true});
+    toggles[k].addEventListener('change', ()=>{
+      readTogglesToEnabled();
+      renderToggles();
+    }, {passive:true});
   }
 
+  btnZero.addEventListener('click', ()=>{
+    setAllElementsEnabled(false);
+  }, {passive:true});
+
   function pickElementByPercents(){
-    const sum = totalPercent();
-    if(sum <= 0) return ELEMENT_KEYS[Math.floor(Math.random()*ELEMENT_KEYS.length)];
-    let r = Math.random() * sum;
+    const totalWeight = enabledWeightTotal();
+    if(totalWeight <= 0) return null;
+    let r = Math.random() * totalWeight;
     for(const k of ELEMENT_KEYS){
-      const w = elementPercents[k] || 0;
+      if(!elementEnabled[k]) continue;
+      const w = DEFAULT_ELEMENT_WEIGHTS[k] || 0;
       if(r < w) return k;
       r -= w;
     }
-    return ELEMENT_KEYS[ELEMENT_KEYS.length - 1];
+    return ELEMENT_KEYS.find(k=>elementEnabled[k]) || null;
   }
 
   /* ===== UI ===== */
   const guideTextEl = document.getElementById('guideText');
-  const rankChartEl = document.getElementById('rankChart');
   const animLayerEl = document.getElementById('animLayer');
 
   function setHoldPulse(on){
@@ -853,7 +928,6 @@ function setRankUI(code){
 
   function showSettingsPage(){
     settingsPage.style.display='flex';
-    rankChartEl.style.display='none';
     guideTextEl.style.display='none';
     animLayerEl.style.display='none';
     resultCard.classList.remove('show');
@@ -867,7 +941,6 @@ function setRankUI(code){
 
   function enterIdleScreen(){
     settingsPage.style.display='none';
-    rankChartEl.style.display='block';
     guideTextEl.style.display='block';
     animLayerEl.style.display='block';
     animLayerEl.style.opacity='1';
@@ -919,6 +992,7 @@ function setRankUI(code){
 
   /* ===== 核心液態圓 ===== */
   const BASE_R=50;
+  const CORE_NUDGE_Y=-5; // 核心微調：往上 5px，對齊波動中心
   const HARMONICS_BASE=[{amp:.06,freq:3,speed:.8},{amp:.04,freq:5,speed:-1.1},{amp:.02,freq:9,speed:1.6}];
   const BREATH={amp:.03,speed:.7};
   const neutralInner='#B89254', neutralOuter='#F4EFE9';
@@ -938,9 +1012,9 @@ function setRankUI(code){
     const {width,height}=core;
     coreCtx.clearRect(0,0,width,height);
 
-    const cssPX=1/(devicePixelRatio||1);
     coreCtx.save();
-    coreCtx.translate(width*cssPX/2, height*cssPX/2);
+    const coreCenter=getCoreCenter();
+    coreCtx.translate(coreCenter.x, coreCenter.y + CORE_NUDGE_Y);
 
     const pr=phaseProgress();
     let ampMul=1, scaleNow=1, harmSpeedMul=1, breathMul=1;
@@ -1645,7 +1719,7 @@ if(!isSS && shown >= targetN){
     stopRollAnim();
     backBtn.style.display='none';
     backBtn.classList.remove('holding');
-    applyPercentsToSliders();
+    applyEnabledToToggles();
     showSettingsPage();
   }
 
@@ -1738,23 +1812,19 @@ backBtn.addEventListener('pointerdown', (e)=>{
 
   // 設定頁按鈕
   btnReset.addEventListener('click', ()=>{
-    elementPercents = { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 };
-    applyPercentsToSliders();
+    setAllElementsEnabled(true);
   }, {passive:true});
 
   btnStart.addEventListener('click', ()=>{
-    readSlidersToPercents();
-    if(totalPercent() > 100){
-      renderPercents();
-      updateSliderLimits();
-      return;
-    }
+    readTogglesToEnabled();
+    renderToggles();
+    if(enabledCount() === 0) return;
     resetToIdleState();
     enterIdleScreen();
   }, {passive:true});
 
   // 初始化
-  applyPercentsToSliders();
+  applyEnabledToToggles();
   showSettingsPage();
 
   // 啟動 loop
