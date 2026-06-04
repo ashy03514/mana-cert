@@ -172,12 +172,27 @@
     margin:0 2px 14px;
     text-align:center;
   }
-  .toggleRow{
+  .toggleGrid{
     display:grid;
-    grid-template-columns: 70px 1fr 62px;
-    gap:12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:12px 10px;
+    margin: 4px 0 2px;
+  }
+  .toggleCell{
+    display:grid;
+    grid-template-columns: auto auto auto;
+    gap:6px;
     align-items:center;
-    padding: 12px 2px;
+    justify-content:center;
+    min-height:44px;
+    padding:8px 4px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.22);
+    border:1px solid rgba(255,255,255,0.36);
+  }
+  .toggleCell.empty{
+    visibility:hidden;
+    pointer-events:none;
   }
   .sLabel{
     font-weight:900;
@@ -185,15 +200,16 @@
     font-size:14px;
   }
   .sValue{
-    text-align:right;
+    text-align:left;
     font-weight:900;
+    font-size:13px;
     font-variant-numeric: tabular-nums;
   }
   .toggleSwitch{
     position:relative;
     display:block;
-    width:88px;
-    height:44px;
+    width:58px;
+    height:32px;
     justify-self:center;
   }
   .toggleSwitch input{
@@ -216,8 +232,8 @@
     position:absolute;
     top:4px;
     left:4px;
-    width:34px;
-    height:34px;
+    width:24px;
+    height:24px;
     border-radius:50%;
     background:rgba(255,255,255,0.95);
     border:3px solid rgba(166,129,71,0.95);
@@ -229,7 +245,7 @@
     box-shadow:inset 0 -4px 10px rgba(0,0,0,0.12);
   }
   .toggleSwitch input:checked + .toggleTrack::after{
-    transform:translateX(44px);
+    transform:translateX(26px);
   }
   .toggleSwitch input:focus-visible + .toggleTrack{
     outline:3px solid rgba(166,129,71,0.35);
@@ -435,14 +451,11 @@
     }
     .settingsTitle{ font-size:14px; margin:2px 2px 8px; }
     .settingsHint{ font-size:11px; margin:0 2px 10px; }
-    .toggleRow{
-      grid-template-columns: 48px 1fr 52px;
-      gap:8px;
-      padding: 8px 0;
-    }
-    .toggleSwitch{ width:76px; height:38px; }
-    .toggleTrack::after{ width:28px; height:28px; }
-    .toggleSwitch input:checked + .toggleTrack::after{ transform:translateX(38px); }
+    .toggleGrid{ gap:8px 6px; }
+    .toggleCell{ gap:4px; padding:7px 2px; min-height:40px; }
+    .toggleSwitch{ width:50px; height:28px; }
+    .toggleTrack::after{ top:4px; left:4px; width:20px; height:20px; border-width:2px; }
+    .toggleSwitch input:checked + .toggleTrack::after{ transform:translateX(22px); }
     .sLabel{ font-size:12px; }
     .sValue{ font-size:12px; }
     .btn{ padding:10px 10px; }
@@ -465,53 +478,58 @@
       預設機率：火水風土各 20%，光闇各 10%
     </div>
 
-    <div class="toggleRow">
-      <div class="sLabel">火</div>
-      <label class="toggleSwitch" aria-label="火屬性開關">
-        <input id="s_fire" type="checkbox" checked />
-        <span class="toggleTrack" aria-hidden="true"></span>
-      </label>
-      <div class="sValue" id="v_fire">開</div>
-    </div>
-    <div class="toggleRow">
-      <div class="sLabel">水</div>
-      <label class="toggleSwitch" aria-label="水屬性開關">
-        <input id="s_water" type="checkbox" checked />
-        <span class="toggleTrack" aria-hidden="true"></span>
-      </label>
-      <div class="sValue" id="v_water">開</div>
-    </div>
-    <div class="toggleRow">
-      <div class="sLabel">風</div>
-      <label class="toggleSwitch" aria-label="風屬性開關">
-        <input id="s_wind" type="checkbox" checked />
-        <span class="toggleTrack" aria-hidden="true"></span>
-      </label>
-      <div class="sValue" id="v_wind">開</div>
-    </div>
-    <div class="toggleRow">
-      <div class="sLabel">土</div>
-      <label class="toggleSwitch" aria-label="土屬性開關">
-        <input id="s_earth" type="checkbox" checked />
-        <span class="toggleTrack" aria-hidden="true"></span>
-      </label>
-      <div class="sValue" id="v_earth">開</div>
-    </div>
-    <div class="toggleRow">
-      <div class="sLabel">光</div>
-      <label class="toggleSwitch" aria-label="光屬性開關">
-        <input id="s_light" type="checkbox" checked />
-        <span class="toggleTrack" aria-hidden="true"></span>
-      </label>
-      <div class="sValue" id="v_light">開</div>
-    </div>
-    <div class="toggleRow">
-      <div class="sLabel">暗</div>
-      <label class="toggleSwitch" aria-label="暗屬性開關">
-        <input id="s_dark" type="checkbox" checked />
-        <span class="toggleTrack" aria-hidden="true"></span>
-      </label>
-      <div class="sValue" id="v_dark">開</div>
+    <div class="toggleGrid" aria-label="鑑定屬性開關九宮格">
+      <div class="toggleCell">
+        <div class="sLabel">火</div>
+        <label class="toggleSwitch" aria-label="火屬性開關">
+          <input id="s_fire" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_fire">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">水</div>
+        <label class="toggleSwitch" aria-label="水屬性開關">
+          <input id="s_water" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_water">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">風</div>
+        <label class="toggleSwitch" aria-label="風屬性開關">
+          <input id="s_wind" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_wind">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">土</div>
+        <label class="toggleSwitch" aria-label="土屬性開關">
+          <input id="s_earth" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_earth">開</div>
+      </div>
+      <div class="toggleCell empty" aria-hidden="true"></div>
+      <div class="toggleCell empty" aria-hidden="true"></div>
+      <div class="toggleCell">
+        <div class="sLabel">光</div>
+        <label class="toggleSwitch" aria-label="光屬性開關">
+          <input id="s_light" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_light">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">暗</div>
+        <label class="toggleSwitch" aria-label="暗屬性開關">
+          <input id="s_dark" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_dark">開</div>
+      </div>
+      <div class="toggleCell empty" aria-hidden="true"></div>
     </div>
 
     <div class="settingsFooter">
