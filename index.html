@@ -210,6 +210,9 @@
     display:block;
     width:58px;
     height:32px;
+    --switch-w:58px;
+    --switch-pad:4px;
+    --thumb-size:24px;
     justify-self:center;
   }
   .toggleSwitch input{
@@ -230,14 +233,16 @@
   .toggleTrack::after{
     content:'';
     position:absolute;
-    top:4px;
-    left:4px;
-    width:24px;
-    height:24px;
+    top:50%;
+    left:var(--switch-pad);
+    width:var(--thumb-size);
+    height:var(--thumb-size);
     border-radius:50%;
+    box-sizing:border-box;
     background:rgba(255,255,255,0.95);
     border:3px solid rgba(166,129,71,0.95);
     box-shadow:0 6px 14px rgba(0,0,0,0.18);
+    transform:translateY(calc(var(--thumb-size) / -2));
     transition:transform 180ms ease;
   }
   .toggleSwitch input:checked + .toggleTrack{
@@ -245,7 +250,7 @@
     box-shadow:inset 0 -4px 10px rgba(0,0,0,0.12);
   }
   .toggleSwitch input:checked + .toggleTrack::after{
-    transform:translateX(26px);
+    transform:translate(calc(var(--switch-w) - var(--thumb-size) - (var(--switch-pad) * 2) - 2px), calc(var(--thumb-size) / -2));
   }
   .toggleSwitch input:focus-visible + .toggleTrack{
     outline:3px solid rgba(166,129,71,0.35);
@@ -444,6 +449,43 @@
 #backToSettingsBtn.holding.stage2 .holdRing .fg{ animation: hold2s 1s   linear forwards; }
   @keyframes hold2s{ from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
 
+  .resultActionOverlay{
+    position:fixed;
+    inset:0;
+    z-index:95;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    background:rgba(80,70,62,0.28);
+    backdrop-filter:blur(3px);
+  }
+  .resultActionOverlay.show{ display:flex; }
+  .resultActionDialog{
+    width:min(88vw,340px);
+    padding:16px;
+    border-radius:18px;
+    background:rgba(244,241,238,0.96);
+    border:1px solid rgba(255,255,255,0.78);
+    box-shadow:0 18px 36px rgba(0,0,0,0.18);
+  }
+  .resultActionTitle{
+    margin:0 0 12px;
+    text-align:center;
+    font-size:14px;
+    font-weight:900;
+    letter-spacing:.08em;
+  }
+  .resultActionButtons{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .resultActionButtons .btn{
+    min-height:44px;
+    padding:11px 10px;
+  }
+
   @media (max-width: 430px){
     .settingsCard{
       width:min(96vw,560px);
@@ -453,9 +495,8 @@
     .settingsHint{ font-size:11px; margin:0 2px 10px; }
     .toggleGrid{ gap:8px 6px; }
     .toggleCell{ gap:4px; padding:7px 2px; min-height:40px; }
-    .toggleSwitch{ width:50px; height:28px; }
-    .toggleTrack::after{ top:4px; left:4px; width:20px; height:20px; border-width:2px; }
-    .toggleSwitch input:checked + .toggleTrack::after{ transform:translateX(22px); }
+    .toggleSwitch{ width:50px; height:28px; --switch-w:50px; --thumb-size:20px; }
+    .toggleTrack::after{ border-width:2px; }
     .sLabel{ font-size:12px; }
     .sValue{ font-size:12px; }
     .btn{ padding:10px 10px; }
@@ -579,12 +620,22 @@
   </div>
 </div>
 
-<button id="backToSettingsBtn" type="button" aria-label="回到設定頁">
+<button id="backToSettingsBtn" type="button" aria-label="開啟鑑定後選單">
   <svg viewBox="0 0 100 100" class="holdRing" aria-hidden="true">
     <circle class="bg" cx="50" cy="50" r="44"></circle>
     <circle class="fg" cx="50" cy="50" r="44"></circle>
   </svg>
 </button>
+
+<div id="resultActionSheet" class="resultActionOverlay" aria-hidden="true">
+  <div class="resultActionDialog" role="dialog" aria-modal="true" aria-label="鑑定後操作">
+    <div class="resultActionTitle">鑑定完成</div>
+    <div class="resultActionButtons">
+      <button class="btn btnGhost" id="btnRetryCert" type="button">重新鑑定</button>
+      <button class="btn btnPrimary" id="btnGoHome" type="button">回首頁</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /**
@@ -853,6 +904,9 @@
   const remarkEl=document.getElementById('remark');
 	const rankFlashOverlay = document.getElementById('rankFlashOverlay');
   const backBtn = document.getElementById('backToSettingsBtn');
+  const resultActionSheet = document.getElementById('resultActionSheet');
+  const btnRetryCert = document.getElementById('btnRetryCert');
+  const btnGoHome = document.getElementById('btnGoHome');
   let holdTimer = null;
 
   // ✅ 長按鑑定控制
@@ -933,7 +987,8 @@ function setRankUI(code){
     resultCard.classList.remove('show');
     resultWrap.style.pointerEvents='none';
     backBtn.style.display='none';
-    backBtn.classList.remove('holding');
+    backBtn.classList.remove('holding','stage1','stage2');
+    closeResultActionMenu();
     stopFx();
     setHoldPulse(false);
     stopRollAnim();
@@ -947,7 +1002,8 @@ function setRankUI(code){
     setHoldPulse(false);
 
     backBtn.style.display='none';
-    backBtn.classList.remove('holding');
+    backBtn.classList.remove('holding','stage1','stage2');
+    closeResultActionMenu();
 
     guideTextEl.classList.remove('fail');
     guideTextEl.innerHTML='請將手指放在核心上<br>並保持不動';
@@ -1244,67 +1300,152 @@ function setRankUI(code){
     })(performance.now());
   }
 
-  function makeLightningPath(x0, y0, x1, y1, segments, amp){
-    const pts = [[x0, y0]];
-    for(let i=1;i<segments;i++){
-      const tt = i/segments;
-      pts.push([
-        lerp(x0, x1, tt) + rand(-amp, amp),
-        lerp(y0, y1, tt) + rand(-amp, amp),
-      ]);
-    }
-    pts.push([x1, y1]);
-    return pts;
+  function roundedRectPath(ctx, x, y, w, h, r){
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.lineTo(x + w - rr, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+    ctx.lineTo(x + w, y + h - rr);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+    ctx.lineTo(x + rr, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+    ctx.lineTo(x, y + rr);
+    ctx.quadraticCurveTo(x, y, x + rr, y);
   }
-  function strokePath(path){
+
+  function chainNoise(seed, salt){
+    const n = Math.sin(seed * 37.17 + salt * 91.31) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  function drawInkScratch(seed, x0, y0, x1, y1, alpha){
+    fxCtx.globalAlpha = alpha;
+    fxCtx.lineWidth = 1.4 + chainNoise(seed, 7) * 1.3;
+    fxCtx.strokeStyle = 'rgba(8,5,13,0.72)';
     fxCtx.beginPath();
-    for(let i=0;i<path.length;i++){
-      const p = path[i];
-      if(i===0) fxCtx.moveTo(p[0], p[1]);
-      else fxCtx.lineTo(p[0], p[1]);
-    }
+    fxCtx.moveTo(x0, y0);
+    fxCtx.lineTo((x0 + x1) * 0.5 + (chainNoise(seed, 11) - 0.5) * 6, (y0 + y1) * 0.5 + (chainNoise(seed, 12) - 0.5) * 5);
+    fxCtx.lineTo(x1, y1);
     fxCtx.stroke();
   }
 
-  function playDarkLightningFlash(done, dur = DUR.EXPAND){
+  function drawChainLink(x, y, angle, scale, alpha, seed){
+    fxCtx.save();
+    fxCtx.translate(x, y);
+    fxCtx.rotate(angle);
+    fxCtx.scale(scale, scale);
+    fxCtx.lineCap = 'round';
+    fxCtx.lineJoin = 'round';
+
+    const w = 62;
+    const h = 25;
+    const r = 12;
+
+    fxCtx.globalAlpha = 0.28 * alpha;
+    fxCtx.shadowBlur = 13;
+    fxCtx.shadowColor = 'rgba(0,0,0,0.70)';
+    fxCtx.strokeStyle = 'rgba(0,0,0,0.88)';
+    fxCtx.lineWidth = 12;
+    roundedRectPath(fxCtx, -w / 2 + 3, -h / 2 + 5, w, h, r);
+    fxCtx.stroke();
+
+    fxCtx.globalAlpha = 0.92 * alpha;
+    fxCtx.shadowBlur = 8;
+    fxCtx.shadowColor = 'rgba(24,8,42,0.95)';
+    fxCtx.strokeStyle = 'rgba(9,5,18,0.98)';
+    fxCtx.lineWidth = 9.5;
+    roundedRectPath(fxCtx, -w / 2, -h / 2, w, h, r);
+    fxCtx.stroke();
+
+    fxCtx.globalAlpha = 0.76 * alpha;
+    fxCtx.shadowBlur = 3;
+    fxCtx.shadowColor = 'rgba(84,36,130,0.55)';
+    fxCtx.strokeStyle = 'rgba(54,28,86,0.96)';
+    fxCtx.lineWidth = 5.2;
+    roundedRectPath(fxCtx, -w / 2 + 1, -h / 2 + 1, w - 2, h - 2, r - 1);
+    fxCtx.stroke();
+
+    fxCtx.globalAlpha = 0.34 * alpha;
+    fxCtx.shadowBlur = 0;
+    fxCtx.strokeStyle = 'rgba(170,130,210,0.72)';
+    fxCtx.lineWidth = 2.1;
+    roundedRectPath(fxCtx, -w / 2 + 7, -h / 2 + 5, w - 14, h - 10, 8);
+    fxCtx.stroke();
+
+    fxCtx.globalAlpha = 0.88 * alpha;
+    fxCtx.fillStyle = 'rgba(7,4,13,0.92)';
+    fxCtx.beginPath();
+    fxCtx.ellipse(-w * 0.18, 0, 5.5, 8.5, 0, 0, Math.PI * 2);
+    fxCtx.ellipse(w * 0.18, 0, 5.5, 8.5, 0, 0, Math.PI * 2);
+    fxCtx.fill();
+
+    drawInkScratch(seed, -24, -7, -8, -10, 0.55 * alpha);
+    drawInkScratch(seed + 1, 5, 9, 25, 5, 0.48 * alpha);
+    drawInkScratch(seed + 2, -29, 7, -16, 2, 0.38 * alpha);
+
+    fxCtx.globalAlpha = 0.36 * alpha;
+    fxCtx.strokeStyle = 'rgba(205,175,235,0.62)';
+    fxCtx.lineWidth = 1.4;
+    fxCtx.beginPath();
+    fxCtx.moveTo(-23, -9);
+    fxCtx.quadraticCurveTo(-8, -15, 13, -10);
+    fxCtx.stroke();
+
+    fxCtx.restore();
+  }
+
+  function drawChain(chain, t, dur){
+    const local = t - chain.t0;
+    if(local < 0 || local > chain.life) return;
+
+    const p = local / chain.life;
+    const fadeIn = clamp01(p / 0.20);
+    const fadeOut = clamp01((1 - p) / 0.25);
+    const alpha = fadeIn * fadeOut;
+    const slide = (1 - easeOutCubic(clamp01(p))) * chain.slide;
+    const pulse = 1 + 0.025 * Math.sin((t / dur) * Math.PI * 7 + chain.phase);
+
+    const dx = chain.x1 - chain.x0;
+    const dy = chain.y1 - chain.y0;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const nx = -uy;
+    const ny = ux;
+    const baseAngle = Math.atan2(dy, dx);
+    const count = Math.ceil(len / chain.spacing) + 2;
+
+    for(let i=0;i<count;i++){
+      const k = i / Math.max(1, count - 1);
+      const offset = k * len + slide - chain.spacing;
+      const wobble = Math.sin(k * Math.PI * 2 + chain.phase + t * 0.0025) * chain.curve;
+      const x = chain.x0 + ux * offset + nx * wobble;
+      const y = chain.y0 + uy * offset + ny * wobble;
+      const angle = baseAngle + (i % 2 ? chain.tilt : -chain.tilt) + Math.sin(k * Math.PI * 4 + chain.phase) * 0.035;
+      const linkAlpha = alpha * (0.86 + 0.14 * Math.sin(k * Math.PI + p * Math.PI));
+      drawChainLink(x, y, angle, chain.scale * pulse, linkAlpha, chain.seed + i * 3);
+    }
+  }
+  function playDarkChainFlash(done, dur = DUR.EXPAND){
     const myToken = ++fxToken;
     if (RAF.fx) { cancelAnimationFrame(RAF.fx); RAF.fx=null; }
 
     const start = performance.now();
     const {W, H} = fxSize();
+    const cx = center.x;
+    const cy = center.y;
 
-    const boltCount = 12;
-    const boltLifeMin = 140;
-    const boltLifeMax = 240;
-
-    const bolts = Array.from({length: boltCount}).map((_,i)=>{
-      const t0 = i * (dur / boltCount) + rand(-40, 80);
-      const life = rand(boltLifeMin, boltLifeMax);
-
-      const xTop = center.x + rand(-260, 260);
-      const xBot = center.x + rand(-220, 220);
-
-      const main = makeLightningPath(
-        xTop, -10,
-        xBot, H + 10,
-        randInt(9, 12),
-        rand(55, 95)
-      );
-
-      let branch = null;
-      if(Math.random() < 0.55){
-        const bi = randInt(3, main.length - 4);
-        branch = makeLightningPath(
-          main[bi][0], main[bi][1],
-          main[bi][0] + rand(-220, 220),
-          main[bi][1] + rand(80, 180),
-          randInt(4, 6),
-          rand(35, 60)
-        );
-      }
-
-      return { t0, life, main, branch };
-    });
+    const portrait = H > W;
+    const spread = Math.min(W * (portrait ? 0.34 : 0.26), 190);
+    const topY = cy - H * 0.56;
+    const bottomY = cy + H * 0.56;
+    const baseScale = portrait ? 0.82 : 0.94;
+    const chains = [
+      { x0:cx-spread,      y0:topY-70, x1:cx+spread*0.34, y1:bottomY+70, t0:0,   life:dur*0.95, spacing:44, scale:baseScale,      slide:58,  curve:13, tilt:0.13, phase:0.4, seed:12 },
+      { x0:cx+spread,      y0:topY-80, x1:cx-spread*0.30, y1:bottomY+80, t0:90,  life:dur*0.92, spacing:44, scale:baseScale*0.98, slide:-52, curve:15, tilt:0.13, phase:2.2, seed:77 },
+      { x0:cx-spread*0.18, y0:topY-60, x1:cx+spread*0.18, y1:bottomY+60, t0:180, life:dur*0.74, spacing:44, scale:baseScale*0.80, slide:36,  curve:10, tilt:0.12, phase:4.3, seed:133 },
+    ];
 
     (function frame(now){
       if(myToken !== fxToken) return;
@@ -1318,46 +1459,39 @@ function setRankUI(code){
         return;
       }
 
+      const breath = 0.72 + 0.28 * Math.sin((t / dur) * Math.PI * 3);
+
+      fxCtx.save();
+      fxCtx.globalCompositeOperation = 'source-over';
+      fxCtx.globalAlpha = 0.30 * breath;
+      const veil = fxCtx.createRadialGradient(cx, cy, 20, cx, cy, Math.max(W, H) * 0.62);
+      veil.addColorStop(0, 'rgba(28,10,48,0.88)');
+      veil.addColorStop(0.58, 'rgba(14,6,26,0.58)');
+      veil.addColorStop(1, 'rgba(5,3,12,0.12)');
+      fxCtx.fillStyle = veil;
+      fxCtx.fillRect(0, 0, W, H);
+      fxCtx.restore();
+
+      fxCtx.save();
+      fxCtx.globalCompositeOperation = 'source-over';
+      for(const chain of chains) drawChain(chain, t, dur);
+      fxCtx.restore();
+
       fxCtx.save();
       fxCtx.globalCompositeOperation = 'lighter';
-
-      fxCtx.globalAlpha = 0.10;
-      fxCtx.fillStyle = 'rgba(30,10,50,1)';
-      fxCtx.fillRect(0, 0, W, H);
-
-      for(const b of bolts){
-        const local = t - b.t0;
-        if(local < 0 || local > b.life) continue;
-
-        const p = local / b.life;
-        const fade = 1 - Math.pow(p, 1.6);
-        const flicker = 0.65 + Math.random() * 0.35;
-        const alpha = fade * flicker;
-
-        fxCtx.lineCap = 'round';
-        fxCtx.lineJoin = 'round';
-
-        fxCtx.globalAlpha = 0.55 * alpha;
-        fxCtx.shadowBlur = 28;
-        fxCtx.shadowColor = 'rgba(180,90,255,0.95)';
-        fxCtx.strokeStyle = 'rgba(150,40,255,0.95)';
-        fxCtx.lineWidth = 7;
-        strokePath(b.main);
-        if(b.branch) strokePath(b.branch);
-
-        fxCtx.globalAlpha = 0.70 * alpha;
-        fxCtx.shadowBlur = 10;
-        fxCtx.shadowColor = 'rgba(255,240,255,0.85)';
-        fxCtx.strokeStyle = 'rgba(245,235,255,1)';
-        fxCtx.lineWidth = 2.2;
-        strokePath(b.main);
-      }
-
+      fxCtx.globalAlpha = 0.08 * breath;
+      fxCtx.shadowBlur = 34;
+      fxCtx.shadowColor = 'rgba(95,35,145,0.80)';
+      fxCtx.strokeStyle = 'rgba(88,40,138,0.55)';
+      fxCtx.lineWidth = 2;
+      fxCtx.beginPath();
+      fxCtx.arc(cx, cy, 118 + 10 * breath, 0, Math.PI * 2);
+      fxCtx.stroke();
       fxCtx.restore();
+
       RAF.fx = requestAnimationFrame(frame);
     })(performance.now());
   }
-
   /* ===== 結果與評語 ===== */
   const TIERS=[
     {code:'SS',range:null,chance:0.04,note:'魔力已超出可檢測範圍<br>系統懷疑你開外掛！'},
@@ -1580,7 +1714,7 @@ if(!isSS && shown >= targetN){
       if(selectedElement === '光'){
         playLightStarFlash(()=>{ fxDone=true; tryFinish(); }, DUR.EXPAND);
       }else{
-        playDarkLightningFlash(()=>{ fxDone=true; tryFinish(); }, DUR.EXPAND);
+        playDarkChainFlash(()=>{ fxDone=true; tryFinish(); }, DUR.EXPAND);
       }
     }
   }
@@ -1712,109 +1846,61 @@ if(!isSS && shown >= targetN){
   window.addEventListener('pointerup', onHoldEnd, {passive:false});
   window.addEventListener('pointercancel', onHoldEnd, {passive:false});
 
-  // 返回設定：長按
   function goBackToSettings(){
     clearSeqTimers();
     stopFx();
     stopRollAnim();
     backBtn.style.display='none';
-    backBtn.classList.remove('holding');
+    backBtn.classList.remove('holding','stage1','stage2');
+    closeResultActionMenu();
     applyEnabledToToggles();
     showSettingsPage();
   }
 
-let holdTimer1 = null;
-let holdTimer2 = null;
-let holdStage = 0; // 0=未過第一圈, 1=已過第一圈(進等待), 2=已回設定
-
-function goBackToIdle(){
-  // 回到等待鑑定畫面（不是設定頁）
-  clearSeqTimers();
-  stopFx();
-  stopRollAnim();
-
-  // ✅ 關鍵：回待機但「不要把 backBtn 隱藏」，因為還要給你繼續按第二圈
-  resetToIdleState();
-  enterIdleScreen();
-  // ✅ 把第二圈狀態「補回來」，避免 enterIdleScreen() 把按鈕縮回去
-  backBtn.style.display = 'block';
-  backBtn.classList.add('holding', 'stage2');
-  backBtn.classList.remove('stage1');
-  backBtn.style.display = 'block';  // 讓按鈕仍留在底部
-}
-
-function startHoldBack(){
-  if(holdTimer1 || holdTimer2) return;
-
-  holdStage = 0;
-
-  // 進入第一圈：0.5s
-  backBtn.classList.add('holding', 'stage1');
-  backBtn.classList.remove('stage2');
-
-  // 讓動畫每次都能重播（重置圈圈）
-  const fg = backBtn.querySelector('.holdRing .fg');
-  if(fg){
-    fg.style.animation = 'none';
-    void fg.getBoundingClientRect();
-    fg.style.animation = '';
+  function goBackToIdle(){
+    clearSeqTimers();
+    stopFx();
+    stopRollAnim();
+    closeResultActionMenu();
+    resetToIdleState();
+    enterIdleScreen();
   }
 
-  holdTimer1 = setTimeout(()=>{
-    holdTimer1 = null;
-    holdStage = 1;
+  function openResultActionMenu(){
+    if(backBtn.style.display === 'none') return;
+    resultActionSheet.classList.add('show');
+    resultActionSheet.setAttribute('aria-hidden', 'false');
+  }
 
-    // ✅ 第一圈轉完：回到等待鑑定畫面
+  function closeResultActionMenu(){
+    resultActionSheet.classList.remove('show');
+    resultActionSheet.setAttribute('aria-hidden', 'true');
+  }
+
+  backBtn.addEventListener('click', (e)=>{
+    e.preventDefault();
+    openResultActionMenu();
+  }, {passive:false});
+
+  resultActionSheet.addEventListener('click', (e)=>{
+    if(e.target === resultActionSheet) closeResultActionMenu();
+  }, {passive:true});
+
+  btnRetryCert.addEventListener('click', ()=>{
     goBackToIdle();
+  }, {passive:true});
 
-    // 進入第二圈：1s（繼續按住才會跑）
-    backBtn.classList.remove('stage1');
-    backBtn.classList.add('stage2');
+  btnGoHome.addEventListener('click', ()=>{
+    goBackToSettings();
+  }, {passive:true});
 
-    // 重播第二圈動畫（再轉一圈）
-    if(fg){
-      fg.style.animation = 'none';
-      void fg.getBoundingClientRect();
-      fg.style.animation = '';
-    }
-
-    holdTimer2 = setTimeout(()=>{
-      holdTimer2 = null;
-      holdStage = 2;
-      goBackToSettings(); // ✅ 第二圈轉完：回設定頁
-    }, 1000);
-
-  }, 500);
-}
-
-function cancelHoldBack(){
-  if(holdTimer1){ clearTimeout(holdTimer1); holdTimer1=null; }
-  if(holdTimer2){ clearTimeout(holdTimer2); holdTimer2=null; }
-
-  backBtn.classList.remove('holding','stage1','stage2');
-
-  // ✅ 只要你已經過第一圈（0.5s）但沒到第二圈（1s），放開就停在等待鑑定畫面
-  //（此時 goBackToIdle 已經做了）
-  if(holdStage >= 1 && holdStage < 2){
-    // 放開後不需要再顯示這顆按鈕，避免干擾
-    backBtn.style.display = 'none';
-  }
-}
-
-backBtn.addEventListener('pointerdown', (e)=>{
-  e.preventDefault();
-  try{ backBtn.setPointerCapture(e.pointerId); }catch(_){}
-  startHoldBack();
-}, {passive:false});
-  ['pointerup','pointercancel','pointerleave','pointerout'].forEach(ev=>{
-    backBtn.addEventListener(ev, cancelHoldBack, {passive:true});
+  window.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closeResultActionMenu();
   });
 
-  // 設定頁按鈕
   btnReset.addEventListener('click', ()=>{
     setAllElementsEnabled(true);
   }, {passive:true});
-
   btnStart.addEventListener('click', ()=>{
     readTogglesToEnabled();
     renderToggles();
