@@ -16,8 +16,16 @@ advance(f,3);assert.ok(f.pointer.strength<0.001);assert.ok(f.trails.every(t=>t.l
 const still=make();still.down(1,240,400,0);
 const near=still.particles.filter(p=>p.kind===0&&Math.hypot(p.x-240,p.y-400)<100);
 const before=near.reduce((n,p)=>n+Math.hypot(p.x-240,p.y-400),0)/near.length;
-advance(still,1.5);
-const after=near.reduce((n,p)=>n+Math.hypot(p.x-240,p.y-400),0)/near.length;
+// Track inward progress before recycling, rather than measuring the new offscreen position.
+const closest=near.map(p=>Math.hypot(p.x-240,p.y-400)),absorbed=new Set();
+for(let i=0;i<30;i++){
+  still.step(1/60);
+  near.forEach((p,j)=>{
+    if(p.feedAlpha===0)absorbed.add(p);
+    if(!absorbed.has(p))closest[j]=Math.min(closest[j],Math.hypot(p.x-240,p.y-400));
+  });
+}
+const after=closest.reduce((n,d)=>n+d,0)/near.length;
 assert.ok(after<before*0.8,`stationary attraction: ${before} -> ${after}`);
 assert.ok(near.some(p=>Math.hypot(p.x-240,p.y-400)>12),'particles retain individual positions');
 // Both circle directions build signed vorticity, without requiring a perfect circle.

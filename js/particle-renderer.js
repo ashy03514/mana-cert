@@ -52,14 +52,19 @@
         if(quality&&q.kind===0&&index%quality.particleStep)continue;
         const twinkle=0.65+Math.sin(f.time*(1+q.depth)*(1-quiet*0.7)+q.seed)*0.25;
         c.globalAlpha=twinkle*fade*(q.kind===2?0.09:0.55+resonance*0.3);
-        c.globalAlpha*=1-quiet*(q.kind===1?(index%4===0?0.5:0.94):q.kind===2?0.55:0.38);
+        c.globalAlpha*=1-quiet*(q.kind===1?(index%4===0?0.15:0.45):q.kind===2?0.55:0.08);
         c.globalAlpha*=q.idleAlpha??1;
+        c.globalAlpha*=q.feedAlpha??1;
         if(q.kind===2) {const r=22+q.depth*20;c.drawImage(this.sprites[q.tint],q.x-r,q.y-r,r*2,r*2);continue;}
-        const r=(q.kind===1?5+q.depth*5:1.4+q.depth*2.1)*(1-quiet*0.23);
+        const r=(q.kind===1?5+q.depth*5:1.4+q.depth*2.1)*(1+quiet*(q.kind===0?0.9:0.25));
         c.drawImage(this.sprites[q.tint],q.x-r,q.y-r,r*2,r*2);
+        if(q.kind===0&&quiet>0){
+          c.fillStyle=this.colors[q.tint];c.beginPath();
+          c.arc(q.x,q.y,(0.65+q.depth*0.45)*quiet,0,Math.PI*2);c.fill();
+        }
         if(q.kind===1) {
           c.fillStyle=this.colors[q.tint];c.beginPath();
-          const size=(1.8+q.depth*1.8)*(1-quiet*0.4);
+          const size=(1.8+q.depth*1.8)*(1+quiet*0.15);
           c.moveTo(q.x,q.y-size*2);c.lineTo(q.x+size*0.5,q.y);c.lineTo(q.x,q.y+size*2);c.lineTo(q.x-size*0.5,q.y);c.closePath();c.fill();
         }
         if(Math.hypot(q.vx,q.vy)>140) {
@@ -67,11 +72,17 @@
           c.beginPath();c.moveTo(q.x,q.y);c.lineTo(q.x-q.vx*0.035,q.y-q.vy*0.035);c.stroke();
         }
       }
+      for(let i=0;i<(f.touchParticles?.length??0);i++){
+        const q=f.touchParticles[i];if(q.life<=0)continue;
+        const life=Math.min(1,q.life/0.35),r=4+(i%3)*1.5;
+        c.globalAlpha=life*0.75*fade;c.drawImage(this.sprites[i%3],q.x-r,q.y-r,r*2,r*2);
+        c.fillStyle=this.colors[i%3];c.beginPath();c.arc(q.x,q.y,0.9+(i%3)*0.25,0,Math.PI*2);c.fill();
+      }
       c.restore();
     }
     nebula(idle,quality){
       const c=this.ctx,f=this.field,t=idle.time,w=idle.weight;
-      const radius=Math.min(f.width*0.48,220),cx=f.width/2,cy=f.height/2;
+      const radius=Math.min(32,f.width*0.085),cx=f.width/2,cy=f.height/2;
       // Normal compositing keeps the liquid translucent instead of adding a white core.
       c.save();c.globalCompositeOperation='source-over';c.beginPath();
       for(let j=0;j<=96;j++){

@@ -5,6 +5,12 @@
   class StandbyMagic {
     constructor(){this.target={x:0,y:0,alpha:1};this.reset();}
     reset(){this.time=0;this.weight=1;this.event=-1;this.age=0;this.next=2.6;this.serial=0;this.pulse=0;}
+    place(field){
+      field.particles.forEach((q,i)=>{
+        const p=this.home(q,i,field.width,field.height);
+        q.x=q.px=p.x;q.y=q.py=p.y;q.vx=q.vy=0;q.idleAlpha=p.alpha;
+      });
+    }
     step(dt,idle){
       dt=Math.max(0,Math.min(dt,0.05));
       this.weight=clamp(this.weight+(idle?1:-1)*dt*2);
@@ -20,10 +26,15 @@
       }
     }
     home(q,index,width,height){
-      const t=this.time,s=q.seed,r=q.radial*Math.min(width*0.40,205)*(index<3?0.12:1),group=index%4;
+      const t=this.time,s=q.seed,r=q.radial*18,group=index%4;
       const a=s+t*(group===2?0.008:0.024+q.depth*0.015);
       const breath=1+0.045*Math.sin(t*0.48+s)-this.pulse*0.45;
       let x=Math.cos(a)*r*breath,y=Math.sin(a)*r*1.13*breath;
+      if(index>=3){
+        // Distribute across both viewport axes, with local drifting instead of a central orbit.
+        x=(((index*0.61803398875)%1)-0.5)*Math.max(0,width-44)+Math.cos(a)*10;
+        y=(((index*0.75487766625)%1)-0.5)*Math.max(0,height-64)+Math.sin(a)*14;
+      }
       if(group===1){x+=Math.sin(t*0.37+s*3)*16;y+=Math.cos(t*0.29+s)*13;}
       if(group===2){x+=Math.sin(t*0.16+s)*7;y+=Math.sin(t*0.31+s*2)*19;}
       if(group===3){x+=Math.sin(t*0.53+s)*10;y+=Math.cos(t*0.41+s*2)*8;}

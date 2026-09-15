@@ -58,9 +58,21 @@
     transition: opacity 240ms ease;
   }
   #animLayer::before { content:''; position:absolute; inset:-80px 0; background:inherit; z-index:-1; pointer-events:none; }
-  body[data-state="STANDBY"] #guideText { width:90vw; max-width:360px; top:max(calc(env(safe-area-inset-top) + 36px),calc(var(--viewport-h)*0.24)); font-size:clamp(16px,4.3vw,19px); font-weight:500; line-height:1.8; letter-spacing:.12em; color:#d2c6ac; animation:idleTextBreath 7s ease-in-out infinite !important; }
+  .nebula-backdrop { position:absolute; inset:-2%; pointer-events:none; opacity:0; transition:opacity 1.2s ease;
+    background:linear-gradient(#100f1b25,#100f1b15),url('./assets/nebula-stage1.png') center/cover no-repeat; }
+  .celestial-frame { position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .8s ease;
+    background:url('./assets/celestial-frame.svg') center/100% 100% no-repeat; }
+  body[data-state="STANDBY"] .nebula-backdrop,body[data-state="INTERACTION"] .nebula-backdrop { opacity:.85; }
+  body[data-state="STANDBY"] .nebula-backdrop { animation:nebulaDrift 32s ease-in-out infinite alternate; }
+  body[data-state="STANDBY"] .celestial-frame { opacity:.8; }
+  @keyframes nebulaDrift { from { transform:translateY(-.4%) scale(1); } to { transform:translateY(.4%) scale(1.025); } }
+  body[data-state="STANDBY"] #guideText { width:94vw; max-width:580px; top:max(calc(env(safe-area-inset-top) + 50px),calc(var(--viewport-h)*0.155)); padding:12px 4px; font-family:"Noto Serif TC","Songti TC","PMingLiU",serif; font-size:clamp(21px,5.5vw,34px); font-weight:500; line-height:1.6; letter-spacing:.1em; color:#ffe4b8; text-shadow:0 0 18px #bb865760,0 2px 8px #080610; animation:idleTextBreath 7s ease-in-out infinite !important; }
+  .idle-subtitle { display:block; font-size:.62em; letter-spacing:.18em; color:#e6d5b6; }
+  .idle-divider { display:block; position:relative; width:76%; height:1px; margin:11px auto 13px; background:linear-gradient(90deg,transparent,#b69568,#f8ddb0,#b69568,transparent); }
+  .idle-divider::after { content:'✦'; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:23px; color:#ffe6bd; text-shadow:0 0 12px #d7aa6a; }
   @keyframes idleTextBreath { 0%,100% { opacity:.76; } 50% { opacity:.9; } }
   @media(prefers-reduced-motion:reduce) { body[data-state="STANDBY"] #guideText { animation:none !important; } }
+  @media(prefers-reduced-motion:reduce) { body[data-state="STANDBY"] .nebula-backdrop { animation:none; } }
   canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
   .core-canvas{
     position:absolute;
@@ -599,6 +611,8 @@
 <div id="guideText" class="floating-box guide-text">請觸碰魔力，試著自由滑動</div>
 
 <div id="animLayer" aria-label="自由觸摸與拖曳魔力">
+  <div class="nebula-backdrop" aria-hidden="true"></div>
+  <div class="celestial-frame" aria-hidden="true"></div>
   <canvas id="particleCanvas"></canvas>
   <canvas id="fxCanvas"></canvas>
   <canvas id="coreCanvas" class="core-canvas"></canvas>
@@ -992,7 +1006,7 @@ function setRankUI(code){
     backBtn.classList.remove('holding','stage1','stage2');
     closeResultActionMenu();
 
-    guideTextEl.innerHTML='請觸碰魔力<br>試著自由滑動';
+    guideTextEl.innerHTML='試著操控眼前的魔力<span class="idle-divider" aria-hidden="true"></span><span class="idle-subtitle">觸碰並自由滑動</span>';
     guideTextEl.style.display='block';
     guideTextEl.style.opacity='0.9';
     guideTextEl.style.animation='pulse 2s infinite ease-in-out';
@@ -1014,6 +1028,7 @@ function setRankUI(code){
     releasePointer();
     magicField.reset();
     standbyMagic.reset();
+    standbyMagic.place(magicField);
     resonance.reset();
     lastRankShown = null;
     rankWave.classList.remove('active');
@@ -1054,7 +1069,7 @@ function setRankUI(code){
     if(!document.hidden && session.state!==STATES.SETTINGS && session.state!==STATES.RESULT &&
        session.state!==STATES.MANA_SCAN && session.state!==STATES.RANK_CONFIRM) {
       if(quality.observe(dt*1000))onViewportChange();
-      if(session.state===STATES.INTERACTION && resonance.step(dt,magicField.pointer)) completeInteraction();
+      if(session.state===STATES.INTERACTION && !CONFIG.interactionPreview && resonance.step(dt,magicField.pointer)) completeInteraction();
       const gathering=session.state===STATES.GATHER || session.state===STATES.ELEMENT_REVEAL;
       const progress=session.state===STATES.ELEMENT_REVEAL ? 1 : gathering ? phaseProgress() : 0;
       standbyMagic.step(dt,session.state===STATES.STANDBY);

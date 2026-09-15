@@ -13,7 +13,7 @@ require('../js/element-effects.js');
 require('../js/mana-scan.js');
 require('../js/runtime.js');
 require('../js/audio.js');
-const C = ManaConfig, R = ManaResults;
+const C = {...ManaConfig}, R = ManaResults;
 const settings = { elements:Object.fromEntries(Object.keys(C.elementWeights).map(k=>[k,true])), muggleEnabled:true, muggleChance:0.08 };
 function rng(values) { let i=0; return () => { assert.ok(i<values.length,'unexpected additional random draw'); return values[i++]; }; }
 assert.deepEqual(R.createResult(settings,rng([0.079,0])),{type:'muggle',element:null,rank:'MUGGLE',mana:1});
@@ -89,6 +89,13 @@ element('s_master').checked=false;element('s_master').handlers.change(); assert.
 element('s_muggle').checked=true;element('s_muggle').handlers.change();
 element('muggleChance').value='100';element('muggleChance').handlers.input();
 assert.equal(element('btnStart').disabled,false);
+assert.equal(C.interactionPreview,true);
+click('btnStart');touch('pointerdown');tick(60000);
+assert.equal(element('body').dataset.state,'INTERACTION','preview stays interactive after one minute held');
+touch('pointerup');tick(60000);
+assert.equal(element('body').dataset.state,'INTERACTION','preview stays interactive after release');
+assert.equal(field.gathering,false);
+click('btnGoHome');C.interactionPreview=false; // Exercise the preserved certification mode below.
 click('btnStart'); assert.equal(element('body').dataset.state,'STANDBY');
 const roundResult=pageSession.currentResult;
 tick(6000);assert.equal(element('body').dataset.state,'STANDBY','waits for first touch');

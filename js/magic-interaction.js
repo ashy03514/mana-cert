@@ -11,12 +11,13 @@
         lastTime:0, angle:0, hasDirection:false, turn:0, still:0 };
       this.particles = Array.from({length:config.particles}, (_,i) => ({
         seed:random()*TAU, radial:Math.sqrt(random()), depth:0.4+random()*0.6,
-        kind:i<config.particles-42 ? 0 : i<config.particles-6 ? 1 : 2,
-        tint:i%3, idleAlpha:1, x:0, y:0, vx:0, vy:0, px:0, py:0, gx:0,gy:0,gvx:0,gvy:0
+        kind:i<Math.round(config.particles*298/340) ? 0 : i<Math.round(config.particles*334/340) ? 1 : 2,
+        tint:i%3, idleAlpha:1, feedAlpha:1, feedAge:0, feedDwell:0, feedFade:0, x:0, y:0, vx:0, vy:0, px:0, py:0, gx:0,gy:0,gvx:0,gvy:0
       }));
       this.trails = Array.from({length:config.trails}, () => ({
         x:0,y:0,vx:0,vy:0,life:0,width:0,stroke:0,gx:0,gy:0,gvx:0,gvy:0
       }));
+      this.touchParticles=Array.from({length:192},()=>({x:0,y:0,vx:0,vy:0,life:0,seed:0,gx:0,gy:0,gvx:0,gvy:0}));
       this.reset();
     }
     reset() {
@@ -24,10 +25,13 @@
       p.id=null; p.x=this.width/2; p.y=this.height/2;
       p.vx=p.vy=p.speed=p.strength=p.lastTime=p.angle=p.turn=p.still=0; p.hasDirection=false;
       this.time=0; this.trailHead=0; this.stroke=0; this.emission=0; this.gathering=false;
+      this.feedSerial=0;
+      this.touchHead=0;for(const q of this.touchParticles)q.life=0;
       this.trailBudget=0;this.trailX=p.x;this.trailY=p.y;
       for(const t of this.trails) t.life=0;
       for(const q of this.particles) {
         q.idleAlpha=1;
+        q.feedAlpha=1;q.feedAge=4.8;q.feedDwell=q.feedFade=0;
         const radius=q.radial*Math.min(this.width*0.47,230);
         q.x=this.width/2+Math.cos(q.seed)*radius;
         q.y=this.height/2+Math.sin(q.seed)*radius*1.18;
@@ -37,6 +41,7 @@
     }
     resize(width,height) {
       const sx=width/this.width, sy=height/this.height;
+      for(const q of this.touchParticles){q.x*=sx;q.y*=sy;q.vx*=sx;q.vy*=sy;q.gx*=sx;q.gy*=sy;q.gvx*=sx;q.gvy*=sy;}
       for(const q of this.particles) { q.x*=sx;q.px*=sx;q.y*=sy;q.py*=sy;q.vx*=sx;q.vy*=sy;q.gx*=sx;q.gy*=sy;q.gvx*=sx;q.gvy*=sy; }
       for(const t of this.trails) { t.x*=sx;t.y*=sy;t.vx*=sx;t.vy*=sy;t.gx*=sx;t.gy*=sy;t.gvx*=sx;t.gvy*=sy; }
       this.pointer.x*=sx;this.pointer.y*=sy;
@@ -52,6 +57,7 @@
       this.stroke++;this.emission=0;
       this.trailBudget=0;this.trailX=p.x;this.trailY=p.y;
       this.emit(p.x,p.y,0,0,18);
+      for(let i=0;i<3;i++)this.emitTouch(p.x,p.y,0,0);
       return true;
     }
     move(id,x,y,now) {
@@ -95,6 +101,7 @@
     takeControl() {
       this.release();this.pointer.strength=0;this.gathering=true;
       for(const q of this.particles) this.capture(q);
+      for(const q of this.touchParticles)this.capture(q);
       for(const t of this.trails) this.capture(t);
     }
     capture(q) { q.gx=q.x-this.width/2;q.gy=q.y-this.height/2;q.gvx=q.vx;q.gvy=q.vy; }
@@ -108,10 +115,18 @@
       q.vx=(x-q.x)/dt;q.vy=(y-q.y)/dt;q.x=x;q.y=y;
     }
     emit(x,y,vx,vy,width) {
+      this.emitTouch(x,y,vx,vy);
       const t=this.trails[this.trailHead];
       this.trailHead=(this.trailHead+1)%this.trails.length;
       t.x=x;t.y=y;t.vx=vx;t.vy=vy;t.width=width;
       t.life=this.config.trailLife;t.stroke=this.stroke;
+    }
+    emitTouch(x,y,vx,vy){
+      for(let i=0;i<3;i++){
+        const n=this.touchHead++,q=this.touchParticles[n%this.touchParticles.length],a=n*2.399963;
+        q.seed=a;q.x=x+Math.cos(a)*7;q.y=y+Math.sin(a)*7;
+        q.vx=vx+Math.cos(a)*55;q.vy=vy+Math.sin(a)*55;q.life=1.25;
+      }
     }
     step(seconds, gather=0, standby=null) {
       const dt=clamp(seconds,0,0.033);
@@ -134,6 +149,28 @@
         const q=this.particles[index];
         q.px=q.x;q.py=q.y;
         if(this.gathering) { this.gatherPoint(q,gather,dt);continue; }
+        // Recycle absorbed motes through offscreen sources; keep the pool bounded.
+        if(held&&q.kind!==2){
+          q.feedAge+=dt;
+          const distance=Math.hypot(q.x-p.x,q.y-p.y);
+          q.feedDwell=distance<85?q.feedDwell+dt:Math.max(0,q.feedDwell-dt);
+          const absorbed=distance<24;
+          if(!q.feedFade&&(absorbed||q.feedAge>5+index*0.012))q.feedFade=1;
+          if(q.feedFade){
+            q.feedAlpha=absorbed?0:Math.max(0,q.feedAlpha-dt*2.5);
+            if(q.feedAlpha===0){
+              const n=this.feedSerial++,edge=n%4,u=0.04+((n*0.61803398875)%1)*0.92;
+              q.x=edge===0?-28:edge===1?this.width+28:u*this.width;
+              q.y=edge===2?-28:edge===3?this.height+28:u*this.height;
+              const dx=p.x-q.x,dy=p.y-q.y,d=Math.max(1,Math.hypot(dx,dy));
+              const speed=220+q.depth*100;
+              q.vx=dx/d*speed;q.vy=dy/d*speed;q.px=q.x;q.py=q.y;
+              q.feedAge=q.feedDwell=q.feedFade=0;
+            }
+          }else q.feedAlpha=Math.min(1,q.feedAlpha+dt*2);
+        }else{
+          q.feedFade=0;q.feedAge=4.8;q.feedDwell=0;q.feedAlpha=Math.min(1,q.feedAlpha+dt*3);
+        }
         let ax=0,ay=0;
         {
           // Independent drifting home positions give elasticity and life without pointer input.
@@ -153,7 +190,7 @@
           }
           const dx=p.x-q.x,dy=p.y-q.y,d=Math.max(5,Math.hypot(dx,dy));
           const near=Math.exp(-d/radius), mid=Math.exp(-Math.pow((d-radius*0.5)/(radius*0.45),2));
-          const pull=(40+near*250+p.still*near*150)*p.strength;
+          const pull=(380+near*180+p.still*near*100)*p.strength;
           const swirl=(65+Math.abs(p.turn)*48)*mid*p.strength*(p.turn< -0.2?-1:1);
           ax+=dx/d*pull-dy/d*swirl+p.vx*near*p.strength*2;
           ay+=dy/d*pull+dx/d*swirl+p.vy*near*p.strength*2;
@@ -165,9 +202,23 @@
         q.vx=(q.vx+ax*dt*response)*damping;q.vy=(q.vy+ay*dt*response)*damping;
         const speed=Math.hypot(q.vx,q.vy),limit=this.config.maxSpeed;
         if(speed>limit){q.vx*=limit/speed;q.vy*=limit/speed;}
-        q.x+=q.vx*dt;q.y+=q.vy*dt;
+        const followSpeed=held?(this.config.followSpeed??1):1;
+        q.x+=q.vx*dt*followSpeed;q.y+=q.vy*dt*followSpeed;
         if(q.x< -40 || q.x>this.width+40){q.x=clamp(q.x,-40,this.width+40);q.vx*=-0.45;}
         if(q.y< -40 || q.y>this.height+40){q.y=clamp(q.y,-40,this.height+40);q.vy*=-0.45;}
+      }
+      for(const q of this.touchParticles){
+        if(q.life<=0)continue;
+        if(this.gathering){this.gatherPoint(q,gather,dt);continue;}
+        q.life=Math.max(0,q.life-dt);
+        // Spring-follow with a small orbit keeps newborn motes visible around the fingertip.
+        if(held){
+          const a=q.seed+this.time*3;
+          q.vx+=(p.x+Math.cos(a)*18-q.x)*dt*22;
+          q.vy+=(p.y+Math.sin(a)*18-q.y)*dt*22;
+        }
+        const drag=Math.exp(-dt*4);q.vx*=drag;q.vy*=drag;
+        q.x+=q.vx*dt*1.5;q.y+=q.vy*dt*1.5;
       }
       for(const t of this.trails) {
         if(t.life<=0) continue;

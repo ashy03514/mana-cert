@@ -1,7 +1,9 @@
-const CACHE_NAME = "mana-pwa-v2-standby-2";
+const CACHE_NAME = "mana-pwa-v2-touch-particles-1";
 const ASSETS = [
   "./",
   "./index.html",
+  "./assets/nebula-stage1.png",
+  "./assets/celestial-frame.svg",
   "./js/config.js",
   "./js/probability-settings.js",
   "./js/result-system.js",

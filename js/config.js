@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const CONFIG = {
+    interactionPreview: true,
     muggleChance: 0.08,
     elementWeights: { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 },
     normalRanks: { SS:0.04, S:0.10, A:0.20, B:0.20, C:0.20, D:0.20, E:0.06 },
@@ -22,7 +23,7 @@
       colors:{火:'#ff965a',水:'#83d8ff',風:'#91ecc7',土:'#e4ba73',光:'#fff0b6',暗:'#c599f2'} },
     resonance: { passiveRate:0.10, heldRate:0.09, distanceRate:0.00022,
       distanceCap:0.35, touchGain:0.035, touchCap:0.105, turnRate:0.04 },
-    interaction: { particles:340, trails:192, dprMax:1.75,
+    interaction: { particles:680, followSpeed:1.5, trails:192, dprMax:1.75,
       fieldRadius:190, maxSpeed:1250, trailLife:1.25 },
     scan: { duration:2400, ssNormalDuration:1800, ssRushDuration:900,
       ssLimitHold:180, ssUnknownHold:220, ssStart:1000, ssLimit:9999 },

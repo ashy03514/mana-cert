@@ -2,6 +2,22 @@ const assert=require('node:assert/strict');
 require('../js/config.js');require('../js/magic-interaction.js');require('../js/standby-magic.js');require('../js/particle-renderer.js');
 const idle=new StandbyMagic(),field=new MagicField(ManaConfig.interaction,390,844,()=>0.43);
 const pool=field.particles,refs=pool.slice(),events=new Set();let previous=-1,starts=[];
+for(const [width,height] of [[390,844],[844,390],[1440,900]]){
+  const screen=new MagicField(ManaConfig.interaction,width,height,()=>0.43);
+  idle.place(screen);
+  for(let frame=0;frame<=600;frame++){
+    if(frame){idle.step(1/60,true);screen.step(1/60,0,idle);}
+    if(frame%300===0){
+      const bands=Array(5).fill(0);
+      for(const p of screen.particles){
+        assert.ok(p.x>=-40&&p.x<=width+40&&p.y>=-40&&p.y<=height+40);
+        bands[Math.max(0,Math.min(4,Math.floor(p.y/height*5)))]++;
+      }
+      assert.ok(bands.every(n=>n>=30),'every vertical fifth has visible particle coverage from entry onward');
+    }
+  }
+  idle.reset();
+}
 const realRandom=Math.random;Math.random=()=>{throw Error('idle must not draw results or allocate random events');};
 try {
   for(let i=0;i<60*120;i++){
