@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#A68147">
+<meta name="theme-color" content="#100f1b">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
@@ -27,7 +27,7 @@
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
-    background:var(--bg); color:var(--text);
+    background:#100f1b; color:var(--text);
     font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
     overflow:hidden;
     -webkit-user-select:none; user-select:none;
@@ -36,6 +36,9 @@
     touch-action:pan-y;
   }
   *{ box-sizing:border-box; }
+  body[data-state="SETTINGS"],body[data-state="MANA_SCAN"],body[data-state="RANK_CONFIRM"],body[data-state="RESULT"] { background:var(--bg); }
+  html { min-height:100%; overscroll-behavior:none; }
+  body { min-height:100dvh; overscroll-behavior:none; }
 
   /* ===== 動畫層 ===== */
   #animLayer { background:radial-gradient(ellipse at 48% 48%,#36283f 0%,#191627 53%,#100f1b 100%); touch-action:none; }
@@ -54,6 +57,10 @@
     opacity: 1;
     transition: opacity 240ms ease;
   }
+  #animLayer::before { content:''; position:absolute; inset:-80px 0; background:inherit; z-index:-1; pointer-events:none; }
+  body[data-state="STANDBY"] #guideText { width:90vw; max-width:360px; top:max(calc(env(safe-area-inset-top) + 36px),calc(var(--viewport-h)*0.24)); font-size:clamp(16px,4.3vw,19px); font-weight:500; line-height:1.8; letter-spacing:.12em; color:#d2c6ac; animation:idleTextBreath 7s ease-in-out infinite !important; }
+  @keyframes idleTextBreath { 0%,100% { opacity:.76; } 50% { opacity:.9; } }
+  @media(prefers-reduced-motion:reduce) { body[data-state="STANDBY"] #guideText { animation:none !important; } }
   canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
   .core-canvas{
     position:absolute;
@@ -633,6 +640,7 @@
 <script src="./js/probability-settings.js"></script>
 <script src="./js/result-system.js"></script>
 <script src="./js/magic-interaction.js"></script>
+<script src="./js/standby-magic.js"></script>
 <script src="./js/particle-renderer.js"></script>
 <script src="./js/resonance.js"></script>
 <script src="./js/ritual-renderer.js"></script>
@@ -759,6 +767,7 @@
   const viewport=getViewportSize();
   magicField=new MagicField(CONFIG.interaction,viewport.w,viewport.h);
   magicRenderer=new MagicRenderer(ctx,magicField);
+  const standbyMagic=new StandbyMagic();
   const resonance=new Resonance(CONFIG.resonance,CONFIG.timing);
   const ritualRenderer=new RitualRenderer(coreCtx);
   const elementEffects=new ElementEffects(fxCtx,CONFIG.elementReveal);
@@ -983,7 +992,7 @@ function setRankUI(code){
     backBtn.classList.remove('holding','stage1','stage2');
     closeResultActionMenu();
 
-    guideTextEl.innerHTML='請觸碰魔力，試著自由滑動';
+    guideTextEl.innerHTML='請觸碰魔力<br>試著自由滑動';
     guideTextEl.style.display='block';
     guideTextEl.style.opacity='0.9';
     guideTextEl.style.animation='pulse 2s infinite ease-in-out';
@@ -1004,6 +1013,7 @@ function setRankUI(code){
     clearSeqTimers();
     releasePointer();
     magicField.reset();
+    standbyMagic.reset();
     resonance.reset();
     lastRankShown = null;
     rankWave.classList.remove('active');
@@ -1047,8 +1057,9 @@ function setRankUI(code){
       if(session.state===STATES.INTERACTION && resonance.step(dt,magicField.pointer)) completeInteraction();
       const gathering=session.state===STATES.GATHER || session.state===STATES.ELEMENT_REVEAL;
       const progress=session.state===STATES.ELEMENT_REVEAL ? 1 : gathering ? phaseProgress() : 0;
-      if(session.state!==STATES.RESONANCE_COMPLETE) magicField.step(dt,progress);
-      magicRenderer.draw(progress,resonance.value,quality.profile);
+      standbyMagic.step(dt,session.state===STATES.STANDBY);
+      if(session.state!==STATES.RESONANCE_COMPLETE) magicField.step(dt,progress,standbyMagic);
+      magicRenderer.draw(progress,resonance.value,quality.profile,standbyMagic);
     }
     RAF.particle=requestAnimationFrame(drawParticles);
   }

@@ -5,6 +5,7 @@ require('../js/config.js');
 require('../js/probability-settings.js');
 require('../js/result-system.js');
 require('../js/magic-interaction.js');
+require('../js/standby-magic.js');
 require('../js/particle-renderer.js');
 require('../js/resonance.js');
 require('../js/ritual-renderer.js');
@@ -76,6 +77,7 @@ const sandbox={ActiveTimeline,AdaptiveQuality,AudioManager,optionalVibrate,ManaC
   requestAnimationFrame(fn){rafs.set(++id,fn);return id;},cancelAnimationFrame(n){rafs.delete(n);},
   addEventListener(type,fn){globalHandlers[type]=fn;}};
 sandbox.window=sandbox;
+sandbox.StandbyMagic=StandbyMagic;
 sandbox.ProbabilitySettings=ProbabilitySettings;
 // Renderer uses the page's document to build its three cached textures.
 global.document=sandbox.document;

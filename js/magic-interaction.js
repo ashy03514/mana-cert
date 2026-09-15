@@ -12,7 +12,7 @@
       this.particles = Array.from({length:config.particles}, (_,i) => ({
         seed:random()*TAU, radial:Math.sqrt(random()), depth:0.4+random()*0.6,
         kind:i<config.particles-42 ? 0 : i<config.particles-6 ? 1 : 2,
-        tint:i%3, x:0, y:0, vx:0, vy:0, px:0, py:0, gx:0,gy:0,gvx:0,gvy:0
+        tint:i%3, idleAlpha:1, x:0, y:0, vx:0, vy:0, px:0, py:0, gx:0,gy:0,gvx:0,gvy:0
       }));
       this.trails = Array.from({length:config.trails}, () => ({
         x:0,y:0,vx:0,vy:0,life:0,width:0,stroke:0,gx:0,gy:0,gvx:0,gvy:0
@@ -27,6 +27,7 @@
       this.trailBudget=0;this.trailX=p.x;this.trailY=p.y;
       for(const t of this.trails) t.life=0;
       for(const q of this.particles) {
+        q.idleAlpha=1;
         const radius=q.radial*Math.min(this.width*0.47,230);
         q.x=this.width/2+Math.cos(q.seed)*radius;
         q.y=this.height/2+Math.sin(q.seed)*radius*1.18;
@@ -112,7 +113,7 @@
       t.x=x;t.y=y;t.vx=vx;t.vy=vy;t.width=width;
       t.life=this.config.trailLife;t.stroke=this.stroke;
     }
-    step(seconds, gather=0) {
+    step(seconds, gather=0, standby=null) {
       const dt=clamp(seconds,0,0.033);
       if(!dt) return;
       this.time+=dt;
@@ -129,7 +130,8 @@
         }
       }
       const cx=this.width/2,cy=this.height/2, radius=Math.min(this.config.fieldRadius,this.width*0.58);
-      for(const q of this.particles) {
+      for(let index=0;index<this.particles.length;index++) {
+        const q=this.particles[index];
         q.px=q.x;q.py=q.y;
         if(this.gathering) { this.gatherPoint(q,gather,dt);continue; }
         let ax=0,ay=0;
@@ -137,9 +139,18 @@
           // Independent drifting home positions give elasticity and life without pointer input.
           const a=q.seed+this.time*(0.05+q.depth*0.06);
           const r=q.radial*Math.min(this.width*0.47,230);
-          const homeX=cx+Math.cos(a)*r+Math.sin(this.time*0.9+q.seed)*14;
-          const homeY=cy+Math.sin(a)*r*1.18+Math.cos(this.time*0.65+q.seed)*16;
+          let homeX=cx+Math.cos(a)*r+Math.sin(this.time*0.9+q.seed)*14;
+          let homeY=cy+Math.sin(a)*r*1.18+Math.cos(this.time*0.65+q.seed)*16;
+          if(standby&&standby.weight>0){
+            const target=standby.home(q,index,this.width,this.height),w=standby.weight;
+            homeX+=(target.x-homeX)*w;homeY+=(target.y-homeY)*w;
+            q.idleAlpha=1+(target.alpha-1)*w;
+          }else q.idleAlpha=1;
           ax=(homeX-q.x)*0.55;ay=(homeY-q.y)*0.55;
+          if(standby&&standby.weight>0&&standby.event===0&&index===300){
+            ax+=(homeX-q.x)*standby.weight*4;
+            ay+=(homeY-q.y)*standby.weight*4;
+          }
           const dx=p.x-q.x,dy=p.y-q.y,d=Math.max(5,Math.hypot(dx,dy));
           const near=Math.exp(-d/radius), mid=Math.exp(-Math.pow((d-radius*0.5)/(radius*0.45),2));
           const pull=(40+near*250+p.still*near*150)*p.strength;

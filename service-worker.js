@@ -1,4 +1,4 @@
-const CACHE_NAME = "mana-pwa-v2-settings-2";
+const CACHE_NAME = "mana-pwa-v2-standby-2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,7 @@ const ASSETS = [
   "./js/probability-settings.js",
   "./js/result-system.js",
   "./js/magic-interaction.js",
+  "./js/standby-magic.js",
   "./js/particle-renderer.js",
   "./js/resonance.js",
   "./js/ritual-renderer.js",

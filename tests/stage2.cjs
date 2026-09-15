@@ -69,5 +69,5 @@ f.reset();f.down(1,20,20,0);f.release();f.down(2,25,25,10);
 renderer.draw();assert.equal(curves,0,'separate touches do not connect');
 f.move(2,80,80,100);
 for(let i=0;i<100;i++){f.step(1/60);renderer.draw();}
-assert.equal(canvases,3,'textures allocated only once');assert.ok(draws>0&&curves>0);
+assert.equal(canvases,4,'three glow textures and one fog texture allocated only once');assert.ok(draws>0&&curves>0);
 console.log('Stage 2 checks passed: forces, inertia, circles, flings, retouch, takeover, 30-round pools, resize and renderer.');
