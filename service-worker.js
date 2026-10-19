@@ -1,19 +1,11 @@
-const CACHE_NAME = "mana-pwa-v2-touch-particles-1";
+const CACHE_NAME = "mana-pwa-v3-portal-8";
 const ASSETS = [
   "./",
   "./index.html",
-  "./assets/nebula-stage1.png",
-  "./assets/celestial-frame.svg",
   "./js/config.js",
   "./js/probability-settings.js",
   "./js/result-system.js",
-  "./js/magic-interaction.js",
-  "./js/standby-magic.js",
-  "./js/particle-renderer.js",
-  "./js/resonance.js",
-  "./js/ritual-renderer.js",
-  "./js/element-effects.js",
-  "./js/mana-scan.js",
+  "./js/portal-scene.js",
   "./js/runtime.js",
   "./js/audio.js",
   "./js/pwa.js",

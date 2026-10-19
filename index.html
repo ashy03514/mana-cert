@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#100f1b">
+<meta name="theme-color" content="#1c1d37">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
@@ -27,7 +27,7 @@
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
-    background:#100f1b; color:var(--text);
+    background:#1c1d37; color:var(--text);
     font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
     overflow:hidden;
     -webkit-user-select:none; user-select:none;
@@ -40,73 +40,15 @@
   html { min-height:100%; overscroll-behavior:none; }
   body { min-height:100dvh; overscroll-behavior:none; }
 
-  /* ===== 動畫層 ===== */
-  #animLayer { background:radial-gradient(ellipse at 48% 48%,#36283f 0%,#191627 53%,#100f1b 100%); touch-action:none; }
-  body[data-state="STANDBY"] #guideText,
-  body[data-state="INTERACTION"] #guideText,
-  body[data-state="GATHER"] #guideText,
-  body[data-state="RESONANCE_COMPLETE"] #guideText {
-    top:calc(env(safe-area-inset-top) + 12%); max-width:92vw;
-    padding:12px 16px; font-size:clamp(16px,4.6vw,22px); color:#f2dfb7;
-    background:transparent; border:0; box-shadow:none; backdrop-filter:none;
-    text-shadow:0 2px 15px #0d0917; white-space:normal;
-  }
-  @media (prefers-reduced-motion:reduce) { .guide-text { animation:none !important; } }
+  /* One clean portal surface; circular gradient fallback while Canvas loads. */
   #animLayer{
-    position:fixed; inset:0; z-index:10;
-    opacity: 1;
-    transition: opacity 240ms ease;
+    position:fixed; inset:0; z-index:10; touch-action:none; overflow:hidden;
+    background:radial-gradient(ellipse at center,#070812 0%,#090a19 26%,#101128 52%,#17182f 78%,#1c1d37 100%);
   }
-  #animLayer::before { content:''; position:absolute; inset:-80px 0; background:inherit; z-index:-1; pointer-events:none; }
-  .nebula-backdrop { position:absolute; inset:-2%; pointer-events:none; opacity:0; transition:opacity 1.2s ease;
-    background:linear-gradient(#100f1b25,#100f1b15),url('./assets/nebula-stage1.png') center/cover no-repeat; }
-  .celestial-frame { position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .8s ease;
-    background:url('./assets/celestial-frame.svg') center/100% 100% no-repeat; }
-  body[data-state="STANDBY"] .nebula-backdrop,body[data-state="INTERACTION"] .nebula-backdrop { opacity:.85; }
-  body[data-state="STANDBY"] .nebula-backdrop { animation:nebulaDrift 32s ease-in-out infinite alternate; }
-  body[data-state="STANDBY"] .celestial-frame { opacity:.8; }
-  @keyframes nebulaDrift { from { transform:translateY(-.4%) scale(1); } to { transform:translateY(.4%) scale(1.025); } }
-  body[data-state="STANDBY"] #guideText { width:94vw; max-width:580px; top:max(calc(env(safe-area-inset-top) + 50px),calc(var(--viewport-h)*0.155)); padding:12px 4px; font-family:"Noto Serif TC","Songti TC","PMingLiU",serif; font-size:clamp(21px,5.5vw,34px); font-weight:500; line-height:1.6; letter-spacing:.1em; color:#ffe4b8; text-shadow:0 0 18px #bb865760,0 2px 8px #080610; animation:idleTextBreath 7s ease-in-out infinite !important; }
-  .idle-subtitle { display:block; font-size:.62em; letter-spacing:.18em; color:#e6d5b6; }
-  .idle-divider { display:block; position:relative; width:76%; height:1px; margin:11px auto 13px; background:linear-gradient(90deg,transparent,#b69568,#f8ddb0,#b69568,transparent); }
-  .idle-divider::after { content:'✦'; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:23px; color:#ffe6bd; text-shadow:0 0 12px #d7aa6a; }
-  @keyframes idleTextBreath { 0%,100% { opacity:.76; } 50% { opacity:.9; } }
-  @media(prefers-reduced-motion:reduce) { body[data-state="STANDBY"] #guideText { animation:none !important; } }
-  @media(prefers-reduced-motion:reduce) { body[data-state="STANDBY"] .nebula-backdrop { animation:none; } }
-  canvas#particleCanvas { position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h); z-index:0; }
-  .core-canvas{
-    position:absolute;
-    inset:0;
-    width:var(--viewport-w);
-    height:var(--viewport-h);
-    z-index:6;
+  canvas#particleCanvas{
+    position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
     pointer-events:none;
   }
-
-  canvas#fxCanvas {
-    position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
-    z-index:7; pointer-events:none;
-  }
-
-  /* ===== 共用白框樣式 ===== */
-  .floating-box {
-    position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
-    text-align: center; color: var(--text);
-    background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(4px);
-    border: 1px solid rgba(255,255,255,0.6); border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    pointer-events: none; transition: all 0.5s ease; white-space: nowrap;
-  }
-  .guide-text {
-    top: calc(18% + var(--global-offset-y));
-    font-size: 22px;
-    font-weight: bold;
-    letter-spacing: 0.1em;
-    line-height: 1.6;
-    padding: 16px 32px;
-    animation: pulse 2s infinite ease-in-out;
-  }
-  @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
 
   /* ===== 設定頁 ===== */
   #settingsPage{
@@ -485,9 +427,9 @@
     #backToSettingsBtn{ width: 62px; height: 62px; bottom: 20px; }
     #backToSettingsBtn.holding{ transform: translateX(-50%) scale(1.30); }
   }
-  #elementRevealScene { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  #elementRevealScene[hidden] { display:none; }
-  #elementRevealTitle { margin:0; padding:20px; font-size:clamp(40px,12vw,68px); color:var(--element-color,#fff0ca); letter-spacing:.12em; text-align:center; text-shadow:0 3px 18px #090510,0 0 36px #090510; }
+
+
+
   #resultWrap { transform:none; padding:calc(18px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom)); overflow-y:auto; touch-action:pan-y; }
   .resultCard { width:min(100%,480px); padding:22px; color:#665034; background:linear-gradient(150deg,#f6f1e9,#dfd5c9); overflow:hidden; flex-shrink:0; }
   .resultCard .attr-pill { font-size:clamp(24px,7vw,34px); margin:14px auto; }
@@ -608,17 +550,9 @@
   </div>
 </div>
 
-<div id="guideText" class="floating-box guide-text">請觸碰魔力，試著自由滑動</div>
-
-<div id="animLayer" aria-label="自由觸摸與拖曳魔力">
-  <div class="nebula-backdrop" aria-hidden="true"></div>
-  <div class="celestial-frame" aria-hidden="true"></div>
-  <canvas id="particleCanvas"></canvas>
-  <canvas id="fxCanvas"></canvas>
-  <canvas id="coreCanvas" class="core-canvas"></canvas>
+<div id="animLayer" aria-label="傳送門：按住加速旋轉，放開恢復慢速">
+  <canvas id="particleCanvas" aria-hidden="true"></canvas>
 </div>
-
-<div id="elementRevealScene" hidden aria-live="polite"><h1 id="elementRevealTitle"></h1></div>
 
 <div id="resultWrap" aria-live="polite">
   <div id="resultCard" class="resultCard" role="group" aria-label="鑑定結果">
@@ -653,150 +587,65 @@
 <script src="./js/config.js"></script>
 <script src="./js/probability-settings.js"></script>
 <script src="./js/result-system.js"></script>
-<script src="./js/magic-interaction.js"></script>
-<script src="./js/standby-magic.js"></script>
-<script src="./js/particle-renderer.js"></script>
-<script src="./js/resonance.js"></script>
-<script src="./js/ritual-renderer.js"></script>
-<script src="./js/element-effects.js"></script>
-<script src="./js/mana-scan.js"></script>
+<script src="./js/portal-scene.js"></script>
 <script src="./js/runtime.js"></script>
 <script src="./js/audio.js"></script>
 <script defer src="./js/pwa.js"></script>
 <script>
-/** V2 stage 3: resonance, continuous gathering and the liquid magic core. */
-
+/** Portal stage 1: idle clockwise rotation and touch-controlled speed. */
 (function(){
-  const CONFIG = ManaConfig;
-  const { STATES, Session, validSettings } = ManaResults;
-  const session = new Session();
+  'use strict';
+  const CONFIG=ManaConfig;
+  const {STATES,Session,validSettings}=ManaResults;
+  const session=new Session();
   const timeline=new ActiveTimeline(()=>performance.now(),setTimeout,clearTimeout);
   const audio=new AudioManager(window);
   const quality=new AdaptiveQuality(innerWidth,innerHeight,devicePixelRatio||1);
-  const stateSounds={RESONANCE_COMPLETE:'resonance',GATHER:'gather',RANK_CONFIRM:'confirmed'};
-  function transition(state) {
-    session.transition(state);document.body.dataset.state=state;
-    if(stateSounds[state])audio.play(stateSounds[state]);
-    if(hapticsToggle.checked && (state===STATES.RESONANCE_COMPLETE||state===STATES.RANK_CONFIRM))optionalVibrate(navigator,25);
+  const RAF=window.__MANA_RAF||(window.__MANA_RAF={});
+  for(const key of ['particle','core','fx']){
+    if(RAF[key])cancelAnimationFrame(RAF[key]);
+    RAF[key]=null;
   }
-  document.body.dataset.state = STATES.SETTINGS;
-  // ===== 0) 全域 RAF Registry：強制清掉上一輪 =====
-  const RAF = window.__MANA_RAF || (window.__MANA_RAF = {});
-  if (RAF.particle) { cancelAnimationFrame(RAF.particle); RAF.particle = null; }
-  if (RAF.core)     { cancelAnimationFrame(RAF.core);     RAF.core = null; }
-  if (RAF.fx)       { cancelAnimationFrame(RAF.fx);       RAF.fx = null; }
-
-  /* ===== 工具 ===== */
-  const clamp01=x=>Math.max(0,Math.min(1,x));
-  const lerp=(a,b,t)=>a+(b-a)*t;
-  const rand=(min,max)=>Math.random()*(max-min)+min;
-  const randInt=(min,max)=>Math.floor(rand(min,max+1));
-  const easeOutCubic=x=>{x=clamp01(x);return 1-Math.pow(1-x,3)};
-
-  /* ===== 畫布 ===== */
   const canvas=document.getElementById('particleCanvas');
   const ctx=canvas.getContext('2d');
-
-  const fxCanvas=document.getElementById('fxCanvas');
-  const fxCtx=fxCanvas.getContext('2d');
-
-  const core=document.getElementById('coreCanvas');
-  const coreCtx=core.getContext('2d');
-  let magicField = null;
-  let magicRenderer = null;
+  const animLayerEl=document.getElementById('animLayer');
+  let portal=null,lastParticleTs=null,pagePaused=false;
 
   function getViewportSize(){
-    if(window.visualViewport){
-      return { w: window.visualViewport.width, h: window.visualViewport.height };
-    }
-    return { w: window.innerWidth, h: window.innerHeight };
+    return window.visualViewport
+      ? {w:window.visualViewport.width,h:window.visualViewport.height}
+      : {w:window.innerWidth,h:window.innerHeight};
   }
-  function syncViewportVars(){
-    const {w,h}=getViewportSize();
-    document.documentElement.style.setProperty('--viewport-w', `${w}px`);
-    document.documentElement.style.setProperty('--viewport-h', `${h}px`);
+  function releasePointer(id){
+    if(!portal)return;
+    const active=portal.pointer.id;
+    if(!portal.release(id))return;
+    if(active!==null){try{animLayerEl.releasePointerCapture(active);}catch(_){}}
   }
-  function getCoreCenter(){
-    const {w,h}=getViewportSize();
-    return {x:w/2,y:h/2};
-  }
-  function getEffectCenter(){
-    const coreCenter=getCoreCenter();
-    return {x:coreCenter.x,y:coreCenter.y};
-  }
-  let center=getEffectCenter();
-
-  function fitCanvasToScreen(){
-    const dpr=Math.min(quality.profile.dpr,Math.max(1,devicePixelRatio||1));
-    const {w,h}=getViewportSize();
-    canvas.width=Math.floor(w*dpr);
-    canvas.height=Math.floor(h*dpr);
-    canvas.style.width=w+'px';
-    canvas.style.height=h+'px';
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-  }
-  function fitFxCanvas(){
-    const dpr = Math.min(quality.profile.dpr,Math.max(1, devicePixelRatio || 1));
-    const { w, h } = getViewportSize();
-    fxCanvas.width  = Math.floor(w * dpr);
-    fxCanvas.height = Math.floor(h * dpr);
-    fxCanvas.style.width  = w + 'px';
-    fxCanvas.style.height = h + 'px';
-    fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  function fxSize(){
-    const dpr = Math.min(quality.profile.dpr,Math.max(1, devicePixelRatio || 1));
-    return { W: fxCanvas.width / dpr, H: fxCanvas.height / dpr };
-  }
-  function fitCoreCanvas(){
-    const dpr=Math.min(quality.profile.dpr,Math.max(1,devicePixelRatio||1));
-    const rect=core.getBoundingClientRect();
-    core.width=Math.floor(rect.width*dpr);
-    core.height=Math.floor(rect.height*dpr);
-    coreCtx.setTransform(dpr,0,0,dpr,0,0);
-  }
-
   function onViewportChange(){
-    syncViewportVars();
-    center=getEffectCenter();
-    document.documentElement.style.setProperty('--effect-center-y', `${center.y}px`);
-    fitCanvasToScreen();
-    fitCoreCanvas();
-    fitFxCanvas();
     const {w,h}=getViewportSize();
-    if(magicField && (magicField.width!==w || magicField.height!==h)) {
-      releasePointer();
-      magicField.resize(w,h);
+    if(w<=0||h<=0)return;
+    document.documentElement.style.setProperty('--viewport-w',w+'px');
+    document.documentElement.style.setProperty('--viewport-h',h+'px');
+    const dpr=Math.min(quality.profile.dpr,Math.max(1,devicePixelRatio||1));
+    canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);
+    canvas.style.width=w+'px';canvas.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(portal){
+      if(portal.width!==w||portal.height!==h)releasePointer();
+      // Cached gradients also depend on the canvas transform / adaptive DPR.
+      portal.resize(w,h);
     }
-  }
-  addEventListener('resize', onViewportChange);
-  addEventListener('orientationchange', onViewportChange);
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', onViewportChange);
-    window.visualViewport.addEventListener('scroll', onViewportChange);
   }
   onViewportChange();
-
-  /* ===== Pooled particles, ribbons, and pointer field ===== */
   const viewport=getViewportSize();
-  magicField=new MagicField(CONFIG.interaction,viewport.w,viewport.h);
-  magicRenderer=new MagicRenderer(ctx,magicField);
-  const standbyMagic=new StandbyMagic();
-  const resonance=new Resonance(CONFIG.resonance,CONFIG.timing);
-  const ritualRenderer=new RitualRenderer(coreCtx);
-  const elementEffects=new ElementEffects(fxCtx,CONFIG.elementReveal);
-  const revealScene=document.getElementById("elementRevealScene");
-  const revealTitle=document.getElementById("elementRevealTitle");
-
-  /* Session is the only state machine; this clock measures the current visual phase. */
-  let phaseStart=0, phaseDur=1;
-  const DUR={ COLLAPSE:CONFIG.timing.gather, EXPAND:CONFIG.timing.reveal };
-
-  function startVisualPhase(dur){
-    phaseStart=timeline.now();
-    phaseDur=dur;
+  portal=new PortalScene(ctx,viewport.w,viewport.h);
+  addEventListener('resize',onViewportChange);
+  addEventListener('orientationchange',onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',onViewportChange);
+    window.visualViewport.addEventListener('scroll',onViewportChange);
   }
-  function phaseProgress(){return clamp01((timeline.now()-phaseStart)/Math.max(1,phaseDur))}
 
   /* ===== 屬性開關設定 ===== */
   const ELEMENT_KEYS = ['火','水','風','土','光','暗'];
@@ -899,346 +748,52 @@
     renderToggles();
   });
 
-  /* ===== UI ===== */
-  const guideTextEl = document.getElementById('guideText');
-  const animLayerEl = document.getElementById('animLayer');
-
+  // Result templates stay hidden while this stage only previews the portal.
   const resultWrap=document.getElementById('resultWrap');
   const resultCard=document.getElementById('resultCard');
-  const rankBadge=document.getElementById('rankBadge');
-  const attrPill=document.getElementById('attrPill');
-  const manaValueEl=document.getElementById('manaValue');
-  const remarkEl=document.getElementById('remark');
-  const scanStatus=document.getElementById('scanStatus');
-  const rankWave=document.getElementById('rankWave');
-	const rankFlashOverlay = document.getElementById('rankFlashOverlay');
-  const backBtn = document.getElementById('backToSettingsBtn');
-  const resultActionSheet = document.getElementById('resultActionSheet');
-  const btnRetryCert = document.getElementById('btnRetryCert');
-  const btnGoHome = document.getElementById('btnGoHome');
-  // Pointer ownership belongs to MagicField; no hold/failure state exists.
-
-  // ✅【結果數字捲動動畫】狀態
-  let rollAnimRAF = null;
-  let rollToken = 0;
-
-  function stopRollAnim(){
-    rollToken++;
-    if(rollAnimRAF){ cancelAnimationFrame(rollAnimRAF); rollAnimRAF = null; }
+  const backBtn=document.getElementById('backToSettingsBtn');
+  const resultActionSheet=document.getElementById('resultActionSheet');
+  function hideResultUI(){
+    resultWrap.style.display='none';resultWrap.style.pointerEvents='none';
+    resultCard.classList.remove('show');
+    backBtn.style.display='none';
+    resultActionSheet.classList.remove('show');
+    resultActionSheet.setAttribute('aria-hidden','true');
   }
-
-function flashCardOnce(){
-  if(!rankFlashOverlay) return;
-  rankFlashOverlay.classList.remove('flash');
-  void rankFlashOverlay.offsetWidth; // reflow 讓動畫可重播
-  rankFlashOverlay.classList.add('flash');
-  setSeqTimeout(()=>rankFlashOverlay.classList.remove('flash'), 120);
-}
-
-let lastRankShown = null;
-
-function setRankUI(code){
-  if(code === lastRankShown) return;
-
-  const previousRank=lastRankShown;
-  lastRankShown = code;
-  if(previousRank && previousRank!==code && code!=='MUGGLE') {
-    const level=['E','D','C','B','A','S','SS'].indexOf(code);
-    rankWave.style.setProperty('--wave-alpha',String(0.2+level*0.1));
-    rankWave.style.setProperty('--wave-scale',String(1.2+level*0.18));
-    rankWave.classList.remove('active');void rankWave.offsetWidth;rankWave.classList.add('active');
-    audio.play('rankUp');
-    if(hapticsToggle.checked)optionalVibrate(navigator,level>=4?25:12);
-    if(level>=4)flashCardOnce();
-    setSeqTimeout(()=>{if(lastRankShown===code)rankWave.classList.remove('active');},500);
+  function resetPortal(){
+    releasePointer();portal.reset();
+    audio.stop();timeline.clear();quality.resetSamples();lastParticleTs=null;
+    hideResultUI();
   }
-
-  // ✅ 階級跨門檻：閃白一下
-  
-
-  const label = code === 'MUGGLE' ? '麻瓜' : code;
-  rankBadge.textContent = label;
-  rankBadge.setAttribute('data-rank', label);
-
-  rankBadge.className = 'rank-badge rank-' + code;
-  rankBadge.classList.remove('rank-pop');
-  void rankBadge.offsetWidth;
-  rankBadge.classList.add('rank-pop');
-  setSeqTimeout(()=>{if(lastRankShown===code)rankBadge.classList.remove('rank-pop');},280);
-}
-
-  /* ===== timers：集中管理 ===== */
-  function setSeqTimeout(fn,ms){return timeline.set(fn,ms);}
-  function clearSeqTimers(){timeline.clear();}
-
-  /* ===== FX ===== */
-  function stopFx(){
-    revealScene.hidden=true;
-    revealTitle.textContent="";
-    if (RAF.fx) { cancelAnimationFrame(RAF.fx); RAF.fx=null; }
-    const {W,H}=fxSize();
-    fxCtx.clearRect(0,0,W,H);
-  }
-
   function showSettingsPage(){
-    session.reset();
-    resetToIdleState();
-    document.body.dataset.state = STATES.SETTINGS;
-    settingsPage.style.display='flex';
-    guideTextEl.style.display='none';
-    animLayerEl.style.display='none';
-    resultCard.classList.remove('show');
-    resultWrap.style.pointerEvents='none';
-    backBtn.style.display='none';
-    backBtn.classList.remove('holding','stage1','stage2');
-    closeResultActionMenu();
-    stopFx();
-    stopRollAnim();
+    resetPortal();session.reset();document.body.dataset.state=STATES.SETTINGS;
+    settingsPage.style.display='flex';animLayerEl.style.display='none';
   }
-
-  function enterIdleScreen(){
-    settingsPage.style.display='none';
-    guideTextEl.style.display='block';
-    animLayerEl.style.display='block';
-    animLayerEl.style.opacity='1';
-
-    backBtn.style.display='none';
-    backBtn.classList.remove('holding','stage1','stage2');
-    closeResultActionMenu();
-
-    guideTextEl.innerHTML='試著操控眼前的魔力<span class="idle-divider" aria-hidden="true"></span><span class="idle-subtitle">觸碰並自由滑動</span>';
-    guideTextEl.style.display='block';
-    guideTextEl.style.opacity='0.9';
-    guideTextEl.style.animation='pulse 2s infinite ease-in-out';
-    guideTextEl.style.transform='translateX(-50%)';
-
-    resultCard.classList.remove('show');
-    resultWrap.style.pointerEvents='none';
-
-    stopRollAnim();
+  function beginRound(){
+    if(!validSettings(readSettings()))return;
+    resetPortal();session.begin(readSettings());
+    document.body.dataset.state=STATES.STANDBY;
+    settingsPage.style.display='none';animLayerEl.style.display='block';
     onViewportChange();
+    portal.draw(quality.profile);
   }
-
-  let selectedElement=null;
-
-  function resetToIdleState(){
-    audio.stop();
-    quality.resetSamples();
-    clearSeqTimers();
-    releasePointer();
-    magicField.reset();
-    standbyMagic.reset();
-    standbyMagic.place(magicField);
-    resonance.reset();
-    lastRankShown = null;
-    rankWave.classList.remove('active');
-    resultCard.classList.remove('overflow');
-    scanStatus.textContent='';remarkEl.textContent='';
-    rankBadge.classList.remove('rank-pop');
-    rankFlashOverlay.classList.remove('flash');
-    lastParticleTs = null;
-    stopFx();
-    stopRollAnim();
-    selectedElement=session.currentResult?.element ?? null;
-    startVisualPhase(1);
-    animLayerEl.style.display='block';
-    animLayerEl.style.opacity='1';
+  function canTouchMagic(){
+    return !document.hidden&&!pagePaused&&(session.state===STATES.STANDBY||session.state===STATES.INTERACTION);
   }
-
-  /* Shared center and time for the awakening seal, field and liquid core. */
-  function drawCore(){
-    if(!document.hidden) {
-      const {w,h}=getViewportSize();
-      const progress=session.state===STATES.GATHER || session.state===STATES.ELEMENT_REVEAL ? phaseProgress() : 0;
-      if(session.state===STATES.ELEMENT_REVEAL && session.currentResult.type==='magic') {
-        // The gathered core bursts briefly, then clears so each element has its own silhouette.
-        const elapsed=timeline.now()-phaseStart;
-        if(elapsed<350) ritualRenderer.draw(w,h,session.state,resonance.value,elapsed/350,magicField.time,selectedElement);
-        else coreCtx.clearRect(0,0,w,h);
-        elementEffects.draw(w,h,selectedElement,elapsed);
-      } else ritualRenderer.draw(w,h,session.state,resonance.value,progress,magicField.time,selectedElement);
-    }
-    RAF.core=requestAnimationFrame(drawCore);
-  }
-
-  let lastParticleTs=null;
-  function drawParticles(ts){
-    ts=timeline.now();
-    const dt=lastParticleTs===null ? 0 : Math.max(0,(ts-lastParticleTs)/1000);
-    lastParticleTs=ts;
-    if(!document.hidden && session.state!==STATES.SETTINGS && session.state!==STATES.RESULT &&
-       session.state!==STATES.MANA_SCAN && session.state!==STATES.RANK_CONFIRM) {
-      if(quality.observe(dt*1000))onViewportChange();
-      if(session.state===STATES.INTERACTION && !CONFIG.interactionPreview && resonance.step(dt,magicField.pointer)) completeInteraction();
-      const gathering=session.state===STATES.GATHER || session.state===STATES.ELEMENT_REVEAL;
-      const progress=session.state===STATES.ELEMENT_REVEAL ? 1 : gathering ? phaseProgress() : 0;
-      standbyMagic.step(dt,session.state===STATES.STANDBY);
-      if(session.state!==STATES.RESONANCE_COMPLETE) magicField.step(dt,progress,standbyMagic);
-      magicRenderer.draw(progress,resonance.value,quality.profile,standbyMagic);
-    }
-    RAF.particle=requestAnimationFrame(drawParticles);
-  }
-  function pausePage(){timeline.pause();audio.stop();releasePointer();lastParticleTs=null;quality.resetSamples();}
-  function resumePage(){if(document.hidden)return;timeline.resume();lastParticleTs=null;quality.resetSamples();}
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)pausePage();else resumePage();});
-  window.addEventListener('pagehide',pausePage);
-  window.addEventListener('pageshow',resumePage);
-
-  /* ===== 結果呈現 ===== */
-  const pillClass={
-    '火':'pill-fire','風':'pill-wind','水':'pill-water','土':'pill-earth',
-    '光':'pill-light','暗':'pill-dark'
-  };
-
-  function finishScan() {
-    const result=session.currentResult;
-    resultCard.classList.remove('overflow');
-    scanStatus.textContent=result.rank==='SS'?CONFIG.resultText.unknown:CONFIG.resultText.confirmed;
-    remarkEl.innerHTML=CONFIG.ranks[result.rank].note;
-    transition(STATES.RANK_CONFIRM);
-    setSeqTimeout(()=>{transition(STATES.RESULT);backBtn.style.display='block';},CONFIG.timing.rankConfirm);
-  }
-  function startRollingResult(){
-    stopRollAnim();
-    const token=++rollToken,scan=new ManaScan(session.currentResult,CONFIG.scan);
-    let elapsed=0,last=timeline.now();
-    let warned=false;
-    function frame(now){
-      if(token!==rollToken)return;
-      now=timeline.now();
-      if(document.hidden){rollAnimRAF=requestAnimationFrame(frame);return;}
-      // Cap one step so dropped/background frames cannot skip the 9999 / ???? beats.
-      elapsed+=Math.min(50,Math.max(0,now-last));last=now;
-      scan.sample(elapsed);
-      manaValueEl.textContent=String(scan.value);setRankUI(scan.rank);
-      resultCard.classList.toggle('overflow',scan.warning);
-      if(scan.warning&&!warned){warned=true;audio.play('ssWarning');}
-      scanStatus.textContent=scan.value==='????'?CONFIG.resultText.unknown:scan.warning?CONFIG.resultText.overflow:CONFIG.resultText.scanning;
-      if(scan.done){stopRollAnim();finishScan();return;}
-      rollAnimRAF=requestAnimationFrame(frame);
-    }
-    setRankUI('E');manaValueEl.textContent='1';
-    rollAnimRAF=requestAnimationFrame(frame);
-  }
-
-  function showResult(){
-    const result = session.currentResult;
-    if (!result) return;
-    stopFx();
-    transition(STATES.MANA_SCAN);
-    const elem = result.element;
-    const mana = result.mana;
-
-    guideTextEl.style.opacity = '0';
-    setSeqTimeout(() => { guideTextEl.style.display = 'none'; }, 500);
-
-    // ✅ 階級與數字交給動畫（先不直接寫死）
-    setRankUI('E');
-    manaValueEl.textContent = '1';
-
-    attrPill.textContent = elem ? elem + '屬性' : '無屬性';
-    attrPill.className = 'attr-pill ' + (pillClass[elem]||'');
-    attrPill.style.background = elem ? '' : '#847a6b';
-
-    remarkEl.textContent='';
-    scanStatus.textContent=CONFIG.resultText.scanning;
-
-    resultWrap.style.pointerEvents='auto';
-    resultCard.classList.add('show');
-    animLayerEl.style.display='none';
-
-    backBtn.style.display = 'none';
-
-    // ✅ 開始捲動（SS 會跑到 1000 後顯示 ????）
-    if (result.type === 'muggle') {
-      setRankUI('MUGGLE');
-      manaValueEl.textContent = String(mana);
-      finishScan();
-    } else startRollingResult();
-
-    // Input is accepted only in STANDBY / INTERACTION.
-  }
-
-  function beginElementReveal(){
-    if(session.currentResult.type==='muggle') {
-      // Keep the stage-3 muggle presentation unchanged; special effects are deferred.
-      setSeqTimeout(showResult,DUR.EXPAND+80);
-      return;
-    }
-    guideTextEl.style.display='none';
-    audio.play('element');
-    startVisualPhase(CONFIG.elementReveal.duration);
-    setSeqTimeout(()=>{
-      revealTitle.textContent=selectedElement+'屬性';
-      revealScene.style.setProperty('--element-color',CONFIG.elementReveal.colors[selectedElement]);
-      revealScene.hidden=false;
-    },CONFIG.elementReveal.titleAt);
-    setSeqTimeout(showResult,CONFIG.elementReveal.duration);
-  }
-
-  function startSequence(){
-    if(session.state!==STATES.STANDBY) return;
-    clearSeqTimers();
-    stopFx();
-    transition(STATES.INTERACTION);
-    lastParticleTs=timeline.now();
-    selectedElement=session.currentResult.element;
-    guideTextEl.innerHTML='魔力正在回應你';
-    guideTextEl.style.animation='none';
-  }
-
-  function completeInteraction(){
-    if(session.state!==STATES.INTERACTION)return;
-    transition(STATES.RESONANCE_COMPLETE);
-    releasePointer();
-    magicField.takeControl();
-    guideTextEl.innerHTML='魔力共鳴完成';
-    setSeqTimeout(()=>{
-      transition(STATES.GATHER);
-      startVisualPhase(DUR.COLLAPSE);
-      setSeqTimeout(()=>{
-        // Settle the same objects at the center before the existing reveal begins.
-        magicField.step(1/60,1);
-        transition(STATES.ELEMENT_REVEAL);
-        startVisualPhase(DUR.EXPAND);
-        beginElementReveal();
-      },DUR.COLLAPSE);
-    },CONFIG.timing.resonancePause);
-  }
-
-  function canTouchMagic() {
-    return session.state===STATES.STANDBY || session.state===STATES.INTERACTION;
-  }
-  function releasePointer(id) {
-    if(!magicField) return;
-    const active=magicField.pointer.id;
-    if(!magicField.release(id)) return;
-    if(active!==null) { try { animLayerEl.releasePointerCapture(active); } catch(_) {} }
-  }
-  function onMagicStart(e) {
-    if(!canTouchMagic() || (e.pointerType==='mouse' && e.button!==0)) return;
+  function onMagicStart(e){
+    if(!canTouchMagic()||(e.pointerType==='mouse'&&e.button!==0))return;
     e.preventDefault();
-    audio.unlock();
-    const rect=canvas.getBoundingClientRect();
-    if(!magicField.down(e.pointerId,(e.clientX-rect.left)*magicField.width/rect.width,
-      (e.clientY-rect.top)*magicField.height/rect.height,timeline.now())) return;
-    try { animLayerEl.setPointerCapture(e.pointerId); } catch(_) {}
-    startSequence();
-    resonance.touch();
-    audio.play('touch');
-  }
-  function onMagicMove(e) {
-    if(!canTouchMagic() || e.pointerId!==magicField.pointer.id) return;
-    e.preventDefault();
-    const rect=canvas.getBoundingClientRect();
-    const oldX=magicField.pointer.x,oldY=magicField.pointer.y;
-    if(magicField.move(e.pointerId,(e.clientX-rect.left)*magicField.width/rect.width,
-      (e.clientY-rect.top)*magicField.height/rect.height,timeline.now())) {
-      resonance.move(Math.hypot(magicField.pointer.x-oldX,magicField.pointer.y-oldY));
-      audio.play('movement');
+    if(!portal.down(e.pointerId,e.clientX,e.clientY,timeline.now()))return;
+    try{animLayerEl.setPointerCapture(e.pointerId);}catch(_){}
+    if(session.state===STATES.STANDBY){
+      session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
     }
   }
-  function onMagicEnd(e) { releasePointer(e.pointerId); }
+  function onMagicMove(e){
+    if(!canTouchMagic()||e.pointerId!==portal.pointer.id)return;
+    e.preventDefault();portal.move(e.pointerId,e.clientX,e.clientY,timeline.now());
+  }
+  function onMagicEnd(e){releasePointer(e.pointerId);}
   animLayerEl.addEventListener('pointerdown',onMagicStart,{passive:false});
   window.addEventListener('pointermove',onMagicMove,{passive:false});
   window.addEventListener('pointerup',onMagicEnd,{passive:true});
@@ -1246,80 +801,33 @@ function setRankUI(code){
   animLayerEl.addEventListener('lostpointercapture',onMagicEnd,{passive:true});
   window.addEventListener('blur',()=>releasePointer());
 
-  function goBackToSettings(){
-    clearSeqTimers();
-    stopFx();
-    stopRollAnim();
-    backBtn.style.display='none';
-    backBtn.classList.remove('holding','stage1','stage2');
-    closeResultActionMenu();
-    applyEnabledToToggles();
-    showSettingsPage();
+  function drawParticles(){
+    const ts=timeline.now();
+    const dt=lastParticleTs===null?0:Math.max(0,(ts-lastParticleTs)/1000);
+    lastParticleTs=ts;
+    if(canTouchMagic()){
+      if(dt>0&&quality.observe(dt*1000))onViewportChange();
+      portal.step(dt);portal.draw(quality.profile);
+    }
+    RAF.particle=requestAnimationFrame(drawParticles);
   }
-
-  function goBackToIdle(){
-    clearSeqTimers();
-    stopFx();
-    stopRollAnim();
-    closeResultActionMenu();
-    beginRound();
+  function pausePage(){
+    pagePaused=true;timeline.pause();audio.stop();releasePointer();lastParticleTs=null;quality.resetSamples();
   }
-
-  function openResultActionMenu(){
-    if(backBtn.style.display === 'none') return;
-    resultActionSheet.classList.add('show');
-    resultActionSheet.setAttribute('aria-hidden', 'false');
+  function resumePage(){
+    if(document.hidden)return;
+    pagePaused=false;timeline.resume();lastParticleTs=null;quality.resetSamples();
   }
-
-  function closeResultActionMenu(){
-    resultActionSheet.classList.remove('show');
-    resultActionSheet.setAttribute('aria-hidden', 'true');
-  }
-
-  backBtn.addEventListener('click', (e)=>{
-    e.preventDefault();
-    openResultActionMenu();
-  }, {passive:false});
-
-  resultActionSheet.addEventListener('click', (e)=>{
-    if(e.target === resultActionSheet) closeResultActionMenu();
-  }, {passive:true});
-
-  btnRetryCert.addEventListener('click', ()=>{
-    goBackToIdle();
-  }, {passive:true});
-
-  btnGoHome.addEventListener('click', ()=>{
-    goBackToSettings();
-  }, {passive:true});
-
-  window.addEventListener('keydown', (e)=>{
-    if(e.key === 'Escape') closeResultActionMenu();
-  });
-
-  btnStart.addEventListener('click', ()=>{
-    readTogglesToEnabled();
-    renderToggles();
-    if(!validSettings(readSettings())) return;
-    beginRound();
-  }, {passive:true});
-
-  function beginRound() {
-    audio.unlock();
-    session.begin(readSettings());
-    document.body.dataset.state = STATES.STANDBY;
-    resetToIdleState();
-    enterIdleScreen();
-  }
-
-  // 初始化
-  applyEnabledToToggles();
-  showSettingsPage();
-
-  // 啟動 loop
-  RAF.core = requestAnimationFrame(drawCore);
-  RAF.particle = requestAnimationFrame(drawParticles);
-
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pausePage();else resumePage();});
+  window.addEventListener('pagehide',pausePage);
+  window.addEventListener('pageshow',resumePage);
+  document.getElementById('btnRetryCert').addEventListener('click',beginRound,{passive:true});
+  document.getElementById('btnGoHome').addEventListener('click',showSettingsPage,{passive:true});
+  btnStart.addEventListener('click',()=>{
+    readTogglesToEnabled();renderToggles();beginRound();
+  },{passive:true});
+  applyEnabledToToggles();showSettingsPage();
+  RAF.particle=requestAnimationFrame(drawParticles);
 })();
 </script>
 </body>

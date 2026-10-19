@@ -17,7 +17,11 @@
       this.trails = Array.from({length:config.trails}, () => ({
         x:0,y:0,vx:0,vy:0,life:0,width:0,stroke:0,gx:0,gy:0,gvx:0,gvy:0
       }));
-      this.touchParticles=Array.from({length:192},()=>({x:0,y:0,vx:0,vy:0,life:0,seed:0,gx:0,gy:0,gvx:0,gvy:0}));
+      this.touchParticles=Array.from({length:config.touchParticles??96},()=>({x:0,y:0,vx:0,vy:0,life:0,seed:0,gx:0,gy:0,gvx:0,gvy:0}));
+      this.mistClouds=Array.from({length:config.mistClouds??24},(_,i)=>({seed:random()*TAU,u:0.08+((i*.6180339)%1)*.84,v:0.07+((i*.754877)%1)*.86,x:0,y:0,vx:0,vy:0}));
+      [...this.particles,...this.touchParticles].forEach((q,i)=>{
+        if(i%20===0){q.tail=new Float32Array(256);q.tailHead=0;q.tailCount=0;}
+      });
       this.reset();
     }
     reset() {
@@ -26,6 +30,8 @@
       p.vx=p.vy=p.speed=p.strength=p.lastTime=p.angle=p.turn=p.still=0; p.hasDirection=false;
       this.time=0; this.trailHead=0; this.stroke=0; this.emission=0; this.gathering=false;
       this.feedSerial=0;
+      for(const q of this.mistClouds){q.x=q.u*this.width;q.y=q.v*this.height;q.vx=q.vy=0;}
+      for(const q of [...this.particles,...this.touchParticles])if(q.tail)q.tailCount=0;
       this.touchHead=0;for(const q of this.touchParticles)q.life=0;
       this.trailBudget=0;this.trailX=p.x;this.trailY=p.y;
       for(const t of this.trails) t.life=0;
@@ -41,6 +47,10 @@
     }
     resize(width,height) {
       const sx=width/this.width, sy=height/this.height;
+      for(const q of this.mistClouds){q.x*=sx;q.y*=sy;q.vx*=sx;q.vy*=sy;}
+      for(const q of [...this.particles,...this.touchParticles])if(q.tail){
+        for(let i=0;i<q.tail.length;i+=2){q.tail[i]*=sx;q.tail[i+1]*=sy;}
+      }
       for(const q of this.touchParticles){q.x*=sx;q.y*=sy;q.vx*=sx;q.vy*=sy;q.gx*=sx;q.gy*=sy;q.gvx*=sx;q.gvy*=sy;}
       for(const q of this.particles) { q.x*=sx;q.px*=sx;q.y*=sy;q.py*=sy;q.vx*=sx;q.vy*=sy;q.gx*=sx;q.gy*=sy;q.gvx*=sx;q.gvy*=sy; }
       for(const t of this.trails) { t.x*=sx;t.y*=sy;t.vx*=sx;t.vy*=sy;t.gx*=sx;t.gy*=sy;t.gvx*=sx;t.gvy*=sy; }
@@ -65,6 +75,16 @@
       if(id!==p.id || p.id===null || this.gathering || !Number.isFinite(x+y+now)) return false;
       x=clamp(x,0,this.width);y=clamp(y,0,this.height);
       const dx=x-p.x,dy=y-p.y, distance=Math.hypot(dx,dy);
+      // Sweep the whole pointer segment so fast gestures cannot skip a cloud.
+      if(distance>0.5)for(const q of this.mistClouds){
+        const k=clamp(((q.x-p.x)*dx+(q.y-p.y)*dy)/(distance*distance),0,1);
+        let ox=q.x-(p.x+dx*k),oy=q.y-(p.y+dy*k),d=Math.hypot(ox,oy);
+        if(d>=85)continue;
+        if(d<1){ox=-dy/distance;oy=dx/distance;d=1;}
+        const force=(1-d/85)*Math.min(distance,50)*5;
+        q.vx+=ox/d*force;q.vy+=oy/d*force;
+        const speed=Math.hypot(q.vx,q.vy);if(speed>180){q.vx*=180/speed;q.vy*=180/speed;}
+      }
       const elapsed=clamp((now-p.lastTime)/1000,0,0.1);
       const dt=clamp(elapsed,0.008,0.1);
       this.trailBudget=Math.min(14,this.trailBudget+elapsed*144);
@@ -126,12 +146,21 @@
         const n=this.touchHead++,q=this.touchParticles[n%this.touchParticles.length],a=n*2.399963;
         q.seed=a;q.x=x+Math.cos(a)*7;q.y=y+Math.sin(a)*7;
         q.vx=vx+Math.cos(a)*55;q.vy=vy+Math.sin(a)*55;q.life=1.25;
+        if(q.tail)q.tailCount=0;
       }
     }
     step(seconds, gather=0, standby=null) {
       const dt=clamp(seconds,0,0.033);
       if(!dt) return;
       this.time+=dt;
+      if(!this.gathering)for(const q of this.mistClouds){
+        const t=this.time,s=q.seed;
+        const hx=q.u*this.width+Math.sin(t*.17+s)*30+Math.sin(t*.31+s*2)*12;
+        const hy=q.v*this.height+Math.cos(t*.13+s)*35+Math.sin(t*.27+s*3)*15;
+        q.vx=(q.vx+(hx-q.x)*.3*dt)*Math.exp(-dt*1.3);
+        q.vy=(q.vy+(hy-q.y)*.3*dt)*Math.exp(-dt*1.3);
+        q.x=clamp(q.x+q.vx*dt,-30,this.width+30);q.y=clamp(q.y+q.vy*dt,-30,this.height+30);
+      }
       const p=this.pointer, held=p.id!==null && !this.gathering;
       p.strength+=(Number(held)-p.strength)*(1-Math.exp(-dt*(held?11:3.8)));
       p.vx*=Math.exp(-dt*4);p.vy*=Math.exp(-dt*4);
@@ -166,6 +195,7 @@
               const speed=220+q.depth*100;
               q.vx=dx/d*speed;q.vy=dy/d*speed;q.px=q.x;q.py=q.y;
               q.feedAge=q.feedDwell=q.feedFade=0;
+              if(q.tail)q.tailCount=0;
             }
           }else q.feedAlpha=Math.min(1,q.feedAlpha+dt*2);
         }else{
@@ -206,6 +236,7 @@
         q.x+=q.vx*dt*followSpeed;q.y+=q.vy*dt*followSpeed;
         if(q.x< -40 || q.x>this.width+40){q.x=clamp(q.x,-40,this.width+40);q.vx*=-0.45;}
         if(q.y< -40 || q.y>this.height+40){q.y=clamp(q.y,-40,this.height+40);q.vy*=-0.45;}
+        this.recordTail(q);
       }
       for(const q of this.touchParticles){
         if(q.life<=0)continue;
@@ -219,15 +250,22 @@
         }
         const drag=Math.exp(-dt*4);q.vx*=drag;q.vy*=drag;
         q.x+=q.vx*dt*1.5;q.y+=q.vy*dt*1.5;
+        this.recordTail(q);
       }
       for(const t of this.trails) {
         if(t.life<=0) continue;
         if(this.gathering) { this.gatherPoint(t,gather,dt);continue; }
         t.life=Math.max(0,t.life-dt);
-        t.vx*=Math.exp(-dt*2.5);t.vy*=Math.exp(-dt*2.5);
-        t.x+=t.vx*dt+Math.sin(this.time*2+t.stroke)*dt*5;
-        t.y+=t.vy*dt-dt*6;
+        // Keep drawn paths anchored so letters and shapes remain readable.
+        // Fingertip particles supply the moving sparkle above this persistent ink.
       }
+    }
+    recordTail(q){
+      if(!q.tail)return;
+      const last=(q.tailHead+127)%128;
+      if(q.tailCount&&Math.hypot(q.x-q.tail[last*2],q.y-q.tail[last*2+1])<3)return;
+      q.tail[q.tailHead*2]=q.x;q.tail[q.tailHead*2+1]=q.y;
+      q.tailHead=(q.tailHead+1)%128;q.tailCount=Math.min(128,q.tailCount+1);
     }
   }
   root.MagicField=MagicField;

@@ -15,6 +15,11 @@
       const fogCtx=this.fog.getContext('2d'),fog=fogCtx.createRadialGradient(61,59,0,64,64,64);
       fog.addColorStop(0,'#9d93b350');fog.addColorStop(0.36,'#82799430');fog.addColorStop(0.72,'#69658310');fog.addColorStop(1,'#69658300');
       fogCtx.fillStyle=fog;fogCtx.fillRect(0,0,128,128);
+      this.mist=createCanvas();this.mist.width=this.mist.height=128;
+      const m=this.mist.getContext('2d'),haze=m.createRadialGradient(64,64,0,64,64,64);
+      haze.addColorStop(0,'#725cdb90');haze.addColorStop(.3,'#535bd66a');
+      haze.addColorStop(.65,'#3447a82c');haze.addColorStop(1,'#25378000');
+      m.fillStyle=haze;m.fillRect(0,0,128,128);
     }
     draw(gather=0,resonance=0,quality=null,standby=null) {
       const c=this.ctx,f=this.field;
@@ -22,6 +27,8 @@
       const fade=f.gathering?Math.max(0,1-Math.pow(gather,5)):1;
       const quiet=standby?standby.weight:0;
       if(quiet>0)this.nebula(standby,quality);
+      this.drawMist(fade,quiet,quality);
+      c.globalCompositeOperation='lighter';
       // Uneven translucent clouds behind the dust; no rigid central disc.
       for(let i=0;i<(quality&&!quality.glow?1:3);i++) {
         const collapse=f.gathering?1-gather*gather:1;
@@ -29,24 +36,27 @@
         c.globalAlpha=(0.08+resonance*0.08)*fade*(1-quiet);c.drawImage(this.sprites[i],x-r,y-r,r*2,r*2);
       }
       const trails=f.trails;
+      // Preserve the original additive glow and ribbon, with 25% less light per sample.
+      const trailBrightness=0.75;
       for(let i=0;i<trails.length;i++) {
         if(quality&&i%quality.trailStep)continue;
         const t=trails[(f.trailHead+i)%trails.length];if(t.life<=0)continue;
-        const life=t.life/f.config.trailLife,width=t.width*(0.5+life*0.8);
-        c.globalAlpha=life*life*(0.25+resonance*0.1)*fade;
-        c.drawImage(this.sprites[t.stroke%3],t.x-width*2,t.y-width*2,width*4,width*4);
+        const life=Math.min(1,t.life/(f.config.trailLife/2)),width=t.width*(0.5+life*0.8);
+        c.globalAlpha=life*life*(0.25+resonance*0.1)*fade*trailBrightness;
+        c.drawImage(this.sprites[t.stroke%3],t.x-width,t.y-width,width*2,width*2);
         // Three varying-width translucent layers make a liquid ribbon, not a plain line.
         const previous=trails[(f.trailHead+i+trails.length-1)%trails.length];
         if(i && previous.life>0 && previous.stroke===t.stroke && Math.hypot(t.x-previous.x,t.y-previous.y)<100) {
           c.lineCap='round';c.strokeStyle=this.colors[t.stroke%3];
           for(let layer=quality&&!quality.glow?1:0;layer<3;layer++) {
-            c.globalAlpha=life*life*(layer===2?0.3:0.045)*fade;
+            c.globalAlpha=life*life*(layer===2?0.3:0.045)*fade*trailBrightness;
             c.lineWidth=width*(layer===0?1.3:layer===1?0.48:0.07);
             c.beginPath();c.moveTo(previous.x,previous.y);
             c.quadraticCurveTo((previous.x+t.x)/2-t.vy*0.012,(previous.y+t.y)/2+t.vx*0.012,t.x,t.y);c.stroke();
           }
         }
       }
+      c.globalCompositeOperation='lighter';
       for(let index=0;index<f.particles.length;index++) {
         const q=f.particles[index];
         if(quality&&q.kind===0&&index%quality.particleStep)continue;
@@ -55,6 +65,7 @@
         c.globalAlpha*=1-quiet*(q.kind===1?(index%4===0?0.15:0.45):q.kind===2?0.55:0.08);
         c.globalAlpha*=q.idleAlpha??1;
         c.globalAlpha*=q.feedAlpha??1;
+        if(index%20===0)this.meteorTail(q,this.colors[q.tint],f.pointer.strength);
         if(q.kind===2) {const r=22+q.depth*20;c.drawImage(this.sprites[q.tint],q.x-r,q.y-r,r*2,r*2);continue;}
         const r=(q.kind===1?5+q.depth*5:1.4+q.depth*2.1)*(1+quiet*(q.kind===0?0.9:0.25));
         c.drawImage(this.sprites[q.tint],q.x-r,q.y-r,r*2,r*2);
@@ -65,20 +76,58 @@
         if(q.kind===1) {
           c.fillStyle=this.colors[q.tint];c.beginPath();
           const size=(1.8+q.depth*1.8)*(1+quiet*0.15);
-          c.moveTo(q.x,q.y-size*2);c.lineTo(q.x+size*0.5,q.y);c.lineTo(q.x,q.y+size*2);c.lineTo(q.x-size*0.5,q.y);c.closePath();c.fill();
-        }
-        if(Math.hypot(q.vx,q.vy)>140) {
-          c.globalAlpha*=0.25;c.strokeStyle=this.colors[q.tint];c.lineWidth=q.depth;
-          c.beginPath();c.moveTo(q.x,q.y);c.lineTo(q.x-q.vx*0.035,q.y-q.vy*0.035);c.stroke();
+          c.arc(q.x,q.y,size*0.55,0,Math.PI*2);c.fill();
         }
       }
       for(let i=0;i<(f.touchParticles?.length??0);i++){
         const q=f.touchParticles[i];if(q.life<=0)continue;
-        const life=Math.min(1,q.life/0.35),r=4+(i%3)*1.5;
-        c.globalAlpha=life*0.75*fade;c.drawImage(this.sprites[i%3],q.x-r,q.y-r,r*2,r*2);
-        c.fillStyle=this.colors[i%3];c.beginPath();c.arc(q.x,q.y,0.9+(i%3)*0.25,0,Math.PI*2);c.fill();
+        const life=Math.max(0,Math.min(1,q.life/1.25)),size=Math.sqrt(life),r=(3+(i%3))*size;
+        c.globalAlpha=life*life*0.75*fade;
+        if((f.particles.length+i)%20===0)this.meteorTail(q,this.colors[i%3],f.pointer.strength);
+        c.drawImage(this.sprites[i%3],q.x-r,q.y-r,r*2,r*2);
+        c.fillStyle=this.colors[i%3];c.beginPath();c.arc(q.x,q.y,(0.7+(i%3)*0.2)*size,0,Math.PI*2);c.fill();
       }
       c.restore();
+    }
+    drawMist(fade,quiet,quality){
+      const c=this.ctx,f=this.field;
+      c.save();c.globalCompositeOperation='source-over';
+      // Independent atmospheric clouds respond to swipes, not particle attraction.
+      for(const q of f.mistClouds){
+        const t=f.time,s=q.seed;
+        const envelope=fade*(0.32+0.06*Math.sin(t*.7+s))*(1-quiet*.25);
+        for(let l=0;l<(quality&&quality.name==='LOW'?2:3);l++){
+          const a=s+l*2.1+t*.19;
+          const x=q.x+Math.cos(a)*13,y=q.y+Math.sin(a*1.2)*11;
+          const rx=27+8*Math.sin(t*.45+s+l),ry=20+6*Math.cos(t*.36+s-l);
+          c.globalAlpha=envelope*(l===0?1:.65);
+          c.drawImage(this.mist,x-rx,y-ry,rx*2,ry*2);
+        }
+      }
+      c.restore();
+    }
+    meteorTail(q,color,attraction){
+      if(this.field.gathering||attraction<0.02)return;
+      const speed=Math.hypot(q.vx,q.vy);if(speed<1)return;
+      const c=this.ctx,alpha=c.globalAlpha;
+      const length=Math.min(48,5+speed*0.075)*attraction*9;
+      if(!q.tail||q.tailCount<2)return;
+      c.strokeStyle=color;c.lineCap='round';
+      // Follow sampled travel history, so the tail bends instead of rotating as a rod.
+      let x=q.x,y=q.y,travel=0;
+      for(let i=0;i<q.tailCount&&travel<length;i++){
+        const slot=(q.tailHead-1-i+128)%128;
+        let nx=q.tail[slot*2],ny=q.tail[slot*2+1];
+        const distance=Math.hypot(nx-x,ny-y);if(distance<0.01)continue;
+        const portion=Math.min(1,(length-travel)/distance);
+        nx=x+(nx-x)*portion;ny=y+(ny-y)*portion;
+        const a=travel/length;
+        c.globalAlpha=alpha*(1-a)*(1-a)*0.55;
+        c.lineWidth=(0.8+(q.depth??0.6))*(1-a*0.85);
+        c.beginPath();c.moveTo(x,y);c.lineTo(nx,ny);c.stroke();
+        travel+=distance*portion;x=nx;y=ny;
+      }
+      c.globalAlpha=alpha;
     }
     nebula(idle,quality){
       const c=this.ctx,f=this.field,t=idle.time,w=idle.weight;
@@ -91,8 +140,16 @@
         const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r*(1.035+0.012*Math.sin(t*0.37));
         if(j===0)c.moveTo(x,y);else c.lineTo(x,y);
       }
-      c.closePath();c.globalAlpha=w*0.22;c.fillStyle='#65617e';c.fill();
-      c.globalAlpha=w*0.12;c.strokeStyle='#b5b3ce';c.lineWidth=1.2;c.stroke();c.clip();
+      c.closePath();c.globalAlpha=w*0.85;c.fillStyle='#291065';c.fill();
+      c.globalAlpha=w*0.75;c.strokeStyle='#973eff';c.lineWidth=2;c.stroke();c.clip();
+      const coreKey=`${cx},${cy},${radius}`;
+      if(this.coreKey!==coreKey){
+      const core=c.createRadialGradient(cx,cy,0,cx,cy,radius);
+      core.addColorStop(0,'#fff2ff');core.addColorStop(.12,'#ffb5ff');core.addColorStop(.28,'#e33dff');
+      core.addColorStop(.52,'#7321d7');core.addColorStop(.72,'#461389');core.addColorStop(.9,'#883bdf');core.addColorStop(1,'#391369');
+      this.coreGradient=core;this.coreKey=coreKey;
+      }
+      c.globalAlpha=w*(0.85+Math.sin(t*.65)*.06);c.fillStyle=this.coreGradient;c.fillRect(cx-radius,cy-radius,radius*2,radius*2);
       const count=quality&&quality.name==='LOW'?3:5;
       for(let i=0;i<count;i++){
         const a=i*2.399+t*(0.045+i*0.009),spread=radius*0.52;
@@ -112,7 +169,7 @@
           if(j===0)c.moveTo(x,y);else c.lineTo(x,y);
         }
         c.globalAlpha=w*(0.09+0.025*Math.sin(t*0.39+i));
-        c.strokeStyle=i?'#949ab5':'#c0bbd0';c.lineWidth=2.4;c.lineCap='round';c.stroke();
+        c.strokeStyle=i?'#7045ed':'#e087ff';c.lineWidth=2.4;c.lineCap='round';c.stroke();
       }
       // Extremely faint short internal filaments; never a complete orbit/radar ring.
       const event=idle.event===2?Math.sin(Math.PI*Math.min(1,idle.age/2.6)):0;

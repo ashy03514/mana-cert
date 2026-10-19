@@ -11,7 +11,11 @@ assert.ok(f.particles.some((p,i)=>Math.hypot(p.x-idle.particles[i].x,p.y-idle.pa
 const positions=f.particles.map(p=>[p.x,p.y]);
 f.release(1);advance(f,0.1);
 assert.ok(f.particles.some((p,i)=>Math.hypot(p.x-positions[i][0],p.y-positions[i][1])>2),'inertia continues after release');
-advance(f,3);assert.ok(f.pointer.strength<0.001);assert.ok(f.trails.every(t=>t.life===0),'trails dissipate');
+advance(f,2);assert.ok(f.pointer.strength<0.001);
+assert.ok(f.trails.some(t=>t.life>0),'drawn paths remain visible after two seconds');
+const ink=f.trails.filter(t=>t.life>0).map(t=>[t,t.x,t.y]);
+advance(f,0.5);assert.ok(ink.every(([t,x,y])=>t.x===x&&t.y===y),'drawn shapes keep their position');
+advance(f,config.trailLife);assert.ok(f.trails.every(t=>t.life===0),'trails eventually dissipate');
 // Holding a still finger brings surrounding dust inward, without snapping it to the cursor.
 const still=make();still.down(1,240,400,0);
 const near=still.particles.filter(p=>p.kind===0&&Math.hypot(p.x-240,p.y-400)<100);
@@ -77,5 +81,5 @@ f.reset();f.down(1,20,20,0);f.release();f.down(2,25,25,10);
 renderer.draw();assert.equal(curves,0,'separate touches do not connect');
 f.move(2,80,80,100);
 for(let i=0;i<100;i++){f.step(1/60);renderer.draw();}
-assert.equal(canvases,4,'three glow textures and one fog texture allocated only once');assert.ok(draws>0&&curves>0);
+assert.equal(canvases,5,'three glow textures, core fog and blue mist allocated only once');assert.ok(draws>0&&curves>0);
 console.log('Stage 2 checks passed: forces, inertia, circles, flings, retouch, takeover, 30-round pools, resize and renderer.');

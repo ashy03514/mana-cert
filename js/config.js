@@ -3,6 +3,18 @@
   'use strict';
   const CONFIG = {
     interactionPreview: true,
+    // Portal baseline angular speeds (radians/second); individual clouds vary around these.
+    portalMotion: {
+      idleSpeed:0.075, maxSpeed:Math.PI*2,
+      accelerationSeconds:2, decelerationSeconds:2,
+      mistRateMin:0.5, mistRateMax:1.65, mistDrift:0.10
+    },
+    portalSparkles: {
+      maxCount:5, idleLimit:3,
+      idleInterval:0.55, activeInterval:0.22,
+      lifeMin:0.8, lifeMax:1.4,
+      sizeMin:8, sizeMax:20, rareSize:24
+    },
     muggleChance: 0.08,
     elementWeights: { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 },
     normalRanks: { SS:0.04, S:0.10, A:0.20, B:0.20, C:0.20, D:0.20, E:0.06 },
@@ -23,8 +35,8 @@
       colors:{火:'#ff965a',水:'#83d8ff',風:'#91ecc7',土:'#e4ba73',光:'#fff0b6',暗:'#c599f2'} },
     resonance: { passiveRate:0.10, heldRate:0.09, distanceRate:0.00022,
       distanceCap:0.35, touchGain:0.035, touchCap:0.105, turnRate:0.04 },
-    interaction: { particles:680, followSpeed:1.5, trails:192, dprMax:1.75,
-      fieldRadius:190, maxSpeed:1250, trailLife:1.25 },
+    interaction: { particles:354, touchParticles:96, mistClouds:24, followSpeed:1.5, trails:1024, dprMax:1.75,
+      fieldRadius:190, maxSpeed:1250, trailLife:3 },
     scan: { duration:2400, ssNormalDuration:1800, ssRushDuration:900,
       ssLimitHold:180, ssUnknownHold:220, ssStart:1000, ssLimit:9999 },
     resultText: { scanning:'魔力測定中', confirmed:'鑑定完成',

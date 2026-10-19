@@ -49,5 +49,5 @@ let textures=0,draws=0,strokes=0;const ctx=new Proxy({}, {set:(target,key,value)
 }});
 const renderer=new MagicRenderer(ctx,field,()=>{textures++;return {getContext:()=>ctx};});
 idle.reset();for(let i=0;i<120;i++){idle.step(1/60,true);renderer.draw(0,0,{name:'LOW',glow:false,particleStep:2,trailStep:2},idle);}
-assert.equal(textures,4);assert.ok(draws>0&&strokes>0,'fog and quiet filaments exist at LOW quality');
+assert.equal(textures,5);assert.ok(draws>0&&strokes>0,'fog and quiet filaments exist at LOW quality');
 console.log('Standby checks passed: five spaced events, multi-scale motion, stable pools, touch continuity, quiet fog at LOW quality.');
