@@ -827,7 +827,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="130" title="目前載入頁面的版本">目前版本 v130</span>
+        <span id="appVersion" data-version="131" title="目前載入頁面的版本">目前版本 v131</span>
       </div>
     </div>
     </div>
@@ -937,6 +937,7 @@
 <script src="./js/probability-settings.js"></script>
 <script src="./js/cert-settings.js"></script>
 <script src="./js/rank-lettering.js"></script>
+<script src="./js/result-layout.js"></script>
 <script src="./js/result-system.js"></script>
 <script src="./js/ribbon-renderer.js"></script>
 <script src="./js/finger-trails.js"></script>
@@ -1502,7 +1503,7 @@
   function lightFeatherPlan(w,h,{formal=false,direct=false}={}){
     const active=activeMaterialRenderer(),result=formal?session.currentResult:null;
     const key=[w,h,direct?'material':formal?'formal':'flow',lightPreviewRank,
-      result?.rank,result?.mana,direct?0:flow.awakeningDuration,direct?0:flow.formationDuration].join(':');
+      result?.rank,result?.mana,resultButtonTop,direct?0:flow.awakeningDuration,direct?0:flow.formationDuration].join(':');
     const cached=lightFeatherPlans.get(active);
     if(cached?.key===key)return cached.bursts;
     let bursts;
@@ -1517,7 +1518,7 @@
       const firstStart=Math.max(.18,.12/speed),firstEnd=Math.max(formation,.55/speed);
       const initialLayout=materialTime=>{
         const shift=formal&&materialTime>formation?LightRankGrowth.scan(materialTime-formation,result).shift:0;
-        return active.layout(w,h,formal?LightRankGrowth.layout(w,h,shift).box:lightPreviewBox(w,h));
+        return active.layout(w,h,formal?fitResultLayout(w,h,LightRankGrowth.layout(w,h,shift),'light').box:lightPreviewBox(w,h));
       };
       bursts=[LightFeathers.wingBurst({kind:rank,rank,from:rank,
         at:flow.awakeningDuration+firstStart,duration:firstEnd-firstStart,evolving:false,image:active.images[rank],
@@ -1537,7 +1538,7 @@
         for(const event of LightRankGrowth.timeline(result)){
           bursts.push(LightFeathers.wingBurst({kind:event.to,rank:event.to,from:event.from,
             at:base+event.at,duration:event.duration,evolving:true,image:active.images[event.to],
-            layoutAt:delay=>active.layout(w,h,LightRankGrowth.layout(w,h,LightRankGrowth.scan(event.at+delay,result).shift).box),
+            layoutAt:delay=>active.layout(w,h,fitResultLayout(w,h,LightRankGrowth.layout(w,h,LightRankGrowth.scan(event.at+delay,result).shift),'light').box),
             poseAt:delay=>{
               const pose=LightRankGrowth.sample(event.at+delay,result,formation);
               return {time:pose.time,progress:pose.transition.progress};
@@ -1621,14 +1622,7 @@
   }
   function drawFireScan(sample,layout){
     const n=layout.numbers;
-    // Double the approved rank and fill the lower result area. Leave a dedicated
-    // gap for the bottom action star, including its device safe-area inset.
-    const {h}=getViewportSize(),effectBottom=flowPreview?h-174:resultButtonTop-24;
-    const rankSize=n.fontSize*2.4,effectPadding=Math.max(24,rankSize*.32);
-    const valueY=Math.min(n.y-12,effectBottom-effectPadding*2-n.fontSize*.18-12-rankSize);
-    const rankTop=valueY+n.fontSize*.18+effectPadding+12;
-    const spare=Math.max(0,effectBottom-effectPadding-rankTop-rankSize);
-    const rankY=rankTop+spare*.5+rankSize*.82;
+    const {rankSize,valueY,rankY,titleY}=layout.composition;
     fireScanReadout.setAttribute('data-element',flow.element);
     fireScanReadout.setAttribute('aria-label',ElementMaterialRenderer.names[flow.element]+'屬性魔力鑑定');
     revealTitle.setAttribute('data-element',flow.element);
@@ -1644,7 +1638,23 @@
     RankLettering.apply(fireScanRank,sample.rank,flow.elapsed);
     fireScanLabel.textContent='';
     revealTitle.classList.add('fireScanTitle');
-    revealTitle.style.left=n.x+'px';revealTitle.style.top=(valueY-n.fontSize*.82-16)+'px';
+    revealTitle.style.left=n.x+'px';revealTitle.style.top=titleY+'px';
+  }
+  function fitResultLayout(w,h,base,element,referenceBox=base.box){
+    return ResultLayout.compose(w,h,base,{element,referenceBox,buttonTop:resultButtonTop,preview:flowPreview});
+  }
+  function formalMaterialLayout(w,h,shift=0,windProfile,earthProfile){
+    const element=flow.element;
+    if(element==='light'||element==='dark'){
+      const base=(element==='light'?LightRankGrowth:DarkRankGrowth).layout(w,h,shift);
+      return fitResultLayout(w,h,base,element);
+    }
+    if(element==='wind'){
+      const renderer=activeMaterialRenderer(),base=renderer.scanLayout(w,h,windProfile||WindRankEffects.forRank('E'),shift);
+      return fitResultLayout(w,h,base,element,renderer.scanLayout(w,h,WindRankEffects.forRank('SS'),shift).box);
+    }
+    if(element==='earth')return fitResultLayout(w,h,activeMaterialRenderer().scanLayout(w,h,earthProfile,shift),element);
+    return fitResultLayout(w,h,FireScanTransition.layout(w,h,materialRenderer.layout(w,h),shift,{preview:flowPreview}),element);
   }
   function drawRevealFlow(){
     const {w,h}=getViewportSize(),state=flow.state;
@@ -1666,11 +1676,10 @@
       :LightRankGrowth.initial(flow.materialFrame?.time||0)):undefined;
     const darkEffects=formalDark?(scan?DarkRankGrowth.sample(flow.elapsed,session.currentResult,flow.formationDuration)
       :DarkRankGrowth.initial(flow.materialFrame?.time||0)):undefined;
-    const scanLayout=scan?(formalDark?DarkRankGrowth.layout(w,h,scan.shift):formalLight?LightRankGrowth.layout(w,h,scan.shift)
-      :formalEarth?activeMaterialRenderer().scanLayout(w,h,earthEffects.profile,scan.shift)
-      :formalWind?activeMaterialRenderer().scanLayout(w,h,windProfile,scan.shift)
-      :FireScanTransition.layout(w,h,materialRenderer.layout(w,h),scan.shift,{preview:flowPreview})):null;
-    const box=scanLayout?.box||(formalDark?DarkRankGrowth.layout(w,h,0).box:formalLight?LightRankGrowth.layout(w,h,0).box:(usesLightPreview()||usesDarkPreview())?lightPreviewBox(w,h):usesEarthMaterial()?activeMaterialRenderer().layout(w,h):usesWindMaterial()?activeMaterialRenderer().layout(w,h,windProfile):materialRenderer.layout(w,h));
+    const presentation=(formalReveal&&flow.element!==null)||(flowPreview&&['fire','water'].includes(flow.element))
+      ?formalMaterialLayout(w,h,scan?.shift||0,windProfile,earthEffects?.profile):null;
+    const scanLayout=scan?presentation:null;
+    const box=presentation?.box||((usesLightPreview()||usesDarkPreview())?lightPreviewBox(w,h):usesEarthMaterial()?activeMaterialRenderer().layout(w,h):usesWindMaterial()?activeMaterialRenderer().layout(w,h,windProfile):materialRenderer.layout(w,h));
     const firePower=flow.element==='fire'?(scan?.power||0):undefined;
     const waterPower=flow.element==='water'?(scan?.power||0):undefined;
     // Zooming the wind's framing must not move the existing gathering point.
