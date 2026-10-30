@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#eee1bb">
+  <title>六翼聖光 · 光屬性 SS 美術樣板</title>
+  <style>
+    :root { color-scheme:light; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:#584321; background:#eee1bb; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:280px; min-height:100svh; background:radial-gradient(ellipse at 48% 26%,#fffef4,transparent 60%),linear-gradient(#e6d29b,#f5eedb 70%,#eee0bb); }
+    button,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button { font:inherit; cursor:pointer; }
+    button:focus-visible,a:focus-visible { outline:2px solid #806023; outline-offset:4px; }
+    button:hover { filter:brightness(1.04); }
+    #holy { display:block; position:fixed; z-index:0; inset:0; width:100vw; height:100vh; pointer-events:none; }
+    .shell { position:relative; z-index:1; max-width:1160px; margin:auto; padding:max(12px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom)); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; position:relative; z-index:1; min-height:40px; }
+    .eyebrow { color:#74613d; font-size:10px; letter-spacing:.14em; }
+    .back { padding:9px 12px; border:1px solid #9e7c3a45; border-radius:10px; background:#fffaf0cf; color:#604b28; font-size:12px; text-decoration:none; white-space:nowrap; box-shadow:0 3px 12px #8766300a; }
+    main { display:grid; justify-items:center; }
+    .stage { position:relative; width:calc(100vw - 8px); max-width:620px; height:min(53svh,570px); min-height:260px; margin:0 -14px; }
+    .error { position:absolute; inset:26% 10%; margin:0; padding:22px; border:1px solid #a582454d; border-radius:14px; background:#fff9eaed; color:#634a26; font-size:13px; line-height:1.8; }
+    .error[hidden] { display:none; }
+    .panel { width:min(100%,400px); text-align:center; }
+    .rank { display:inline-flex; align-items:center; gap:13px; color:#886621; font-family:Georgia,serif; font-size:12px; letter-spacing:.28em; }
+    .rank::before,.rank::after { content:""; width:31px; height:1px; background:linear-gradient(90deg,transparent,#94702f80); }
+    .rank::after { rotate:180deg; }
+    h1 { font-family:Georgia,"Noto Serif TC","Times New Roman",serif; font-size:clamp(28px,7vw,38px); font-weight:500; letter-spacing:.18em; margin:8px 0 10px; padding-left:.18em; color:#584321; text-shadow:0 1px 9px #fff8df88; }
+    .description { color:#746143; font-size:12px; line-height:1.9; margin:0 0 18px; }
+    .controls { padding:14px; border:1px solid #a6894b40; border-radius:17px; background:linear-gradient(140deg,#fffdf5de,#f8eed5e8); box-shadow:0 14px 40px #73562312,inset 0 1px 0 #fffdf6; text-align:left; }
+    .playback { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .control { min-height:42px; border:1px solid #b394574d; border-radius:9px; background:#fffdf5c9; color:#634d28; font-size:13px; font-weight:600; }
+    .control.primary { background:linear-gradient(110deg,#ad8845,#8b672c); border-color:#987335; color:#fffaf0; box-shadow:0 3px 10px #89612814,inset 0 1px 0 #e8d4a44d; }
+    .adjustments { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:14px; margin-top:12px; }
+    .label { color:#78613b; font-size:11px; }
+    .speeds { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .speed { border:1px solid transparent; border-radius:7px; background:transparent; color:#7b6848; padding:7px 8px; font-size:12px; }
+    .speed[aria-pressed="true"] { color:#654817; background:#b28a3917; border-color:#a481384d; }
+    .phases { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; padding-top:12px; margin-top:11px; border-top:1px solid #ad90492b; }
+    .phase { min-height:35px; padding:5px 3px; border:1px solid #b3945740; border-radius:7px; background:#fffbefb3; color:#765c31; font-size:11px; }
+    .phase[aria-pressed="true"] { color:#634414; border-color:#a57b3780; background:#d5b46826; }
+    .footnote { min-height:17px; margin:11px 0 0; color:#7f6b49; font-size:10px; line-height:1.7; }
+    @media (max-height:740px) and (orientation:portrait) { .shell { padding-top:8px; } .stage { height:46svh; min-height:225px; } h1 { margin:4px 0 6px; font-size:28px; } .description { margin-bottom:12px; } .controls { padding:11px; } .footnote { margin-top:8px; } }
+    @media (max-height:650px) and (orientation:portrait) { .stage { height:calc(100svh - 354px); min-height:185px; } .description { font-size:11px; } .adjustments { margin-top:8px; } .phases { margin-top:8px; padding-top:9px; } }
+    @media (min-width:650px) and (orientation:landscape) { .shell { min-height:100svh; display:grid; grid-template-rows:auto 1fr; } main { grid-template-columns:minmax(0,1fr) minmax(265px,34%); gap:28px; align-items:center; } .stage { width:100%; max-width:none; height:min(calc(100svh - 88px),760px); min-height:245px; margin:0; } .panel { padding:12px 0; } }
+  </style>
+</head>
+<body>
+  <canvas id="holy" aria-label="暖金聖光中，白金光核凝聚，三對層疊羽翼沿彎曲翼骨舒展，光冠自後方灑落柔光"></canvas>
+  <div class="shell">
+    <header><span class="eyebrow">光屬性 · SS 美術樣板</span><a class="back" href="./index.html">返回設定</a></header>
+    <main>
+      <div class="stage" id="stage"><p class="error" id="error" role="alert" hidden></p></div>
+      <section class="panel" aria-labelledby="title">
+        <div class="rank" aria-label="階級 SS">SS</div>
+        <h1 id="title">六翼聖光</h1>
+        <p class="description">白金光核凝聚，層疊羽翼緩緩舒展。<br>暖金光冠升起，聖光自天際灑落。</p>
+        <div class="controls">
+          <div class="playback">
+            <button id="pause" class="control primary" type="button" aria-pressed="false">暫停</button>
+            <button id="replay" class="control" type="button">重新播放</button>
+          </div>
+          <div class="adjustments">
+            <span class="label" id="speedLabel">播放速度</span>
+            <div class="speeds" role="group" aria-labelledby="speedLabel">
+              <button class="speed" data-speed="0.5" aria-pressed="false" type="button">0.5×</button>
+              <button class="speed" data-speed="1" aria-pressed="true" type="button">1×</button>
+              <button class="speed" data-speed="1.5" aria-pressed="false" type="button">1.5×</button>
+            </div>
+          </div>
+          <div class="phases" role="group" aria-label="定格觀察凝光、展翼與神聖降臨">
+            <button class="phase" data-time="0.6" aria-pressed="false" type="button">定格 · 凝光</button>
+            <button class="phase" data-time="2.3" aria-pressed="false" type="button">定格 · 展翼</button>
+            <button class="phase" data-time="5.2" aria-pressed="false" type="button">定格 · 降臨</button>
+          </div>
+        </div>
+        <p class="footnote" id="status" role="status">SS 美術預覽 · 不產生鑑定結果</p>
+      </section>
+    </main>
+  </div>
+  <script src="./js/fire-rank-sparkles.js"></script>
+  <script src="./js/light-holy-shader.js"></script>
+  <script src="./js/light-holy-wings.js"></script>
+  <script src="./js/light-holy-renderer.js"></script>
+  <script src="./js/light-holy-study.js"></script>
+</body>
+</html>
