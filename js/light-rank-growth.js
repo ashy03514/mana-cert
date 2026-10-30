@@ -41,9 +41,23 @@
     }
     return schedules.get(key);
   }
+  // Only the numeric climb below A is accelerated. The wing formation clock
+  // remains independent, preserving complete silhouettes and exposure settles.
+  function scanElapsed(elapsed,result){
+    const t=root.FireScanTransition.timing,time=Math.max(0,finite(elapsed));
+    const target=Math.max(1,Math.min(999,finite(result?.mana)));
+    const toA=t.scanDuration*inverseSmooth(clamp(750/target));
+    const active=Math.max(0,time-t.scanStart),fastSpan=toA/1.5;
+    if(time<=t.scanStart)return time;
+    if(active<=fastSpan)return t.scanStart+active*1.5;
+    // Ease the clock rate from 1.5x to 1x over 180 ms after reaching A.
+    const after=active-fastSpan,blend=.18,u=clamp(after/blend);
+    const extra=.5*blend*(u-u*u*u+.5*u*u*u*u);
+    return t.scanStart+toA+after+extra;
+  }
   function scan(elapsed,result){
-    const sampled=root.FireScanTransition.sample(elapsed,result);
-    return {...sampled,rank:sampled.value>=999?'SS':sampled.value>=900?'S':sampled.value>=750?'A':'—',
+    const sampled=root.FireScanTransition.sample(scanElapsed(elapsed,result),result);
+    return {...sampled,rank:sampled.rank==='—'?'E':sampled.rank,
       label:sampled.label==='火焰蓄熱'?'聖光凝聚':sampled.label};
   }
   function sample(elapsed,result,formationDuration=.8){

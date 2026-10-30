@@ -1312,7 +1312,6 @@
     prepareFlow(result.type==='muggle'?null:names[result.element],true);
     document.body.dataset.state=STATES.STANDBY;
     settingsPage.style.display='none';animLayerEl.style.display='block';
-    document.getElementById('effectPreviewBack').hidden=false;
     onViewportChange();
     drawRevealFlow();
   }
@@ -1725,7 +1724,7 @@
     }
     if(scan)drawFireScan(scan,scanLayout);else hideFireScan();
     formalReplay.hidden=!formalReveal||(scan?(!scan.complete||(formalLight&&!lightEffects.complete)||(formalDark&&!darkEffects.complete)):state!=='REVEAL'||titleOpacity<1);
-    if(formalReveal)document.getElementById('effectPreviewBack').hidden=!formalReplay.hidden;
+    if(formalReveal)document.getElementById('effectPreviewBack').hidden=true;
   }
   function openFlowPreview(event){
     flowPreviewOrigin=event?.currentTarget||document.getElementById('flowPreviewOpen');

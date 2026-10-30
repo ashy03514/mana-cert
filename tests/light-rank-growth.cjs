@@ -7,7 +7,7 @@ const random=Math.random,now=Date.now;
 Math.random=()=>{throw Error('growth must not reroll certification');};
 Date.now=()=>{throw Error('growth must use its supplied clock');};
 try{
-  for(const [rank,mana,final] of [['A',750,0],['A',899,0],['S',900,1],['S',999,1],['SS',1000,2],['SS',9999,2]]){
+  for(const [rank,mana,final] of [['A',750,0],['A',899,0],['S',900,1],['S',998,1],['SS',999,2]]){
     const result=Object.freeze({type:'magic',element:'光',rank,mana});
     const start=G.sample(0,result,.8);
     assert.equal(start.growth,0);assert.ok(Math.abs(start.time-.56)<1e-12);assert.equal(start.starMana,0);
@@ -25,9 +25,9 @@ try{
       assert.ok(next.exposure>=0&&next.exposure<=1);
       assert.ok(next.transition.progress>=0&&next.transition.progress<=1);
       assert.equal(next.complete,time>=next.completeAt);
-      assert.ok(['—','A','S','SS'].includes(scan.rank));
+      assert.ok(['E','D','C','B','A','S','SS'].includes(scan.rank));
       maxGrowthStep=Math.max(maxGrowthStep,next.growth-prior.growth);prior=next;
-      assert.equal(scan.value,FireScanTransition.sample(time,result).value,'uses committed numeric scan');
+      assert.ok(scan.value>=FireScanTransition.sample(time,result).value&&scan.value<=mana,'faster climb stays bounded by committed result');
       for(const field of ['growth','time','starMana'])assert.ok(Math.abs(G.sample(time+1e-6,result,.8)[field]-next[field])<.002,'continuous '+field);
     }
     assert.ok(maxGrowthStep<.016,'each growth stage occupies real time');
@@ -41,7 +41,7 @@ try{
     assert.equal(G.sample(completeAt-.00001,result,.8).complete,false);
     assert.equal(G.scan(timing.complete,result).rank,rank);
     assert.equal(G.scan(timing.complete,result).value,mana);
-    assert.equal(G.scan(timing.complete,result).complete,true,'numeric result timing remains unchanged');
+    assert.equal(G.scan(timing.complete,result).complete,true,'numeric result has completed by the original endpoint');
     const events=G.timeline(result);
     assert.ok(Object.isFrozen(events));assert.equal(events.length,final);
     for(let i=0;i<events.length;i++){

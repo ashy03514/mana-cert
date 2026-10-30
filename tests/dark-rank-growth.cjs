@@ -9,7 +9,7 @@ const random=Math.random,now=Date.now;
 Math.random=()=>{throw Error('Wing animation must not reroll the committed result');};
 Date.now=()=>{throw Error('Wing animation must use the supplied active clock');};
 try{
- for(const [rank,mana,final]of [['A',750,0],['A',899,0],['S',900,1],['S',999,1],['SS',1000,2],['SS',9999,2]]){
+ for(const [rank,mana,final]of [['A',750,0],['A',899,0],['S',900,1],['S',998,1],['SS',999,2]]){
   const result=Object.freeze({type:'magic',element:'暗',rank,mana}),events=G.timeline(result);
   assert.equal(events.length,final);assert.ok(Object.isFrozen(events));
   assert.deepEqual(events.map(e=>[e.from,e.to]),[['A','S'],['S','SS']].slice(0,final));
@@ -22,8 +22,8 @@ try{
    assert.ok(pose.time>previous.time&&pose.time-previous.time<=1/60+.000001,'integrated motion clock stays continuous');
    assert.ok(pose.time-previous.time>=.70/60-.000001,'every rank retains living idle motion');
    assert.ok(pose.exposure>=0&&pose.exposure<=1);
-   assert.ok(['—','A','S','SS'].includes(scan.rank),'special rank never displays E through B');
-   assert.equal(scan.value,FireScanTransition.sample(elapsed,result).value,'visual growth cannot change the numeric scan');
+   assert.ok(['E','D','C','B','A','S','SS'].includes(scan.rank),'all visible numeric stages are valid ranks');
+   assert.ok(scan.value>=FireScanTransition.sample(elapsed,result).value&&scan.value<=mana,'faster climb stays bounded by committed result');
    assert.deepEqual(pose,LightRankGrowth.sample(elapsed,result,.8),'formation and exposure follow the approved light method');
    assert.equal(pose.complete,elapsed>=pose.completeAt);
    previous=pose;

@@ -64,7 +64,7 @@ const root=path.resolve(__dirname,'..');
    assert.equal(await page.locator('#formalReplay').isVisible(),true);
    const history=await page.evaluate(()=>({same:darkSession.currentResult===originalDarkResult,frozen:Object.isFrozen(originalDarkResult),legacy:legacyDarkDraws,frames:darkHistory,readouts:darkReadouts}));
    assert.equal(history.same,true);assert.equal(history.frozen,true);assert.equal(history.legacy,0);
-   assert.ok(history.readouts.every(rank=>['—','A','S','SS'].includes(rank)),'rare attribute never shows E through B');
+   assert.ok(['E','D','C','B','A'].every(rank=>history.readouts.includes(rank)),'rare numeric climb shows every E through A stage');
    assert.ok(history.frames.every((f,i,a)=>Number.isFinite(f.time)&&(!i||f.time>=a[i-1].time)),'material clock never rewinds');
    assert.ok(history.frames.every((f,i,a)=>!i||(f.growth>=a[i-1].growth&&f.growth-a[i-1].growth<.2)),'growth moves continuously toward destination');
    await page.evaluate(()=>realDarkPaint=true);await advance(0);await page.screenshot({path:path.join(root,`artifacts/dark-formal-${target.rank}-${target.mana}.png`)});await page.evaluate(()=>realDarkPaint=false);

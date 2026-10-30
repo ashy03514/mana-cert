@@ -6,7 +6,7 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
  await page.goto(pathToFileURL(path.resolve('index.html')).href);
  await page.evaluate(()=>{
   const reset=RevealFlow.prototype.reset;RevealFlow.prototype.reset=function(...args){window.testFlow=this;return reset.apply(this,args);};
-  const begin=ManaResults.Session.prototype.begin;window.begins=0;window.target='暗';ManaResults.Session.prototype.begin=function(settings){begins++;begin.call(this,settings);this.currentResult=Object.freeze(target===null?{type:'muggle',element:null,rank:'MUGGLE',mana:5}:{type:'magic',element:target,rank:'SS',mana:9999});window.testSession=this;return this.currentResult;};
+  const begin=ManaResults.Session.prototype.begin;window.begins=0;window.target='暗';ManaResults.Session.prototype.begin=function(settings){begins++;begin.call(this,settings);this.currentResult=Object.freeze(target===null?{type:'muggle',element:null,rank:'MUGGLE',mana:5}:{type:'magic',element:target,rank:'SS',mana:999});window.testSession=this;return this.currentResult;};
   // These checks concern result controls and lifecycle, not GPU art. Retain
   // real host clocks, result data and DOM while avoiding repeated shader work.
   for(const C of [ElementMaterialRenderer,WaterOceanReveal,WindTornadoRenderer,EarthMountainRenderer,LightAngelLayeredGrowthRenderer,DarkDemonWingGrowthRenderer])C.prototype.draw=()=>true;
@@ -14,7 +14,11 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
  const click=id=>page.locator('#'+id).click();
  for(const element of ['火','水','風','土','光','暗',null]){
   await page.evaluate(e=>target=e,element);await click('btnStart');
-  assert.equal(await page.locator('#formalReplay').isVisible(),false);assert.equal(await page.locator('#effectPreviewBack').isVisible(),true);
+  assert.equal(await page.locator('#formalReplay').isVisible(),false);assert.equal(await page.locator('#effectPreviewBack').isVisible(),false);
+  for(const state of ['DRAWING','WAITING','GATHER','FORM','REVEAL']){
+   await page.evaluate(state=>{testFlow.state=state;testFlow.elapsed=.1;tick();},state);
+   assert.equal(await page.locator('#effectPreviewBack').isVisible(),false,'no corner back button during '+state);
+  }
   await page.evaluate(()=>{testFlow.state='REVEAL';testFlow.elapsed=20;tick();});
   assert.equal(await page.locator('#effectPreviewBack').isVisible(),false);assert.equal(await page.locator('#formalReplay').isVisible(),true);
   const snapshot=await page.evaluate(()=>({result:testSession.currentResult,begins}));
