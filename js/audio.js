@@ -4,7 +4,7 @@
   const SLOTS=Object.freeze({touch:[440,660,0.12],movement:[260,340,0.09],resonance:[520,1040,0.28],
     gather:[660,180,0.35],element:[390,780,0.3],rankUp:[550,880,0.16],
     confirmed:[660,990,0.28],ssWarning:[180,130,0.22],muggleFailure:[200,80,0.2],
-    lightAwaken:[330,338.25,1.9]});
+    lightAwaken:[330,338.25,1.9],darkAwaken:[82,123,1.9]});
   class AudioManager {
     constructor(host=root){this.host=host;this.context=null;this.enabled=true;this.voices=new Set();this.buffers=new Map();this.last=new Map();}
     unlock(){

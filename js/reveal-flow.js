@@ -10,11 +10,12 @@
 
   class RevealFlow {
     constructor(settings={},options={}){this.configure(settings,options);this.reset();}
-    configure(settings={}, {holdAtReveal=false,lightAwakening=false}={}){
+    configure(settings={}, {holdAtReveal=false,lightAwakening=false,darkAwakening=false}={}){
       this._gatherDuration=Number.isFinite(settings.burstDuration)?Math.max(1.2,Math.min(4,settings.burstDuration)):DURATIONS.GATHER;
       this.burstRadius=Number.isFinite(settings.burstRadius)?Math.max(50,Math.min(160,settings.burstRadius)):100;
       this.holdAtReveal=holdAtReveal===true;
       this.lightAwakening=lightAwakening===true;
+      this.darkAwakening=darkAwakening===true;
       return this;
     }
     reset(element='fire'){
@@ -25,9 +26,9 @@
     }
     get ready(){return this.distance>=24;}
     get gatherDuration(){return this._gatherDuration;}
-    get awakeningEnabled(){return this.lightAwakening&&this.element==='light';}
+    get awakeningEnabled(){return (this.lightAwakening&&this.element==='light')||(this.darkAwakening&&this.element==='dark');}
     get awakeningDuration(){return this.awakeningEnabled?DURATIONS.AWAKEN:0;}
-    get formationDuration(){return this.awakeningEnabled ? .6 : this.element==='fire'||this.element==='water'?1.2:DURATIONS.FORM;}
+    get formationDuration(){return this.awakeningEnabled&&this.element==='light' ? .6 : this.element==='fire'||this.element==='water'?1.2:DURATIONS.FORM;}
     get duration(){return this.state==='GATHER'?this.gatherDuration:this.state==='FORM'?this.formationDuration:DURATIONS[this.state];}
     get progress(){
       if(this.state==='DONE')return 1;
@@ -90,7 +91,7 @@
         const duration=this.duration,untilEnd=Math.max(0,duration-this.elapsed);
         if(remaining+1e-9<untilEnd){this.elapsed+=remaining;break;}
         remaining=Math.max(0,remaining-untilEnd);
-        // The rare-light opening occupies its own clock after the last orb
+        // Rare-element openings occupy their own clock after the last orb
         // reaches the core. Material/scan time only starts when FORM begins.
         this.state=this.state==='GATHER'&&this.awakeningEnabled?'AWAKEN':NEXT[this.state];this.elapsed=0;
       }

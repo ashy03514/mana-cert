@@ -827,7 +827,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="132" title="目前載入頁面的版本">目前版本 v132</span>
+        <span id="appVersion" data-version="133" title="目前載入頁面的版本">目前版本 v133</span>
       </div>
     </div>
     </div>
@@ -971,6 +971,7 @@
 <script src="./assets/light-angel-feather-v1.local.js"></script>
 <script src="./js/light-feathers.js"></script>
 <script src="./js/light-awakening.js"></script>
+<script src="./js/dark-awakening.js"></script>
 <script src="./js/fire-scan-transition.js"></script>
 <script src="./js/light-rank-growth.js"></script>
 <script src="./assets/dark-chain-v1.local.js"></script>
@@ -1576,7 +1577,7 @@
   }
   function restartRevealFlow(element=flow.element){
     audio.stop();
-    flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'))});
+    flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'))});
     cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
@@ -1607,7 +1608,7 @@
         document.body.dataset.state=STATES.GATHER;
       }
     }
-    if(before!=='AWAKEN'&&flow.state==='AWAKEN')audio.play('lightAwaken');
+    if(before!=='AWAKEN'&&flow.state==='AWAKEN')audio.play(flow.element==='dark'?'darkAwaken':'lightAwaken');
     if(formalReveal&&(before==='GATHER'||before==='AWAKEN')&&flow.state==='FORM'){
       session.transition(STATES.ELEMENT_REVEAL);document.body.dataset.state=STATES.ELEMENT_REVEAL;
     }
@@ -1656,6 +1657,7 @@
     if(element==='earth')return fitResultLayout(w,h,activeMaterialRenderer().scanLayout(w,h,earthProfile,shift),element);
     return fitResultLayout(w,h,FireScanTransition.layout(w,h,materialRenderer.layout(w,h),shift,{preview:flowPreview}),element);
   }
+  function awakeningRenderer(){return flow.element==='dark'?DarkAwakening:LightAwakening;}
   function drawRevealFlow(){
     const {w,h}=getViewportSize(),state=flow.state;
     const drawing=state==='DRAWING'||state==='WAITING';
@@ -1690,9 +1692,9 @@
       const dim=state==='GATHER'?.16*flow.progress:.16;
       flowPortal.draw(quality.profile,{transform,trails:false,dim});
       if(flow.awakeningEnabled&&state==='FORM'){
-        // Keep a full gold backing under the fading-in material. Two opposing
+        // Keep the element backing under the fading-in material. Two opposing
         // opacity fades over the dark portal would cause a muddy brightness dip.
-        LightAwakening.draw(ctx,{width:w,height:h,target,elapsed:flow.awakeningDuration+flow.elapsed,layer:'background'});
+        awakeningRenderer().draw(ctx,{width:w,height:h,target,elapsed:flow.awakeningDuration+flow.elapsed,layer:'background'});
       }
       const frame=flow.materialFrame;
       const waterEffects=frame&&flow.element==='water'
@@ -1715,7 +1717,7 @@
     }
     RevealShockwaves.draw(ctx,{state,elapsed:flow.elapsed,width:w,height:h});
     if(flow.awakeningEnabled&&(state==='AWAKEN'||state==='FORM')){
-      LightAwakening.draw(ctx,{width:w,height:h,target,elapsed:state==='AWAKEN'?flow.elapsed:flow.awakeningDuration+flow.elapsed,layer:state==='FORM'?'foreground':'all'});
+      awakeningRenderer().draw(ctx,{width:w,height:h,target,elapsed:state==='AWAKEN'?flow.elapsed:flow.awakeningDuration+flow.elapsed,layer:state==='FORM'?'foreground':'all'});
     }
     if(flow.element==='light'&&['AWAKEN','FORM','REVEAL'].includes(state)&&!previewMaterialBlocked()){
       const base=flow.awakeningDuration+flow.formationDuration;
@@ -1725,7 +1727,7 @@
       LightFeathers.draw(ctx,{width:w,height:h,time,bursts:lightFeatherPlan(w,h,{formal:formalLight})});
     }
     if(flow.element===null)materialError.hidden=true;else updateMaterialError();
-    const labels={DRAWING:'畫完後放開',WAITING:'可接著畫',GATHER:'魔力收束',AWAKEN:LightAwakening.sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
+    const labels={DRAWING:'畫完後放開',WAITING:'可接著畫',GATHER:'魔力收束',AWAKEN:awakeningRenderer().sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
     const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.elapsed>=1.2?'魔力蓄勢':labels[state];
     if(materialStatus.textContent!==label)materialStatus.textContent=label;
     const titleOpacity=scan?scan.opacity:state==='REVEAL'?Math.max(0,Math.min(1,(flow.elapsed-.7)/.8)):

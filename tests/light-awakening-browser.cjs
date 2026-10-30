@@ -47,7 +47,13 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
     assert.equal(await page.evaluate(()=>JSON.stringify(outcome)),saved);assert.equal(await page.evaluate(()=>session.currentResult===outcome&&Object.isFrozen(outcome)),true);
     assert.equal(await page.evaluate(()=>cues.filter(x=>x==='lightAwaken').length),1);
     assert.equal(await page.locator('#materialError').isVisible(),false);
-    await page.locator('#effectPreviewBack').click();await page.locator('#tab_effects').click();
+    // This test freezes RAF. Seek only to leave the result, and use visible
+    // forced pointer clicks so Playwright's stability wait needs no live RAF.
+    await page.evaluate(()=>{f.elapsed+=12;advance(0);});
+    assert.equal(await page.locator('#formalReplay').isVisible(),true);
+    await page.locator('#formalReplay').click({force:true});
+    assert.equal(await page.getByRole('dialog',{name:'鑑定後操作'}).isVisible(),true);
+    await page.locator('#btnGoHome').click({force:true});await page.locator('#tab_effects').click();
     await page.getByText('屬性揭曉樣板',{exact:true}).click();await page.locator('#flowPreviewOpen').click();await page.locator('#material_light').click();
     await page.waitForFunction(()=>r.loaded,null,{polling:100});
     await page.mouse.move(100,280);await page.mouse.down();await page.mouse.move(240,365,{steps:8});await page.mouse.up();
