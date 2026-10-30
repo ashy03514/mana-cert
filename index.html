@@ -84,6 +84,8 @@
     overscroll-behavior:contain;
     -webkit-overflow-scrolling: touch;
   }
+  .updateActions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  #appVersion { color:#886632; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .settingsTabs { display:grid; flex:0 0 auto; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 14px; }
   .settingsTab { min-height:44px; border:1px solid #ad906555; border-radius:12px; background:rgba(255,255,255,.35); color:var(--text); font:inherit; font-weight:800; cursor:pointer; }
   .settingsTab[aria-selected="true"] { background:#a68147; color:#fff; border-color:#a68147; }
@@ -822,8 +824,11 @@
 <button id="effect_reset_flashes" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
 <p id="effectSaveStatus" class="effectHint" role="status">調整會自動儲存在此裝置</p></section>
     <div style="margin-top:14px; line-height:2">
-      <div id="pwaStatus" class="sumNote" role="status">V2 · 第六階段</div>
-      <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
+      <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
+      <div class="updateActions">
+        <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
+        <span id="appVersion" data-version="129" title="目前載入頁面的版本">目前版本 v129</span>
+      </div>
     </div>
     </div>
     <div class="settingsFooter">
