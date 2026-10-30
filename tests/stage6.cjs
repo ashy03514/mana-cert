@@ -45,7 +45,7 @@ audio.setEnabled(false);assert.equal(audio.play('touch'),false);audio.setEnabled
     fetch:async()=>{network++;return {network:true};}};
   vm.runInNewContext(fs.readFileSync('service-worker.js','utf8'),worker);
   let pending;handlers.install({waitUntil:p=>pending=p});await pending;
-  for(const name of ['audio','runtime','pwa'])assert.ok(cache.has('./js/'+name+'.js'));
+  for(const name of ['audio','runtime','pwa','effect-settings','ribbon-renderer','finger-trails'])assert.ok(cache.has('./js/'+name+'.js'));
   handlers.activate({waitUntil:p=>pending=p});await pending;assert.deepEqual(deleted,['mana-pwa-old']);
   handlers.fetch({request:{method:'GET',url:'https://example.test/project/js/audio.js',path:'./js/audio.js'},respondWith:p=>pending=p});
   assert.equal((await pending).asset,'./js/audio.js');assert.equal(network,0,'cached resources work without network');

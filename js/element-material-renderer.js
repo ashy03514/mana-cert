@@ -1,0 +1,210 @@
+/* Shared real-time material renderer: preview and later reveals use these same programs. */
+(function(root){
+  'use strict';
+  const names=Object.freeze({fire:'火',water:'水',wind:'風',earth:'土',light:'光',dark:'暗'});
+  const hash=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
+  const smooth=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
+  // Four independent impact lanes. Sample absolute active time so pause/replay
+  // remain deterministic; no random draws or frame-dependent velocity updates.
+  function waterPokes(time){
+    time=Number.isFinite(time)?Math.max(0,time):0;
+    const values=[];
+    for(let i=0;i<4;i++){
+      const period=.62+hash(i+8)*.20,clock=time+i*.173;
+      const cycle=Math.floor(clock/period),age=clock-cycle*period,seed=i*37+cycle*71;
+      const attack=.060+hash(seed+3)*.030;
+      const retract=attack+.18+hash(seed+11)*.05;
+      const end=retract+.09;
+      const push=smooth(age/attack)*(1-smooth((age-attack)/(retract-attack)));
+      const bounce=age>retract&&age<end?Math.pow(Math.sin((age-retract)/(end-retract)*Math.PI),2):0;
+      const amplitude=(.19+hash(seed+17)*.10)*push-.018*bounce;
+      const angle=hash(seed+29)*Math.PI*2;
+      values.push(Math.cos(angle),Math.sin(angle),amplitude,.085+hash(seed+43)*.040);
+    }
+    return values;
+  }
+  const vertex=`
+    attribute vec2 aPosition;
+    varying vec2 vUv;
+    void main(){vUv=aPosition*.5+.5;gl_Position=vec4(aPosition,0.,1.);}
+  `;
+  const common=`
+    precision highp float;
+    uniform float uTime,uPhase,uOpacity,uFormation,uHeat,uFirePower,uWaterPower;
+    uniform vec2 uResolution;
+    uniform vec4 uField;
+    uniform vec4 uWaterPokes[4];
+    uniform sampler2D uBackdrop;
+    varying vec2 vUv;
+    float sq(float v){return v*v;}
+    float hash(float n){return fract(sin(n*127.1)*43758.5453);}
+    float hash21(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+    float noise(vec2 p){
+      vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x),
+        mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x),f.y);
+    }
+    float fbm(vec2 p){
+      float value=0.,weight=.5333333;
+      for(int i=0;i<4;i++){value+=weight*noise(p);p=mat2(.8,-.6,.6,.8)*p*2.03+13.17;weight*=.5;}
+      return value;
+    }
+    vec3 backdrop(vec2 uv){return texture2D(uBackdrop,clamp(uv,vec2(.001),vec2(.999))).rgb;}
+  `;
+  const finish=`
+    void main(){
+      vec2 p=(vUv-.5)*vec2(2.,2.*uResolution.y/uResolution.x);
+      if(uFirePower>=0.||uWaterPower>=0.)p=uField.xy+(vUv-.5)*uField.zw;
+      vec4 color=material(p,uTime);
+      color.rgb*=1.+uHeat*.13*exp(-pow((p.y+.60)/.34,2.));
+      float emergence=FORMATION_MASK;
+      emergence=mix(emergence,1.,smoothstep(.82,1.,uFormation));
+      float edge=smoothstep(0.,.075,vUv.x)*smoothstep(0.,.075,1.-vUv.x)
+        *smoothstep(0.,.055,vUv.y)*smoothstep(0.,.055,1.-vUv.y);
+      // The SS water orb approaches the screen edge. Its curved surface already
+      // owns the alpha; a broad crop feather would flatten its circular sides.
+      if(uWaterPower>=0.)edge=smoothstep(0.,.008,vUv.x)*smoothstep(0.,.008,1.-vUv.x)
+        *smoothstep(0.,.008,vUv.y)*smoothstep(0.,.008,1.-vUv.y);
+      gl_FragColor=vec4(clamp(color.rgb,0.,1.),clamp(color.a,0.,1.)*uOpacity*edge*emergence);
+    }
+  `;
+  class ElementMaterialRenderer {
+    constructor(createCanvas=()=>document.createElement('canvas')){
+      this.canvas=createCanvas();this.patch=createCanvas();this.patchCtx=this.patch.getContext('2d');
+      this.programs=new Map();this.element='fire';this.time=0;this.duration=6.4;
+      this.paused=false;this.lost=false;this.error='';this.gl=null;this.lastRender=-Infinity;this.renders=0;
+      this.canvas.addEventListener?.('webglcontextlost',e=>{
+        e.preventDefault();this.lost=true;this.error='特效暫時中斷，正在等待恢復。';
+      });
+      this.canvas.addEventListener?.('webglcontextrestored',()=>{
+        this.gl=null;this.programs.clear();this.lost=false;this.error='';this.lastRender=-Infinity;
+      });
+    }
+    static get names(){return names;}
+    static waterPokes(time){return waterPokes(time);}
+    static fragment(key){
+      const source=root.ElementMaterialSources?.[key];
+      if(!source)throw new Error('Missing element material: '+key);
+      // The isolated studies use formation=1. Flow previews grow the actual
+      // material from the gathering point without replacing its shader.
+      const masks={
+        fire:'1.', // Fire owns its growing volume; a wipe would cut off its tips.
+        water:'uWaterPower>=0.?1.:1.-smoothstep(uFormation*.64-.04,uFormation*.64+.06,length(p))',
+        wind:'1.-smoothstep(uFormation*1.4-.12,uFormation*1.4+.12,length(p/vec2(.5,.75)))',
+        earth:'1.',
+        light:'1.-smoothstep(mix(-.40,1.15,uFormation)-.12,mix(-.40,1.15,uFormation)+.12,p.y)',
+        dark:'1.-smoothstep(uFormation*.85-.08,uFormation*.85+.08,length(p))'
+      };
+      return common+source+finish.replace('FORMATION_MASK',masks[key]||'1.');
+    }
+    init(){
+      if(this.lost)return false;
+      if(this.gl)return true;
+      try{
+        const gl=this.canvas.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:false});
+        if(!gl||typeof gl.createShader!=='function')throw new Error('WebGL unavailable');
+        this.gl=gl;this.buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+        this.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.texture);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+        gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);
+        return true;
+      }catch(error){this.error='此裝置目前無法顯示屬性特效，請返回設定後重試。';this.diagnostic=String(error);return false;}
+    }
+    compile(key){
+      if(this.programs.has(key))return this.programs.get(key);
+      const gl=this.gl,shaders=[];let program=null;
+      try{
+        for(const [type,source] of [[gl.VERTEX_SHADER,vertex],[gl.FRAGMENT_SHADER,ElementMaterialRenderer.fragment(key)]]){
+          const shader=gl.createShader(type);shaders.push(shader);gl.shaderSource(shader,source);gl.compileShader(shader);
+          if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader));
+        }
+        program=gl.createProgram();shaders.forEach(s=>gl.attachShader(program,s));gl.linkProgram(program);
+        if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
+        const record={program,position:gl.getAttribLocation(program,'aPosition'),uniforms:{}};
+        for(const name of ['uTime','uPhase','uOpacity','uFormation','uHeat','uFirePower','uWaterPower','uField','uResolution','uBackdrop'])record.uniforms[name]=gl.getUniformLocation(program,name);
+        record.uniforms.uWaterPokes=gl.getUniformLocation(program,'uWaterPokes[0]');
+        this.programs.set(key,record);return record;
+      }catch(error){
+        if(program)gl.deleteProgram(program);
+        this.diagnostic=String(error);this.error='這個屬性暫時無法顯示，請切換其他屬性或重新開啟。';return null;
+      }finally{shaders.forEach(s=>gl.deleteShader(s));}
+    }
+    select(key){if(!Object.hasOwn(names,key))return false;this.element=key;this.restart();return true;}
+    restart(){this.time=0;this.paused=false;this.error=this.lost?'特效暫時中斷，正在等待恢復。':'';this.lastRender=-Infinity;}
+    step(seconds){
+      if(this.paused||this.lost||!Number.isFinite(seconds)||seconds<=0)return;
+      this.time+=Math.min(.05,seconds);
+    }
+    get phase(){return (this.time%this.duration)/this.duration;}
+    get opacity(){
+      const s=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
+      const elapsed=this.time%this.duration;
+      return s(elapsed/.9)*(1-s((elapsed-(this.duration-.9))/.9));
+    }
+    layout(width,height){
+      const h=Math.max(100,Math.min(width*1.27,height-250,660)),w=h/1.35;
+      return {x:(width-w)/2,y:Math.max(76,(height-110)/2-h/2),width:w,height:h};
+    }
+    draw(ctx,background,width,height,frame=null){
+      if(this.error)return false;
+      if(!this.init())return false;
+      const materialBox=frame?.box||this.layout(width,height),gl=this.gl;
+      const firePower=this.element==='fire'&&Number.isFinite(frame?.firePower)?Math.max(0,Math.min(3,frame.firePower)):-1;
+      const waterPower=this.element==='water'&&Number.isFinite(frame?.waterPower)?Math.max(0,Math.min(3,frame.waterPower)):-1;
+      const growth=Math.max(0,(Math.max(firePower,waterPower)-1)/2),unit=materialBox.width/2;
+      // Extend the area we render, keeping one world unit at the same number
+      // of screen pixels. New fuel can reach the edges without zooming its folds.
+      const left=Math.max(0,materialBox.x-unit*.55*growth),top=Math.max(0,materialBox.y-unit*.9*growth);
+      const right=Math.min(width,materialBox.x+materialBox.width+unit*.55*growth);
+      const box=growth>0?{x:left,y:top,width:right-left,height:materialBox.y+materialBox.height-top}:materialBox;
+      this.materialBox=materialBox;this.renderBox=box;
+      const pw=Math.max(1,Math.min(480,Math.round(box.width*1.5))),ph=Math.max(1,Math.round(pw*box.height/box.width));
+      const resized=this.canvas.width!==pw||this.canvas.height!==ph;
+      if(resized){this.canvas.width=pw;this.canvas.height=ph;this.patch.width=pw;this.patch.height=ph;this.lastRender=-Infinity;}
+      const shader=this.compile(this.element);if(!shader)return false;
+      const time=frame?.time??this.time,phase=frame?.phase??this.phase,opacity=frame?.opacity??this.opacity;
+      const fireTime=this.element==='fire'&&Number.isFinite(frame?.fireTime)?frame.fireTime:time;
+      // At most 30 new material frames/second. Pausing keeps the exact rendered frame.
+      const placementKey=[width,height,box.x,box.y,box.width,box.height].join(':');
+      const fireKey=firePower+':'+fireTime+':'+waterPower+':'+(frame?.formation??1);
+      if(resized||(time===this.lastRender&&(placementKey!==this.lastPlacement||fireKey!==this.lastFire))||time<this.lastRender||time-this.lastRender>=1/30-1e-6||!Number.isFinite(this.lastRender)){
+        const scaleX=background.width/width,scaleY=background.height/height;
+        this.patchCtx.clearRect(0,0,pw,ph);
+        this.patchCtx.drawImage(background,box.x*scaleX,box.y*scaleY,box.width*scaleX,box.height*scaleY,0,0,pw,ph);
+        gl.viewport(0,0,pw,ph);gl.useProgram(shader.program);
+        gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);gl.enableVertexAttribArray(shader.position);
+        gl.vertexAttribPointer(shader.position,2,gl.FLOAT,false,0,0);
+        gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,this.patch);
+        const u=shader.uniforms;
+        gl.uniform1i(u.uBackdrop,0);gl.uniform2f(u.uResolution,pw,ph);
+        gl.uniform1f(u.uTime,fireTime);gl.uniform1f(u.uPhase,phase);gl.uniform1f(u.uOpacity,opacity);
+        gl.uniform1f(u.uFormation,frame?.formation??1);
+        gl.uniform1f(u.uHeat,this.element==='fire'?Math.max(0,Math.min(1,frame?.heat||0)):0);
+        // An omitted power retains the isolated material study exactly. Only
+        // the reveal/count flow opts into the mana-fed burning volume.
+        gl.uniform1f(u.uFirePower,firePower);
+        gl.uniform1f(u.uWaterPower,waterPower);
+        if(this.element==='water')gl.uniform4fv(u.uWaterPokes,waterPokes(time));
+        gl.uniform4f(u.uField,(box.x+box.width/2-materialBox.x-materialBox.width/2)/unit,
+          (materialBox.y+materialBox.height/2-box.y-box.height/2)/unit,box.width/unit,box.height/unit);
+        gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.drawArrays(gl.TRIANGLES,0,6);
+        // Retain the frame on a 2D layer: WebGL drawing buffers may clear after compositing.
+        this.patchCtx.clearRect(0,0,pw,ph);this.patchCtx.drawImage(this.canvas,0,0);
+        this.lastRender=time;this.lastPlacement=placementKey;this.lastFire=fireKey;this.renders++;
+      }
+      ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+      ctx.drawImage(this.patch,box.x,box.y,box.width,box.height);ctx.restore();return true;
+    }
+    dispose(){
+      if(this.gl&&!this.lost){for(const s of this.programs.values())this.gl.deleteProgram(s.program);this.gl.deleteBuffer(this.buffer);this.gl.deleteTexture(this.texture);}
+      this.programs.clear();this.gl=null;this.lastRender=-Infinity;
+    }
+  }
+  root.ElementMaterialRenderer=ElementMaterialRenderer;
+})(globalThis);

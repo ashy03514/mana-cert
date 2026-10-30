@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#24223f">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>魔力鑑定系統</title>
+
+<style>
+  :root{
+    --bg:#D8D3D2;
+    --panel:#D9D4D3;
+    --text:#AB8448;
+    --gold:#A68147;
+    --shadow: rgba(0,0,0,.14);
+    --global-offset-y: 50px;
+    --viewport-w: 100vw;
+    --viewport-h: 100vh;
+    --effect-center-y: 50vh;
+  }
+  html, body {
+    margin:0; padding:0; width:100%; height:100%;
+    background:#24223f; color:var(--text);
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:rgba(0,0,0,0);
+    touch-action:pan-y;
+  }
+  *{ box-sizing:border-box; }
+  body[data-state="SETTINGS"],body[data-state="RANK_CONFIRM"],body[data-state="RESULT"] { background:var(--bg); }
+  html { min-height:100%; overscroll-behavior:none; }
+  body { min-height:100dvh; overscroll-behavior:none; }
+
+  /* One clean portal surface; circular gradient fallback while Canvas loads. */
+  #animLayer{
+    position:fixed; inset:0; z-index:10; touch-action:none; overflow:hidden;
+    background:radial-gradient(ellipse at center,#080915 0%,#101126 60%,#24223f 100%);
+  }
+  canvas#particleCanvas{
+    position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
+    pointer-events:none;
+  }
+
+  /* ===== 設定頁 ===== */
+  #settingsPage{
+    position:fixed; inset:0; z-index:50;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:18px 18px 0;
+    padding-top: calc(18px + env(safe-area-inset-top) + var(--global-offset-y));
+    background: rgba(216, 211, 210, 0.96);
+    backdrop-filter: blur(2px);
+    overflow:hidden;
+  }
+  .settingsCard{
+    pointer-events:auto;
+    width:min(100%,560px);
+    height:100%;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid rgba(255,255,255,0.75);
+    border-radius:20px;
+    box-shadow:0 10px 24px var(--shadow);
+    padding:18px 18px 0;
+    overflow:hidden;
+  }
+  .settingsScroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    padding-bottom:14px;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settingsTabs { display:grid; flex:0 0 auto; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 14px; }
+  .settingsTab { min-height:44px; border:1px solid #ad906555; border-radius:12px; background:rgba(255,255,255,.35); color:var(--text); font:inherit; font-weight:800; cursor:pointer; }
+  .settingsTab[aria-selected="true"] { background:#a68147; color:#fff; border-color:#a68147; }
+  .settingsTab:focus-visible { outline:3px solid #a6814770; outline-offset:2px; }
+  .settingsPanel { min-height:200px; }
+  .settingsPanel[hidden] { display:none; }
+  .effectGroup { border:1px solid #ad906544; border-radius:12px; padding:12px; margin:10px 0; }
+  .effectGroup summary { cursor:pointer; font-weight:800; padding:6px 0; min-height:24px; }
+  .effectHint { font-size:12px; line-height:1.6; margin:8px 0; }
+  .effectControl { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; margin:14px 0; }
+  .effectControl output { font-variant-numeric:tabular-nums; }
+  .effectControl input { grid-column:1/-1; width:100%; margin:0; height:32px; accent-color:#a68147; }
+  .effectToggle,.effectColor { display:flex; align-items:center; gap:8px; min-height:44px; }
+  .effectColor { justify-content:space-between; }
+  .effectColor input { width:54px; height:36px; padding:2px; background:transparent; border:1px solid #ad906555; border-radius:8px; }
+  .effectPalette { margin:16px 0; padding:14px; border:1px solid #ad906544; border-radius:14px; background:rgba(255,255,255,.38); }
+  .effectPaletteTitle { margin:0 0 12px; font-size:14px; font-weight:800; }
+  .effectPaletteGrid { display:grid; grid-template-columns:repeat(auto-fill,64px); gap:12px; align-items:start; }
+  .effectSwatch { display:flex; flex-direction:column; align-items:center; width:64px; border:1px solid #ad906544; border-radius:11px; background:#ffffff70; overflow:hidden; }
+  .effectSwatch input[type="color"] { display:block; width:62px; height:56px; margin:0; padding:5px; border:0; border-radius:10px; background:transparent; cursor:pointer; }
+  .effectSwatch input[type="color"]::-webkit-color-swatch-wrapper { padding:0; }
+  .effectSwatch input[type="color"]::-webkit-color-swatch { border:1px solid #00000012; border-radius:7px; }
+  .effectSwatch input[type="color"]::-moz-color-swatch { border:1px solid #00000012; border-radius:7px; }
+  .effectSwatch label { padding:0 3px 5px; font-size:11px; line-height:16px; cursor:pointer; }
+  .effectSwatchRemove { display:block; width:62px; min-height:44px; padding:6px; border:0; border-top:1px solid #ad906522; background:transparent; color:#97703b; font:inherit; font-size:20px; cursor:pointer; touch-action:manipulation; }
+  .effectSwatchRemove:disabled { color:#b8afa3; cursor:default; }
+  .effectPaletteAdd { width:64px; min-height:123px; padding:8px 3px; border:1px dashed #ad906588; border-radius:11px; background:#ffffff30; color:var(--text); font:inherit; font-size:12px; font-weight:800; white-space:pre-line; cursor:pointer; touch-action:manipulation; }
+  .effectPaletteAdd:disabled { opacity:.45; cursor:default; }
+  .effectSwatch input:focus-visible,.effectSwatchRemove:focus-visible,.effectPaletteAdd:focus-visible { outline:3px solid #a6814770; outline-offset:-3px; }
+  .effectPaletteHint { margin:12px 0 0; font-size:12px; line-height:1.6; }
+  .effectReset { font-size:12px; padding:8px 12px; margin-top:8px; }
+  .effectActions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .effectActions .btn { padding:12px 4px; font-size:12px; letter-spacing:0; }
+  .effectActions[hidden] { display:none; }
+  #effectPreviewBack { position:fixed; z-index:60; top:calc(12px + env(safe-area-inset-top)); right:12px; color:#fff; background:#242036dd; border:1px solid #ffffff55; border-radius:12px; padding:12px 16px; font:inherit; }
+  #effectPreviewBack[hidden] { display:none; }
+  #formalReplay { position:fixed; z-index:60; left:50%; transform:translateX(-50%); bottom:calc(28px + env(safe-area-inset-bottom)); min-width:160px; min-height:48px; padding:12px 24px; border:1px solid #b3a5d544; border-radius:12px; background:#171525dd; color:#e7deca; font:inherit; cursor:pointer; touch-action:manipulation; }
+  #formalReplay[hidden] { display:none; }
+  .materialOpen { width:100%; min-height:44px; }
+  .materialOpen + .materialOpen { margin-top:8px; }
+  #revealTitle { position:fixed; z-index:30; bottom:calc(184px + env(safe-area-inset-bottom)); left:12px; right:12px; text-align:center; color:#e7deca; font-size:24px; letter-spacing:.24em; pointer-events:none; opacity:0; }
+  #revealTitle[hidden] { display:none; }
+  #revealTitle.fireScanTitle { right:auto; bottom:auto; font-size:16px; line-height:1; letter-spacing:.22em; transform:translate(-50%,-100%); color:#e2b58a; }
+  #fireScanReadout { position:fixed; inset:0; z-index:30; pointer-events:none; color:#ffe8c7; text-align:center; }
+  #fireScanReadout[hidden] { display:none; }
+  #fireScanReadout > span { position:absolute; left:var(--scan-x); transform:translate(-50%,-82%); line-height:1; white-space:nowrap; }
+  #fireScanReadout::before { content:""; position:absolute; left:var(--scan-x); top:var(--scan-y); width:260px; height:150px; transform:translate(-50%,-50%); background:radial-gradient(ellipse,#f1a13d22,transparent 67%); opacity:var(--scan-ignition,0); }
+  #fireScanLabel { color:#c99a71; letter-spacing:.18em; font-weight:500; }
+  #fireScanValue { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-variant-numeric:lining-nums tabular-nums; letter-spacing:.035em; color:#fff0d9; text-shadow:0 2px 9px #080305,0 0 24px #ef983338; }
+  #fireScanRank { color:#ebc694; font-weight:500; letter-spacing:.12em; }
+  #fireScanRank::before { content:"階級"; margin-right:10px; font-size:11px; color:#ad8667; letter-spacing:.18em; vertical-align:middle; }
+  #materialControls {
+    position:fixed; z-index:60; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
+    width:min(calc(100% - 24px),500px); margin:auto; color:#e3dfed;
+    padding:12px; border:1px solid #b3a5d52b; border-radius:18px;
+    background:linear-gradient(155deg,#171525ed,#0c0c18f5); box-shadow:0 8px 30px #0004;
+  }
+  #materialControls[hidden] { display:none; }
+  .materialHeading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:13px; }
+  #materialStatus { color:#a7a0b9; font-size:12px; }
+  .materialChoices { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; }
+  .materialChoices button,.materialPlayback button {
+    min-height:44px; padding:7px 4px; border:1px solid #b3a5d52b; border-radius:10px;
+    font:inherit; background:#ffffff05; color:#c7c0d6; cursor:pointer; touch-action:manipulation;
+  }
+  .materialChoices button[aria-pressed="true"] { color:#f7efdd; background:#aa89542e; border-color:#c8a66b99; }
+  .materialChoices button:focus-visible,.materialPlayback button:focus-visible { outline:2px solid #e1c691; outline-offset:2px; }
+  .materialPlayback { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; font-size:13px; }
+  #materialError { position:fixed; z-index:60; top:40%; left:10%; width:80%; color:#ddd6e8; text-align:center; line-height:1.7; }
+  #materialError[hidden] { display:none; }
+  @media (max-height:760px) {
+    #materialControls { padding:10px; }
+    .materialHeading { margin-bottom:6px; }
+    .materialPlayback { margin-top:6px; }
+  }
+  @media (max-height:500px) {
+    #materialControls { padding:8px; bottom:8px; }
+    .materialHeading { margin-bottom:5px; }
+    .materialPlayback { margin-top:5px; }
+  }
+  .settingsPanel.probabilitySection { margin-top:0; padding-top:0; border-top:0; }
+  .settingsTitle{
+    font-weight:900;
+    letter-spacing:.12em;
+    font-size:16px;
+    margin:4px 2px 12px;
+    text-align:center;
+  }
+  .settingsHint{
+    font-size:12px;
+    opacity:.85;
+    line-height:1.6;
+    margin:0 2px 14px;
+    text-align:center;
+  }
+  .toggleGrid{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap:12px 10px;
+    margin: 4px 0 2px;
+  }
+  .toggleCell{
+    display:grid;
+    grid-template-columns: auto auto auto;
+    gap:6px;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    padding:8px 4px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.22);
+    border:1px solid rgba(255,255,255,0.36);
+  }
+  .toggleCell.empty{
+    visibility:hidden;
+    pointer-events:none;
+  }
+  .sLabel{
+    font-weight:900;
+    letter-spacing:.06em;
+    font-size:14px;
+  }
+  .sValue{
+    text-align:left;
+    font-weight:900;
+    font-size:13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .toggleSwitch{
+    position:relative;
+    display:block;
+    width:58px;
+    height:32px;
+    --switch-w:58px;
+    --switch-pad:4px;
+    --thumb-size:24px;
+    justify-self:center;
+  }
+  .toggleSwitch input{
+    position:absolute;
+    opacity:0;
+    width:1px;
+    height:1px;
+  }
+  .toggleTrack{
+    position:absolute;
+    inset:0;
+    border-radius:999px;
+    background:rgba(0,0,0,0.18);
+    border:1px solid rgba(255,255,255,0.55);
+    box-shadow:inset 0 2px 7px rgba(0,0,0,0.12);
+    transition:background 180ms ease, box-shadow 180ms ease;
+  }
+  .toggleTrack::after{
+    content:'';
+    position:absolute;
+    top:50%;
+    left:var(--switch-pad);
+    width:var(--thumb-size);
+    height:var(--thumb-size);
+    border-radius:50%;
+    box-sizing:border-box;
+    background:rgba(255,255,255,0.95);
+    border:3px solid rgba(166,129,71,0.95);
+    box-shadow:0 6px 14px rgba(0,0,0,0.18);
+    transform:translateY(calc(var(--thumb-size) / -2));
+    transition:transform 180ms ease;
+  }
+  .toggleSwitch input:checked + .toggleTrack{
+    background:linear-gradient(180deg,rgba(184,146,84,0.92),rgba(158,118,62,0.92));
+    box-shadow:inset 0 -4px 10px rgba(0,0,0,0.12);
+  }
+  .toggleSwitch input:checked + .toggleTrack::after{
+    transform:translate(calc(var(--switch-w) - var(--thumb-size) - (var(--switch-pad) * 2) - 2px), calc(var(--thumb-size) / -2));
+  }
+  .toggleSwitch input:focus-visible + .toggleTrack{
+    outline:3px solid rgba(166,129,71,0.35);
+    outline-offset:3px;
+  }
+
+  .settingsFooter{
+    position:relative;
+    z-index:3;
+    flex:0 0 auto;
+    margin-top:0;
+    padding:12px 0 calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid #ad906544;
+    background:#eeebeb;
+    box-shadow:0 -8px 18px #28203008;
+    display:flex;
+    gap:10px;
+    flex-direction:column;
+  }
+  .settingsFooter .btnRow { margin-top:0; }
+  .settingsFooter .btn { min-height:44px; }
+  .sumLine{
+    display:flex; justify-content:space-between; align-items:center;
+    font-weight:900;
+    letter-spacing:.04em;
+    font-size:13px;
+  }
+  .sumNote{
+    font-size:12px;
+    opacity:.8;
+    line-height:1.5;
+  }
+  .btnRow{
+    display:flex;
+    gap:10px;
+    width:100%;
+    justify-content:space-between;
+    margin-top:10px;
+  }
+  .btn{
+    pointer-events:auto;
+    border:none;
+    border-radius:14px;
+    padding:12px 14px;
+    font-weight:900;
+    letter-spacing:.08em;
+    cursor:pointer;
+    min-width: 0;
+    flex: 1 1 0;
+    box-shadow:0 8px 18px rgba(0,0,0,.12);
+  }
+  .btnPrimary{ background: linear-gradient(180deg,#B89254,#9E763E); color:#fff; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; }
+  .btnGhost{
+    background: rgba(255,255,255,0.45);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.7);
+  }
+
+  /* ===== 結果卡 ===== */
+  #resultWrap{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:5; pointer-events:none; transform: translateY(var(--global-offset-y)); }
+  .resultCard{ width:min(92vw,560px); background:var(--panel); border-radius:20px; padding:22px 20px 18px; box-shadow:0 10px 24px var(--shadow); color:var(--text); transform: translateY(12px) scale(.98); opacity:0; transition: all 320ms cubic-bezier(.2,.9,.3,1); }
+  .resultCard.show{ opacity:1; transform: translateY(0) scale(1); }
+  .r-title{ font-size:12px; letter-spacing:.22em; margin:2px 2px 8px; opacity:.9; }
+  .ritual{ font-size:14px; line-height:1.35; margin:0 2px 10px; letter-spacing:.04em; }
+  .divider{ height:1px; border-top:1px dashed rgba(0,0,0,.15); margin:10px 2px 14px; }
+
+/* ✅ 全卡片閃白 overlay（像相機閃光） */
+.resultCard{ position: relative; } /* 重要：讓 overlay 以卡片為定位 */
+
+#rankFlashOverlay{
+  position:absolute;
+  inset:0;
+  border-radius:20px;           /* 跟卡片同圓角 */
+  background: rgba(255,255,255,0.95);
+  opacity:0;
+  pointer-events:none;
+  z-index:5;                    /* 蓋在內容上面 */
+}
+
+#rankFlashOverlay.flash{
+  animation: cardFlash 80ms ease-out;
+}
+
+@keyframes cardFlash{
+  from { opacity: 0.95; }
+  to   { opacity: 0; }
+}
+
+  .rank-MUGGLE { --bg-grad:linear-gradient(45deg,#9b8061,#fff0d4,#9b8061); --stroke-col:#756553; }
+  .rank-badge.rank-MUGGLE { font-size:clamp(58px,19vw,100px); }
+  #settingsPage { touch-action:pan-y; }
+  /* ===== 階級樣式 ===== */
+  .rank-E { --bg-grad: linear-gradient(45deg, #939393 0%, #939393 40%, #FFFFFF 50%, #7F7F7F 60%,#7F7F7F 100%); --stroke-col: #494949; }
+  .rank-D { --bg-grad: linear-gradient(45deg, #5D9F39 0%, #5D9F39 40%, #FFFFFF 50%, #448E1D 60%,#448E1D 100%); --stroke-col: #016E3C; }
+  .rank-C { --bg-grad: linear-gradient(45deg, #9C774A 0%, #9C774A 40%, #FFFFFF 50%, #8A622F 60%,#8A622F 100%); --stroke-col: #704200; }
+  .rank-B { --bg-grad: linear-gradient(45deg, #816DBA 0%, #816DBA 40%, #FFFFFF 50%, #6C56AC 60%,#6C56AC 100%); --stroke-col: #4E3986; }
+  .rank-A { --bg-grad: linear-gradient(45deg, #6193BC 0%, #6193BC 40%, #FFFFFF 50%, #497FAE 60%,#497FAE 100%); --stroke-col: #274998; }
+  .rank-S {
+    --bg-grad: linear-gradient(45deg, #FFF5C3 0%, #FFD700 45%, #DAA520 100%);
+    --stroke-col: #FFFFFF;
+    filter: drop-shadow(0 0 15px rgba(255,215,0,0.6));
+  }
+  .rank-SS {
+    --bg-grad: linear-gradient(45deg, #FF0000, #FFFF00, #00FF00, #00FFFF, #0000FF, #FF00FF);
+    --stroke-col: #FFFFFF;
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.9));
+  }
+
+  .rank-badge {
+    position: relative; display: block; text-align: center;
+    font-weight: 900; font-size: 140px; line-height: 1;
+    margin: 10px auto; z-index: 1;
+    color: var(--stroke-col, #333);
+    -webkit-text-stroke: 5px var(--stroke-col, #333);
+  }
+  .rank-badge::after {
+    content: attr(data-rank); position: absolute; left: 0; top: 0;
+    width: 100%; height: 100%; z-index: 2;
+    background: var(--bg-grad, #888);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    -webkit-text-stroke: 0;
+  }
+
+	/* ✅ 跳階瞬間：彈一下 + 閃光 */
+.rank-badge.rank-pop{
+  animation: rankPop 260ms cubic-bezier(.2,.9,.2,1);
+}
+
+.rank-badge.rank-pop::after{
+  animation: rankFlash 260ms ease-out;
+}
+
+/* 文字本體彈一下 */
+@keyframes rankPop{
+  0%   { transform: scale(0.88); filter: brightness(1); }
+  45%  { transform: scale(1.14); filter: brightness(1.25); }
+  100% { transform: scale(1.00); filter: brightness(1); }
+}
+
+/* 漸層層閃一下（看起來像瞬間放光） */
+@keyframes rankFlash{
+  0%   { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+  35%  { filter: drop-shadow(0 0 18px rgba(255,255,255,0.85)); }
+  100% { filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
+}
+
+  .attr-pill{
+    display:block; width:100%; max-width:360px;
+    margin:8px auto 8px; padding:10px 18px;
+    text-align:center; border-radius:999px;
+    font-weight:800; letter-spacing:.08em;
+    color:#fff; box-shadow: inset 0 -6px 14px rgba(0,0,0,.15);
+  }
+  .pill-fire{  background:linear-gradient(180deg,#B24A2C,#7E321D); }
+  .pill-water{ background:linear-gradient(180deg,#2D6D8C,#1E4E66); }
+  .pill-wind{  background:linear-gradient(180deg,#2F7A5C,#215742); }
+  .pill-earth{ background:linear-gradient(180deg,#7C5C2E,#5A431F); }
+  .pill-light{ background:linear-gradient(180deg,#F6E7A8,#D8B85A); }
+  .pill-dark{  background:linear-gradient(180deg,#4B3B6A,#2B2140); }
+
+  .kv{ display:flex; justify-content:space-between; align-items:center; padding:8px 2px; }
+  .kv .label{ font-size:22px; opacity:.9; letter-spacing:.03em; }
+  .kv .value{ font-size:56px; font-weight:900; letter-spacing:.02em; }
+  .remark{ text-align:center; font-style:italic; font-size:20px; margin:0 6px 16px; line-height:1.6; }
+  .footer{ text-align:center; font-size:12px; opacity:.6; margin-top:24px; }
+
+  /* ===== 結果頁：長按回設定按鈕（按住放大版） ===== */
+  #backToSettingsBtn{
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) scale(0.8);
+    width: 64px;
+    height: 64px;
+    border-radius: 999px;
+    border: 2px solid rgba(166,129,71,0.95);
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.14);
+    z-index: 80;
+    display: none;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    touch-action: none;
+    transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  }
+  #backToSettingsBtn .holdRing{ position: absolute; inset: 7px; width: calc(100% - 14px); height: calc(100% - 14px); }
+  #backToSettingsBtn .holdRing .bg{ fill: none; stroke: rgba(255,255,255,0.30); stroke-width: 11; }
+  #backToSettingsBtn .holdRing .fg{
+    fill: none; stroke: rgba(255,255,255,0.95); stroke-width: 11; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 50% 50%;
+    stroke-dasharray: 276; stroke-dashoffset: 276;
+  }
+  #backToSettingsBtn.holding{
+    transform: translateX(-50%) scale(1.5);
+    background: rgba(255,255,255,0.28);
+    box-shadow:
+      0 14px 28px rgba(0,0,0,0.18),
+      0 0 0 10px rgba(255,255,255,0.12),
+      0 0 28px rgba(255,255,255,0.35);
+  }
+/* 兩段長按：第一圈 0.5s、第二圈 1s */
+#backToSettingsBtn.holding.stage1 .holdRing .fg{ animation: hold2s 0.5s linear forwards; }
+#backToSettingsBtn.holding.stage2 .holdRing .fg{ animation: hold2s 1s   linear forwards; }
+  @keyframes hold2s{ from { stroke-dashoffset: 276; } to { stroke-dashoffset: 0; } }
+
+  .resultActionOverlay{
+    position:fixed;
+    inset:0;
+    z-index:95;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    background:rgba(80,70,62,0.28);
+    backdrop-filter:blur(3px);
+  }
+  .resultActionOverlay.show{ display:flex; }
+  .resultActionDialog{
+    width:min(88vw,340px);
+    padding:16px;
+    border-radius:18px;
+    background:rgba(244,241,238,0.96);
+    border:1px solid rgba(255,255,255,0.78);
+    box-shadow:0 18px 36px rgba(0,0,0,0.18);
+  }
+  .resultActionTitle{
+    margin:0 0 12px;
+    text-align:center;
+    font-size:14px;
+    font-weight:900;
+    letter-spacing:.08em;
+  }
+  .resultActionButtons{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .resultActionButtons .btn{
+    min-height:44px;
+    padding:11px 10px;
+  }
+
+  @media (max-width: 430px){
+    #settingsPage { padding-left:7px; padding-right:7px; }
+    .settingsCard{
+      width:100%;
+      padding:14px 12px 0;
+    }
+    .settingsTitle{ font-size:14px; margin:2px 2px 8px; }
+    .settingsHint{ font-size:11px; margin:0 2px 10px; }
+    .toggleGrid{ gap:8px 6px; }
+    .toggleCell{ gap:4px; padding:7px 2px; min-height:40px; }
+    .toggleSwitch{ width:50px; height:28px; --switch-w:50px; --thumb-size:20px; }
+    .toggleTrack::after{ border-width:2px; }
+    .sLabel{ font-size:12px; }
+    .sValue{ font-size:12px; }
+    .btn{ padding:10px 10px; }
+  }
+
+  @media (max-width:360px){
+    #backToSettingsBtn{ width: 62px; height: 62px; bottom: 20px; }
+    #backToSettingsBtn.holding{ transform: translateX(-50%) scale(1.30); }
+  }
+
+
+
+  #resultWrap { transform:none; padding:calc(18px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom)); overflow-y:auto; touch-action:pan-y; }
+  .resultCard { width:min(100%,480px); padding:22px; color:#665034; background:linear-gradient(150deg,#f6f1e9,#dfd5c9); overflow:hidden; flex-shrink:0; }
+  .resultCard .attr-pill { font-size:clamp(24px,7vw,34px); margin:14px auto; }
+  .resultCard .rank-badge { font-size:clamp(88px,26vw,140px); }
+  .resultCard .rank-MUGGLE { font-size:clamp(60px,18vw,90px); }
+  .resultCard .kv { justify-content:center; gap:16px; flex-wrap:wrap; }
+  .resultCard .kv .value { font-size:clamp(46px,13vw,64px); font-variant-numeric:tabular-nums; }
+  .resultCard .remark { font-size:16px; min-height:2.8em; margin:16px 0 0; font-style:normal; }
+  .resultCard .footer { margin-top:16px; }
+  .scan-status { min-height:1.5em; text-align:center; font-size:14px; letter-spacing:.08em; }
+  #rankWave { position:absolute; width:70%; aspect-ratio:1; border:2px solid #ad8a52; border-radius:50%; top:50%; left:50%; opacity:0; pointer-events:none; }
+  #rankWave.active { animation:rankWave 480ms ease-out; }
+  @keyframes rankWave { from { transform:translate(-50%,-50%) scale(.3); opacity:var(--wave-alpha,.3); } to { transform:translate(-50%,-50%) scale(var(--wave-scale,1.4)); opacity:0; } }
+  .resultCard.overflow #manaValue { color:#7d315c; animation:manaSurge 450ms ease-in-out infinite alternate; }
+  .resultCard.overflow .scan-status { color:#813858; font-weight:800; }
+  @keyframes manaSurge { from { transform:translateX(-1px) skewX(-2deg); text-shadow:2px 0 #c59ec1; } to { transform:translateX(1px) skewX(2deg); text-shadow:-2px 0 #d5b276; } }
+  body[data-state="RANK_CONFIRM"] .resultCard { box-shadow:0 0 35px #b8915960; }
+  @media(max-height:650px) { #resultWrap { align-items:flex-start; } .resultCard { padding:14px; } .resultCard .rank-badge { font-size:88px; } .resultCard .remark { margin-top:8px; } }
+  @media(prefers-reduced-motion:reduce) { .rank-badge.rank-pop,#rankWave.active,.resultCard.overflow #manaValue { animation:none; } }
+  .switchHeading,.probabilitySection h2 { font-size:16px; margin:12px 0; }
+  .probabilitySection { margin-top:12px; padding-top:4px; border-top:1px solid #ad906555; }
+  .probabilityRow { display:grid; grid-template-columns:40px minmax(0,1fr) 48px; gap:12px; align-items:center; min-height:40px; font-weight:700; }
+  .probabilityRow output { text-align:right; font-variant-numeric:tabular-nums; }
+  .probabilityRow input { width:100%; margin:0; height:36px; accent-color:#a68147; touch-action:pan-y; cursor:pointer; }
+  .probabilityRow input:disabled { opacity:.4; }
+  @media(max-width:430px) { .toggleGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  .probabilityHeading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .probabilityHeading .btn { flex:0 0 auto; font-size:12px; padding:8px 12px; box-shadow:none; }
+</style>
+</head>
+
+<body>
+
+<div id="settingsPage">
+  <div class="settingsCard" role="dialog" aria-label="鑑定設定">
+    <div class="settingsTabs" role="tablist" aria-label="設定分類">
+      <button id="tab_switches" class="settingsTab" type="button" role="tab" aria-controls="panel_switches" aria-selected="true">開關</button>
+      <button id="tab_probabilities" class="settingsTab" type="button" role="tab" aria-controls="panel_probabilities" aria-selected="false" tabindex="-1">機率</button>
+      <button id="tab_effects" class="settingsTab" type="button" role="tab" aria-controls="panel_effects" aria-selected="false" tabindex="-1">特效</button>
+    </div>
+    <div class="settingsScroll" role="region" aria-label="設定內容" tabindex="0">
+    <section id="panel_switches" class="settingsPanel" role="tabpanel" aria-labelledby="tab_switches">
+    <h2 class="switchHeading">結果開關</h2>
+<div class="toggleGrid" aria-label="屬性與麻瓜開關">
+      <div class="toggleCell">
+        <div class="sLabel">火</div>
+        <label class="toggleSwitch" aria-label="火屬性開關">
+          <input id="s_fire" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_fire">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">水</div>
+        <label class="toggleSwitch" aria-label="水屬性開關">
+          <input id="s_water" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_water">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">風</div>
+        <label class="toggleSwitch" aria-label="風屬性開關">
+          <input id="s_wind" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_wind">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">土</div>
+        <label class="toggleSwitch" aria-label="土屬性開關">
+          <input id="s_earth" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_earth">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">光</div>
+        <label class="toggleSwitch" aria-label="光屬性開關">
+          <input id="s_light" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_light">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">暗</div>
+        <label class="toggleSwitch" aria-label="暗屬性開關">
+          <input id="s_dark" type="checkbox" checked />
+          <span class="toggleTrack" aria-hidden="true"></span>
+        </label>
+        <div class="sValue" id="v_dark">開</div>
+      </div>
+      <div class="toggleCell">
+        <div class="sLabel">麻瓜</div>
+        <label class="toggleSwitch" aria-label="麻瓜結果開關"><input id="s_muggle" type="checkbox" checked><span class="toggleTrack" aria-hidden="true"></span></label>
+        <div class="sValue" id="v_muggle">開</div>
+      </div>
+      <div class="toggleCell"><div class="sLabel">總開關</div><label class="toggleSwitch" aria-label="總開關"><input id="s_master" type="checkbox" checked><span class="toggleTrack" aria-hidden="true"></span></label><div class="sValue" id="v_master">開</div></div>
+    </div>
+    <div style="margin-top:14px; line-height:2">
+      <label><input id="soundEnabled" type="checkbox" checked> 音效</label>
+      <label style="margin-left:20px"><input id="hapticsEnabled" type="checkbox" checked> 震動（支援裝置）</label>
+    </div>
+    </section>
+    <section id="panel_probabilities" class="settingsPanel probabilitySection" role="tabpanel" aria-labelledby="tab_probabilities" hidden>
+      <div class="probabilityHeading"><h2>機率設定</h2><button id="restoreProbabilities" class="btn btnGhost" type="button">回復預設值</button></div>
+      <label class="probabilityRow" for="muggleChance"><span>麻瓜</span><input id="muggleChance" type="range" min="0" max="100" step="1"><output id="percent_muggle"></output></label>
+      <label class="probabilityRow" for="chance_E"><span>E</span><input id="chance_E" type="range" min="0" max="100" step="1"><output id="percent_E"></output></label>
+      <label class="probabilityRow" for="chance_D"><span>D</span><input id="chance_D" type="range" min="0" max="100" step="1"><output id="percent_D"></output></label>
+      <label class="probabilityRow" for="chance_C"><span>C</span><input id="chance_C" type="range" min="0" max="100" step="1"><output id="percent_C"></output></label>
+      <label class="probabilityRow" for="chance_B"><span>B</span><input id="chance_B" type="range" min="0" max="100" step="1"><output id="percent_B"></output></label>
+      <label class="probabilityRow" for="chance_A"><span>A</span><input id="chance_A" type="range" min="0" max="100" step="1"><output id="percent_A"></output></label>
+      <label class="probabilityRow" for="chance_S"><span>S</span><input id="chance_S" type="range" min="0" max="100" step="1"><output id="percent_S"></output></label>
+      <label class="probabilityRow" for="chance_SS"><span>SS</span><input id="chance_SS" type="range" min="0" max="100" step="1"><output id="percent_SS"></output></label>
+    </section>
+    <section id="panel_effects" class="settingsPanel" role="tabpanel" aria-labelledby="tab_effects" hidden>
+<p class="effectHint">100% 為目前預設效果；調整後可全螢幕預覽。</p>
+<details class="effectGroup"><summary>屬性揭曉樣板</summary>
+<p class="effectHint">切換六種屬性，比較材質與動態；可暫停檢視或重新播放。火屬性的收筆預覽包含數字轉場，使用固定預覽數值。</p>
+<button id="materialPreviewOpen" class="btn btnGhost materialOpen" type="button">預覽六種屬性</button>
+<button id="flowPreviewOpen" class="btn materialOpen" type="button">預覽收筆到屬性</button>
+</details>
+<details class="effectGroup"><summary>整體動態</summary>
+<p class="effectHint">每圈秒數越少，轉得越快；個別粒子仍有速度差異。</p>
+<div class="effectControl"><label for="effect_idleSeconds">待機每圈秒數</label><output id="effect_value_idleSeconds" for="effect_idleSeconds"></output><input id="effect_idleSeconds" type="range" min="10" max="180" step="0.1"></div>
+<div class="effectControl"><label for="effect_activeSeconds">按住每圈秒數</label><output id="effect_value_activeSeconds" for="effect_activeSeconds"></output><input id="effect_activeSeconds" type="range" min="0.3" max="5" step="0.1"></div>
+<div class="effectControl"><label for="effect_acceleration">加速時間</label><output id="effect_value_acceleration" for="effect_acceleration"></output><input id="effect_acceleration" type="range" min="0.2" max="8" step="0.1"></div>
+<div class="effectControl"><label for="effect_deceleration">恢復時間</label><output id="effect_value_deceleration" for="effect_deceleration"></output><input id="effect_deceleration" type="range" min="0.2" max="8" step="0.1"></div>
+<button id="effect_reset_motion" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>霧</summary>
+<label class="effectToggle"><input id="effect_mistEnabled" type="checkbox">顯示霧</label>
+<div class="effectControl"><label for="effect_mistCount">霧團總數</label><output id="effect_value_mistCount" for="effect_mistCount"></output><input id="effect_mistCount" type="range" min="12" max="144" step="1"></div>
+<div class="effectControl"><label for="effect_mistSize">大小</label><output id="effect_value_mistSize" for="effect_mistSize"></output><input id="effect_mistSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_mistOpacity">濃淡</label><output id="effect_value_mistOpacity" for="effect_mistOpacity"></output><input id="effect_mistOpacity" type="range" min="10" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_mistDrift">飄動程度</label><output id="effect_value_mistDrift" for="effect_mistDrift"></output><input id="effect_mistDrift" type="range" min="0" max="200" step="5"></div>
+<p class="effectHint">0% 沿固定軌道旋轉；越高越有飄移與形變。</p>
+<div id="effect_mistPalette" class="effectPalette" role="group" aria-labelledby="mistPaletteTitle"><h3 id="mistPaletteTitle" class="effectPaletteTitle">霧的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每團霧從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<button id="effect_reset_mist" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>圓點粒子</summary>
+<p class="effectHint">總數包含畫面外的粒子。</p>
+<label class="effectToggle"><input id="effect_dotEnabled" type="checkbox">顯示圓點</label>
+<div class="effectControl"><label for="effect_dotCount">圓點總數</label><output id="effect_value_dotCount" for="effect_dotCount"></output><input id="effect_dotCount" type="range" min="12" max="306" step="1"></div>
+<div class="effectControl"><label for="effect_dotSize">大小</label><output id="effect_value_dotSize" for="effect_dotSize"></output><input id="effect_dotSize" type="range" min="50" max="250" step="5"></div>
+<div class="effectControl"><label for="effect_dotOpacity">亮度</label><output id="effect_value_dotOpacity" for="effect_dotOpacity"></output><input id="effect_dotOpacity" type="range" min="10" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_dotSpeed">速度倍率</label><output id="effect_value_dotSpeed" for="effect_dotSpeed"></output><input id="effect_dotSpeed" type="range" min="25" max="200" step="5"></div>
+<div id="effect_dotPalette" class="effectPalette" role="group" aria-labelledby="dotPaletteTitle"><h3 id="dotPaletteTitle" class="effectPaletteTitle">圓點的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每顆圓點從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<div class="effectControl"><label for="effect_dotDepth">深度感</label><output id="effect_value_dotDepth" for="effect_dotDepth"></output><input id="effect_dotDepth" type="range" min="0" max="200" step="5"></div>
+<p class="effectHint">越高，近遠粒子的大小、亮度與速度差異越明顯。</p>
+<button id="effect_reset_dots" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>閃爍星芒</summary>
+<p class="effectHint">待機與按住時出現的柔和星芒。</p>
+<label class="effectToggle"><input id="effect_starEnabled" type="checkbox">顯示星芒</label>
+<div class="effectControl"><label for="effect_starSize">大小</label><output id="effect_value_starSize" for="effect_starSize"></output><input id="effect_starSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_starOpacity">亮度</label><output id="effect_value_starOpacity" for="effect_starOpacity"></output><input id="effect_starOpacity" type="range" min="10" max="115" step="5"></div>
+<div class="effectControl"><label for="effect_starIdle">待機出現頻率</label><output id="effect_value_starIdle" for="effect_starIdle"></output><input id="effect_starIdle" type="range" min="25" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_starHeld">按住出現頻率</label><output id="effect_value_starHeld" for="effect_starHeld"></output><input id="effect_starHeld" type="range" min="25" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_starDuration">平均持續時間</label><output id="effect_value_starDuration" for="effect_starDuration"></output><input id="effect_starDuration" type="range" min="0.3" max="3.5" step="0.1"></div>
+<p class="effectHint">每顆略有長短差異；時間越長，展開與淡出越緩慢。</p>
+<div id="effect_starPalette" class="effectPalette" role="group" aria-labelledby="starPaletteTitle"><h3 id="starPaletteTitle" class="effectPaletteTitle">星芒的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每顆星芒從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<button id="effect_reset_stars" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>背景</summary>
+<div class="effectColor"><label for="effect_backgroundCenter">中央顏色</label><input id="effect_backgroundCenter" type="color"></div>
+<div class="effectColor"><label for="effect_backgroundOuter">外圍顏色</label><input id="effect_backgroundOuter" type="color"></div>
+<button id="effect_reset_background" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>手指軌跡</summary>
+<p class="effectHint">畫線時保留整筆；放開後先停留，再縮細淡出。</p>
+<label class="effectToggle"><input id="effect_trailEnabled" type="checkbox">顯示手指軌跡</label>
+<div class="effectControl"><label for="effect_trailWidth">光帶粗細</label><output id="effect_value_trailWidth" for="effect_trailWidth"></output><input id="effect_trailWidth" type="range" min="1" max="6" step="0.5"></div>
+<div class="effectControl"><label for="effect_trailOpacity">線條亮度</label><output id="effect_value_trailOpacity" for="effect_trailOpacity"></output><input id="effect_trailOpacity" type="range" min="10" max="100" step="1"></div>
+<div class="effectControl"><label for="effect_trailGlowSize">光暈大小</label><output id="effect_value_trailGlowSize" for="effect_trailGlowSize"></output><input id="effect_trailGlowSize" type="range" min="4" max="24" step="1"></div>
+<div class="effectControl"><label for="effect_trailGlowOpacity">光暈亮度</label><output id="effect_value_trailGlowOpacity" for="effect_trailGlowOpacity"></output><input id="effect_trailGlowOpacity" type="range" min="0" max="60" step="5"></div>
+<div class="effectControl"><label for="effect_trailFingerSize">指尖光點大小</label><output id="effect_value_trailFingerSize" for="effect_trailFingerSize"></output><input id="effect_trailFingerSize" type="range" min="8" max="32" step="1"></div>
+<div class="effectControl"><label for="effect_trailHold">放開後停留時間</label><output id="effect_value_trailHold" for="effect_trailHold"></output><input id="effect_trailHold" type="range" min="0" max="8" step="0.1"></div>
+<div class="effectControl"><label for="effect_trailFade">淡出時間</label><output id="effect_value_trailFade" for="effect_trailFade"></output><input id="effect_trailFade" type="range" min="0.2" max="4" step="0.1"></div>
+<label class="effectToggle"><input id="effect_trailFlowEnabled" type="checkbox">沿線能量流動</label>
+<div class="effectControl"><label for="effect_trailFlowDensity">流動亮段數量</label><output id="effect_value_trailFlowDensity" for="effect_trailFlowDensity"></output><input id="effect_trailFlowDensity" type="range" min="0" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_trailFlowSpeed">能量流動速度</label><output id="effect_value_trailFlowSpeed" for="effect_trailFlowSpeed"></output><input id="effect_trailFlowSpeed" type="range" min="25" max="200" step="5"></div>
+<label class="effectToggle"><input id="effect_trailDustEnabled" type="checkbox">星塵、細閃與消散光點</label>
+<div class="effectControl"><label for="effect_trailDustDensity">星塵與光點數量</label><output id="effect_value_trailDustDensity" for="effect_trailDustDensity"></output><input id="effect_trailDustDensity" type="range" min="0" max="200" step="5"></div>
+<label class="effectToggle"><input id="effect_trailRandom" type="checkbox">每筆隨機選色</label>
+<p class="effectHint">關閉隨機選色時，使用色彩池的第一格。</p>
+<div id="effect_trailPalette" class="effectPalette" role="group" aria-labelledby="trailPaletteTitle"><h3 id="trailPaletteTitle" class="effectPaletteTitle">軌跡的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每筆從這些顏色中隨機選色；關閉隨機時使用第一格。點色格調色，可新增或刪除。</p></div>
+<button id="effect_reset_trails" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>爆炸與收束</summary>
+<p class="effectHint">收筆後，軌跡化為魔力球向外展開，再收束到中央。100% 保留目前效果。</p>
+<div class="effectControl"><label for="effect_burstCount">魔力球數量</label><output id="effect_value_burstCount" for="effect_burstCount"></output><input id="effect_burstCount" type="range" min="25" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_burstSize">魔力球大小</label><output id="effect_value_burstSize" for="effect_burstSize"></output><input id="effect_burstSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_burstOpacity">魔力球亮度</label><output id="effect_value_burstOpacity" for="effect_burstOpacity"></output><input id="effect_burstOpacity" type="range" min="10" max="100" step="5"></div>
+<div class="effectControl"><label for="effect_burstRadius">向外擴散範圍</label><output id="effect_value_burstRadius" for="effect_burstRadius"></output><input id="effect_burstRadius" type="range" min="50" max="160" step="5"></div>
+<div class="effectControl"><label for="effect_burstDepth">前後景深度</label><output id="effect_value_burstDepth" for="effect_burstDepth"></output><input id="effect_burstDepth" type="range" min="0" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_burstDuration">爆炸到收束時間</label><output id="effect_value_burstDuration" for="effect_burstDuration"></output><input id="effect_burstDuration" type="range" min="1.2" max="4" step="0.1"></div>
+<label class="effectToggle"><input id="effect_burstUseTrail" type="checkbox">沿用軌跡顏色</label>
+<p class="effectHint">關閉後，魔力球會從下方色彩池中隨機選色。</p>
+<div id="effect_burstPalette" class="effectPalette" role="group" aria-labelledby="burstPaletteTitle"><h3 id="burstPaletteTitle" class="effectPaletteTitle">魔力球的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">關閉「沿用軌跡顏色」後，每顆魔力球從這些顏色中隨機選色。</p></div>
+<button type="button" class="btn btnGhost materialOpen" data-flow-preview>預覽收筆到屬性</button>
+<button id="effect_reset_burst" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>爆炸星芒</summary>
+<p class="effectHint">爆炸時散開的柔和星芒，有大小差異並會自轉。</p>
+<label class="effectToggle"><input id="effect_burstStarEnabled" type="checkbox">顯示爆炸星芒</label>
+<div class="effectControl"><label for="effect_burstStarCount">出現數量</label><output id="effect_value_burstStarCount" for="effect_burstStarCount"></output><input id="effect_burstStarCount" type="range" min="0" max="96" step="1"></div>
+<div class="effectControl"><label for="effect_burstStarSize">大小</label><output id="effect_value_burstStarSize" for="effect_burstStarSize"></output><input id="effect_burstStarSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_burstStarOpacity">亮度</label><output id="effect_value_burstStarOpacity" for="effect_burstStarOpacity"></output><input id="effect_burstStarOpacity" type="range" min="10" max="100" step="5"></div>
+<div class="effectControl"><label for="effect_burstStarSpin">自轉速度</label><output id="effect_value_burstStarSpin" for="effect_burstStarSpin"></output><input id="effect_burstStarSpin" type="range" min="0" max="200" step="5"></div>
+<div id="effect_burstStarPalette" class="effectPalette" role="group" aria-labelledby="burstStarPaletteTitle"><h3 id="burstStarPaletteTitle" class="effectPaletteTitle">爆炸星芒的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每顆星芒從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<button type="button" class="btn btnGhost materialOpen" data-flow-preview>預覽收筆到屬性</button>
+<button id="effect_reset_burstStars" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>瞬閃星芒</summary>
+<p class="effectHint">尖細亮光在畫面各處短暫閃現，位置固定、不自轉，保留色票設定的鮮明色彩。</p>
+<label class="effectToggle"><input id="effect_flashEnabled" type="checkbox">顯示瞬閃星芒</label>
+<div class="effectControl"><label for="effect_flashCount">出現數量</label><output id="effect_value_flashCount" for="effect_flashCount"></output><input id="effect_flashCount" type="range" min="0" max="60" step="1"></div>
+<div class="effectControl"><label for="effect_flashSize">大小</label><output id="effect_value_flashSize" for="effect_flashSize"></output><input id="effect_flashSize" type="range" min="50" max="250" step="5"></div>
+<div class="effectControl"><label for="effect_flashOpacity">亮度</label><output id="effect_value_flashOpacity" for="effect_flashOpacity"></output><input id="effect_flashOpacity" type="range" min="10" max="100" step="5"></div>
+<div class="effectControl"><label for="effect_flashDuration">平均閃現時間</label><output id="effect_value_flashDuration" for="effect_flashDuration"></output><input id="effect_flashDuration" type="range" min="0.06" max="0.3" step="0.01"></div>
+<div id="effect_flashPalette" class="effectPalette" role="group" aria-labelledby="flashPaletteTitle"><h3 id="flashPaletteTitle" class="effectPaletteTitle">瞬閃星芒的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每道閃光從這些顏色中隨機選色，星芒與光暈使用相同色彩。點色格調色，可新增或刪除。</p></div>
+<button type="button" class="btn btnGhost materialOpen" data-flow-preview>預覽收筆到屬性</button>
+<button id="effect_reset_flashes" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<p id="effectSaveStatus" class="effectHint" role="status">調整會自動儲存在此裝置</p></section>
+    <div style="margin-top:14px; line-height:2">
+      <div id="pwaStatus" class="sumNote" role="status">V2 · 第六階段</div>
+      <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
+    </div>
+    </div>
+    <div class="settingsFooter">
+      <div id="effectActions" class="effectActions" hidden>
+        <button id="effectPreview" class="btn btnPrimary" type="button">預覽特效</button>
+        <button id="effectSetDefault" class="btn btnGhost" type="button">設為預設</button>
+        <button id="effectResetAll" class="btn btnGhost" type="button" aria-label="回復全部特效預設">回復預設</button>
+      </div>
+      <div class="btnRow">
+        <button class="btn btnPrimary" id="btnStart" type="button">開始鑑定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="animLayer" aria-label="傳送門：按住加速旋轉，放開恢復慢速">
+  <canvas id="particleCanvas" aria-hidden="true"></canvas>
+</div>
+<button id="effectPreviewBack" type="button" hidden>返回設定</button>
+<div id="materialControls" role="region" aria-label="屬性樣板控制" hidden>
+  <div class="materialHeading"><span id="materialHeadingTitle">屬性材質樣板</span><span id="materialStatus" role="status">形成</span></div>
+  <div class="materialChoices" role="group" aria-label="選擇預覽屬性">
+    <button id="material_fire" type="button" aria-pressed="true" aria-label="預覽火屬性">火</button>
+    <button id="material_water" type="button" aria-pressed="false" aria-label="預覽水屬性">水</button>
+    <button id="material_wind" type="button" aria-pressed="false" aria-label="預覽風屬性">風</button>
+    <button id="material_earth" type="button" aria-pressed="false" aria-label="預覽土屬性">土</button>
+    <button id="material_light" type="button" aria-pressed="false" aria-label="預覽光屬性">光</button>
+    <button id="material_dark" type="button" aria-pressed="false" aria-label="預覽暗屬性">暗</button>
+  </div>
+  <div class="materialPlayback">
+    <button id="materialPause" type="button" aria-pressed="false">暫停</button>
+    <button id="materialReplay" type="button">重新播放</button>
+  </div>
+</div>
+<p id="materialError" role="status" hidden></p>
+<div id="revealTitle" hidden></div>
+<div id="fireScanReadout" hidden aria-label="火屬性魔力鑑定">
+  <span id="fireScanLabel">魔力值</span>
+  <span id="fireScanValue">000</span>
+  <span id="fireScanRank">—</span>
+</div>
+<button id="formalReplay" type="button" hidden>重新鑑定</button>
+
+<div id="resultWrap" aria-live="polite">
+  <div id="resultCard" class="resultCard" role="group" aria-label="鑑定結果">
+	<div id="rankFlashOverlay" aria-hidden="true"></div>
+    <div id="scanStatus" class="scan-status" role="status"></div>
+    <div id="attrPill" class="attr-pill">---</div>
+    <div id="rankBadge" class="rank-badge" data-rank="">—</div>
+    <div class="kv"><div class="label">魔力值</div><div id="manaValue" class="value">0</div></div>
+    <div id="remark" class="remark"></div>
+    <div id="rankWave" aria-hidden="true"></div>
+    <div class="footer">本系統由狐狸樹屋開發</div>
+  </div>
+</div>
+
+<button id="backToSettingsBtn" type="button" aria-label="開啟鑑定後選單">
+  <svg viewBox="0 0 100 100" class="holdRing" aria-hidden="true">
+    <circle class="bg" cx="50" cy="50" r="44"></circle>
+    <circle class="fg" cx="50" cy="50" r="44"></circle>
+  </svg>
+</button>
+
+<div id="resultActionSheet" class="resultActionOverlay" aria-hidden="true">
+  <div class="resultActionDialog" role="dialog" aria-modal="true" aria-label="鑑定後操作">
+    <div class="resultActionTitle">鑑定完成</div>
+    <div class="resultActionButtons">
+      <button class="btn btnGhost" id="btnRetryCert" type="button">重新鑑定</button>
+      <button class="btn btnPrimary" id="btnGoHome" type="button">回設定</button>
+    </div>
+  </div>
+</div>
+
+<script src="./js/config.js"></script>
+<script src="./js/effect-settings.js"></script>
+<script src="./js/probability-settings.js"></script>
+<script src="./js/result-system.js"></script>
+<script src="./js/ribbon-renderer.js"></script>
+<script src="./js/finger-trails.js"></script>
+<script src="./js/portal-scene.js"></script>
+<script src="./js/element-material-fluids.js"></script>
+<script src="./js/element-material-matter.js"></script>
+<script src="./js/element-material-energy.js"></script>
+<script src="./js/element-material-renderer.js"></script>
+<script src="./js/element-reveal-backdrop.js"></script>
+<script src="./js/reveal-flow.js"></script>
+<script src="./js/fire-scan-transition.js"></script>
+<script src="./js/fire-rank-sparkles.js"></script>
+<script src="./js/fire-rank-embers.js"></script>
+<script src="./js/reveal-gather.js"></script>
+<script src="./js/reveal-atmosphere.js"></script>
+<script src="./js/reveal-shockwaves.js"></script>
+<script src="./js/runtime.js"></script>
+<script src="./js/audio.js"></script>
+<script defer src="./js/pwa.js"></script>
+<script>
+/** Shared drawing/reveal pipeline; fire continues into its first mana-scan stage. */
+(function(){
+  'use strict';
+  const CONFIG=ManaConfig;
+  const {STATES,Session,validSettings}=ManaResults;
+  const session=new Session();
+  const timeline=new ActiveTimeline(()=>performance.now(),setTimeout,clearTimeout);
+  const audio=new AudioManager(window);
+  const quality=new AdaptiveQuality(innerWidth,innerHeight,devicePixelRatio||1);
+  const RAF=window.__MANA_RAF||(window.__MANA_RAF={});
+  for(const key of ['particle','core','fx']){
+    if(RAF[key])cancelAnimationFrame(RAF[key]);
+    RAF[key]=null;
+  }
+  const canvas=document.getElementById('particleCanvas');
+  const ctx=canvas.getContext('2d');
+  const animLayerEl=document.getElementById('animLayer');
+  let portal=null,lastParticleTs=null,pagePaused=false,effectPreview=false,effectsDirty=false;
+  let materialPreview=false,materialRenderer=null,materialBackdrop=null;
+  const elementBackdrop=new ElementRevealBackdrop();
+  let flowPreview=false,flowPortal=null,flow=null,gather=null,flowAtmosphere=null,flowPreviewOrigin=null;
+  let formalReveal=false;
+  const formalReplay=document.getElementById('formalReplay');
+  const materialControls=document.getElementById('materialControls');
+  const materialError=document.getElementById('materialError');
+  const materialStatus=document.getElementById('materialStatus');
+  const revealTitle=document.getElementById('revealTitle');
+  const fireScanReadout=document.getElementById('fireScanReadout');
+  const fireScanValue=document.getElementById('fireScanValue');
+  const fireScanRank=document.getElementById('fireScanRank');
+  const fireScanLabel=document.getElementById('fireScanLabel');
+  let effectStorage;
+  try{effectStorage=window.localStorage;}catch(_){}
+  let effectValues=EffectSettings.load(effectStorage);
+
+  function getViewportSize(){
+    return window.visualViewport
+      ? {w:window.visualViewport.width,h:window.visualViewport.height}
+      : {w:window.innerWidth,h:window.innerHeight};
+  }
+  function flowActive(){return flowPreview||formalReveal;}
+  function inputScene(){return flowActive()?flowPortal:portal;}
+  function releasePointer(id,cancelled=false){
+    const scene=inputScene();if(!scene)return;
+    const active=scene.pointer.id;
+    if(!scene.release(id))return;
+    if(flowActive())flow.up(active,{cancelled});
+    if(active!==null){try{animLayerEl.releasePointerCapture(active);}catch(_){}}
+  }
+  function cancelInput(){
+    releasePointer(undefined,true);
+    if(flowActive())flow.cancelPointer();
+  }
+  function onViewportChange(){
+    const {w,h}=getViewportSize();
+    if(w<=0||h<=0)return;
+    document.documentElement.style.setProperty('--viewport-w',w+'px');
+    document.documentElement.style.setProperty('--viewport-h',h+'px');
+    // Match the approved preview and ribbon layer. Adaptive downscaling used to
+    // erase fine filaments even when their renderer was otherwise unchanged.
+    const dpr=Math.min(2,2400/Math.max(w,h));
+    canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+    canvas.style.width=w+'px';canvas.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(portal){
+      if(portal.width!==w||portal.height!==h)cancelInput();
+      portal.resize(w,h);
+    }
+    if(flowPortal)flowPortal.resize(w,h);
+    if(gather)gather.resize(w,h);
+    if(materialBackdrop)materialBackdrop.resize(w,h);
+    if(materialRenderer)materialRenderer.lastRender=-Infinity;
+    // Resizing clears Canvas immediately. Restore the current frame even when
+    // the animation is paused or a browser has not delivered its next RAF yet.
+    if(flowActive())drawRevealFlow();
+    else if(materialPreview)drawMaterialPreview();
+    else if(portal)portal.draw(quality.profile);
+  }
+  onViewportChange();
+  const viewport=getViewportSize();
+  portal=new PortalScene(ctx,viewport.w,viewport.h,undefined,effectValues);
+  EffectSettings.mount(document,effectStorage,values=>{effectValues=values;effectsDirty=true;});
+  addEventListener('resize',onViewportChange);
+  addEventListener('orientationchange',onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',onViewportChange);
+    window.visualViewport.addEventListener('scroll',onViewportChange);
+  }
+
+  /* ===== 屬性開關設定 ===== */
+  const ELEMENT_KEYS = ['火','水','風','土','光','暗'];
+  let elementEnabled = { 火:true, 水:true, 風:true, 土:true, 光:true, 暗:true };
+
+  const settingsPage = document.getElementById('settingsPage');
+  const btnStart = document.getElementById('btnStart');
+  const settingsTabs=['switches','probabilities','effects'].map(name=>({
+    tab:document.getElementById('tab_'+name),panel:document.getElementById('panel_'+name)
+  }));
+  function selectSettingsTab(index) {
+    document.getElementById('effectActions').hidden=index!==2;
+    settingsTabs.forEach(({tab,panel},i)=>{
+      const selected=i===index;
+      tab.setAttribute('aria-selected',String(selected));
+      tab.tabIndex=selected?0:-1;panel.hidden=!selected;
+    });
+  }
+  settingsTabs.forEach(({tab},index)=>{
+    tab.addEventListener('click',()=>selectSettingsTab(index));
+    tab.addEventListener('keydown',event=>{
+      let next;
+      if(event.key==='ArrowRight')next=(index+1)%settingsTabs.length;
+      else if(event.key==='ArrowLeft')next=(index+settingsTabs.length-1)%settingsTabs.length;
+      else if(event.key==='Home')next=0;
+      else if(event.key==='End')next=settingsTabs.length-1;
+      else return;
+      event.preventDefault();selectSettingsTab(next);settingsTabs[next].tab.focus();
+    });
+  });
+  selectSettingsTab(0);
+
+  const toggles = {
+    火: document.getElementById('s_fire'),
+    水: document.getElementById('s_water'),
+    風: document.getElementById('s_wind'),
+    土: document.getElementById('s_earth'),
+    光: document.getElementById('s_light'),
+    暗: document.getElementById('s_dark'),
+  };
+  const values = {
+    火: document.getElementById('v_fire'),
+    水: document.getElementById('v_water'),
+    風: document.getElementById('v_wind'),
+    土: document.getElementById('v_earth'),
+    光: document.getElementById('v_light'),
+    暗: document.getElementById('v_dark'),
+  };
+
+  const soundToggle=document.getElementById('soundEnabled');
+  const hapticsToggle=document.getElementById('hapticsEnabled');
+  soundToggle.addEventListener('change',()=>audio.setEnabled(soundToggle.checked));
+  const masterToggle=document.getElementById('s_master');
+  const muggleToggle = document.getElementById('s_muggle');
+  const muggleChance = document.getElementById('muggleChance');
+  muggleChance.value = CONFIG.muggleChance * 100;
+  const rankOrder=['E','D','C','B','A','S','SS'];
+  let rankPercents=Object.fromEntries(Object.entries(CONFIG.normalRanks).map(([k,v])=>[k,Math.round(v*100)]));
+  function renderProbabilities(){
+    document.getElementById('percent_muggle').textContent=muggleChance.value+'%';
+    muggleChance.disabled=!muggleToggle.checked;
+    document.getElementById('v_muggle').textContent=muggleToggle.checked?'開':'關';
+    for(const k of rankOrder){
+      document.getElementById('chance_'+k).value=rankPercents[k];
+      document.getElementById('percent_'+k).textContent=rankPercents[k]+'%';
+    }
+  }
+  for(const k of rankOrder)document.getElementById('chance_'+k).addEventListener('input',()=>{
+    rankPercents=ProbabilitySettings.redistribute(rankPercents,k,Number(document.getElementById('chance_'+k).value));
+    renderToggles();
+  });
+  function readSettings() {
+    return { elements:elementEnabled, normalRanks:rankPercents, muggleEnabled:muggleToggle.checked,
+      muggleChance:muggleChance.value === '' ? NaN : Number(muggleChance.value) / 100 };
+  }
+  muggleToggle.addEventListener('change', renderToggles);
+  muggleChance.addEventListener('input', renderToggles);
+  function readTogglesToEnabled(){
+    for(const k of ELEMENT_KEYS){
+      elementEnabled[k] = !!toggles[k].checked;
+    }
+  }
+  function enabledCount(){
+    return ELEMENT_KEYS.reduce((count,k)=>count + (elementEnabled[k] ? 1 : 0), 0);
+  }
+  function renderToggles(){
+    renderProbabilities();
+    for(const k of ELEMENT_KEYS){
+      const on = !!elementEnabled[k];
+      values[k].textContent = on ? '開' : '關';
+      values[k].style.opacity = on ? '1' : '.55';
+    }
+    masterToggle.checked=ELEMENT_KEYS.every(k=>elementEnabled[k])&&muggleToggle.checked;
+    document.getElementById('v_master').textContent=masterToggle.checked?'開':'關';
+    const valid=validSettings(readSettings());
+    btnStart.disabled = !valid;
+    btnStart.setAttribute('aria-disabled', String(!valid));
+  }
+  function applyEnabledToToggles(){
+    for(const k of ELEMENT_KEYS){
+      toggles[k].checked = !!elementEnabled[k];
+    }
+    readTogglesToEnabled();
+    renderToggles();
+  }
+  function setAllElementsEnabled(on){
+    muggleToggle.checked=!!on;
+    for(const k of ELEMENT_KEYS){
+      elementEnabled[k] = !!on;
+    }
+    applyEnabledToToggles();
+  }
+  for(const k of ELEMENT_KEYS){
+    toggles[k].addEventListener('change', ()=>{
+      readTogglesToEnabled();
+      renderToggles();
+    }, {passive:true});
+  }
+
+  masterToggle.addEventListener('change',()=>setAllElementsEnabled(masterToggle.checked));
+  document.getElementById('restoreProbabilities').addEventListener('click',()=>{
+    muggleChance.value=CONFIG.muggleChance*100;
+    rankPercents=Object.fromEntries(Object.entries(CONFIG.normalRanks).map(([k,v])=>[k,Math.round(v*100)]));
+    renderToggles();
+  });
+
+  // The new fire readout is independent of the legacy result card.
+  const resultWrap=document.getElementById('resultWrap');
+  const resultCard=document.getElementById('resultCard');
+  const backBtn=document.getElementById('backToSettingsBtn');
+  const resultActionSheet=document.getElementById('resultActionSheet');
+  function hideResultUI(){
+    resultWrap.style.display='none';resultWrap.style.pointerEvents='none';
+    resultCard.classList.remove('show');
+    backBtn.style.display='none';
+    resultActionSheet.classList.remove('show');
+    resultActionSheet.setAttribute('aria-hidden','true');
+  }
+  function resetPortal(){
+    cancelInput();
+    flowPreview=false;formalReveal=false;formalReplay.hidden=true;revealTitle.hidden=true;
+    hideFireScan();
+    if(flow)flow.reset(flow.element);
+    if(flowPortal)flowPortal.reset();
+    materialPreview=false;materialControls.hidden=true;materialError.hidden=true;
+    if(effectsDirty){const {w,h}=getViewportSize();portal=new PortalScene(ctx,w,h,undefined,effectValues);effectsDirty=false;}
+    portal.reset();
+    audio.stop();timeline.clear();quality.resetSamples();lastParticleTs=null;
+    hideResultUI();
+  }
+  function showSettingsPage(){
+    effectPreview=false;document.getElementById('effectPreviewBack').hidden=true;
+    resetPortal();session.reset();document.body.dataset.state=STATES.SETTINGS;
+    settingsPage.style.display='flex';animLayerEl.style.display='none';
+  }
+  function beginRound(){
+    if(!validSettings(readSettings()))return;
+    effectPreview=false;document.getElementById('effectPreviewBack').hidden=true;
+    resetPortal();
+    const result=session.begin(readSettings());
+    formalReveal=true;
+    const names={火:'fire',水:'water',風:'wind',土:'earth',光:'light',暗:'dark'};
+    prepareFlow(result.type==='muggle'?null:names[result.element],true);
+    document.body.dataset.state=STATES.STANDBY;
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    document.getElementById('effectPreviewBack').hidden=false;
+    onViewportChange();
+    drawRevealFlow();
+  }
+  function canTouchMagic(){
+    if(document.hidden||pagePaused||materialPreview)return false;
+    if(flowActive())return !flow.paused&&(flow.state==='DRAWING'||flow.state==='WAITING');
+    return effectPreview||session.state===STATES.STANDBY||session.state===STATES.INTERACTION;
+  }
+  function onMagicStart(e){
+    if(!canTouchMagic()||(e.pointerType==='mouse'&&e.button!==0))return;
+    e.preventDefault();
+    const scene=inputScene();
+    if(flowActive()&&!flow.down(e.pointerId,e.clientX,e.clientY))return;
+    if(!scene.down(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now()))return;
+    try{animLayerEl.setPointerCapture(e.pointerId);}catch(_){}
+    if(!effectPreview&&!flowPreview&&session.state===STATES.STANDBY){
+      session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
+    }
+  }
+  function onMagicMove(e){
+    const scene=inputScene();
+    if(!canTouchMagic()||e.pointerId!==scene.pointer.id)return;
+    e.preventDefault();
+    const samples=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[];
+    for(const sample of samples.slice(-256)){
+      scene.move(e.pointerId,sample.clientX,sample.clientY,sample.timeStamp??e.timeStamp??timeline.now());
+      if(flowActive())flow.move(e.pointerId,sample.clientX,sample.clientY);
+    }
+    scene.move(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
+    if(flowActive())flow.move(e.pointerId,e.clientX,e.clientY);
+  }
+  function onMagicEnd(e){
+    if(e.type==='pointerup'&&canTouchMagic()&&e.pointerId===inputScene().pointer.id){
+      inputScene().move(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
+      if(flowActive())flow.move(e.pointerId,e.clientX,e.clientY);
+    }
+    releasePointer(e.pointerId,e.type!=='pointerup');
+  }
+  animLayerEl.addEventListener('pointerdown',onMagicStart,{passive:false});
+  window.addEventListener('pointermove',onMagicMove,{passive:false});
+  window.addEventListener('pointerup',onMagicEnd,{passive:true});
+  window.addEventListener('pointercancel',onMagicEnd,{passive:true});
+  animLayerEl.addEventListener('lostpointercapture',onMagicEnd,{passive:true});
+  window.addEventListener('blur',cancelInput);
+
+  function drawParticles(){
+    const ts=timeline.now();
+    const dt=lastParticleTs===null?0:Math.max(0,(ts-lastParticleTs)/1000);
+    lastParticleTs=ts;
+    if(flowActive()&&!document.hidden&&!pagePaused){
+      stepRevealFlow(dt);drawRevealFlow();
+    }else if(canTouchMagic()){
+      portal.step(dt);portal.draw(quality.profile);
+    }else if(materialPreview&&!document.hidden&&!pagePaused){
+      materialRenderer.step(dt);
+      if(!materialRenderer.paused)materialBackdrop.step(dt);
+      drawMaterialPreview();
+    }
+    RAF.particle=requestAnimationFrame(drawParticles);
+  }
+  function pausePage(){
+    pagePaused=true;timeline.pause();audio.stop();cancelInput();lastParticleTs=null;quality.resetSamples();
+  }
+  function resumePage(){
+    if(document.hidden)return;
+    pagePaused=false;timeline.resume();lastParticleTs=null;quality.resetSamples();
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)pausePage();else resumePage();});
+  window.addEventListener('pagehide',pausePage);
+  window.addEventListener('pageshow',resumePage);
+  document.getElementById('btnRetryCert').addEventListener('click',beginRound,{passive:true});
+  formalReplay.addEventListener('click',beginRound);
+  document.getElementById('btnGoHome').addEventListener('click',showSettingsPage,{passive:true});
+  document.getElementById('effectPreview').addEventListener('click',()=>{
+    resetPortal();effectPreview=true;document.body.dataset.state='EFFECT_PREVIEW';
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    document.getElementById('effectPreviewBack').hidden=false;onViewportChange();portal.draw(quality.profile);
+  });
+  function updateMaterialControls(){
+    for(const key of Object.keys(ElementMaterialRenderer.names))document.getElementById('material_'+key).setAttribute('aria-pressed',String(key===materialRenderer.element));
+    const pause=document.getElementById('materialPause');
+    const paused=flowPreview?flow.paused:materialRenderer.paused;
+    pause.textContent=paused?'繼續播放':'暫停';
+    pause.setAttribute('aria-pressed',String(paused));
+    document.getElementById('materialHeadingTitle').textContent=flowPreview?'收筆流程預覽':'屬性材質樣板';
+    document.getElementById('materialReplay').textContent=flowPreview?'重新畫一次':'重新播放';
+  }
+  function drawMaterialPreview(){
+    const {w,h}=getViewportSize();
+    materialBackdrop.drawBackground();
+    elementBackdrop.draw(ctx,w,h,{element:materialRenderer.element,time:materialRenderer.time,
+      opacity:materialRenderer.opacity,focus:materialRenderer.layout(w,h)});
+    const ok=materialRenderer.draw(ctx,canvas,w,h);
+    materialError.hidden=ok;
+    if(!ok)materialError.textContent=materialRenderer.error;
+    const phase=materialRenderer.phase;
+    const label=materialRenderer.paused?'已暫停':phase<.18?'形成':phase>.84?'消散':'展開';
+    if(materialStatus.textContent!==label)materialStatus.textContent=label;
+  }
+  function prepareFlow(element,formal=false){
+    const {w,h}=getViewportSize();
+    materialRenderer??=new ElementMaterialRenderer();
+    flow??=new RevealFlow();
+    gather??=new RevealGather();flowAtmosphere??=new RevealAtmosphere();
+    // Preview forces visible ink; the formal round honors the user's switch.
+    flowPortal=new PortalScene(ctx,w,h,undefined,{...effectValues,
+      trailEnabled:formal?effectValues.trailEnabled:true,trailHold:Math.max(1.3,effectValues.trailHold)});
+    restartRevealFlow(element);
+  }
+  function restartRevealFlow(element=flow.element){
+    flow.configure(effectValues,{holdAtReveal:formalReveal||element==='fire'});
+    cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();
+    gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
+    // A muggle has no element. Do not substitute the renderer's last selection.
+    if(element!==null){
+      materialRenderer.select(element);
+      if(materialRenderer.init())materialRenderer.compile(element);
+    }
+    revealTitle.hidden=true;formalReplay.hidden=true;lastParticleTs=null;
+    hideFireScan();
+    if(flowPreview)updateMaterialControls();
+  }
+  function stepRevealFlow(dt){
+    if(flow.paused||(flow.element!==null&&(materialRenderer.lost||materialRenderer.error)))return;
+    const before=flow.state;
+    flowPortal.step(dt*(before==='DRAWING'||before==='WAITING'?1:.35),{
+      freezeTrails:before!=='DRAWING'&&before!=='WAITING',holdTrails:before==='WAITING'
+    });
+    // If all earlier ink has faded, a later stationary tap is still only a tap.
+    if(before==='DRAWING'&&flow.pointerId===null&&flow.distance>0&&
+      flowPortal.settings.trailEnabled&&!flowPortal.trails.strokes.some(s=>flowPortal.trails.opacity(s)>.03))flow.reset(flow.element);
+    flow.step(dt);
+    flowAtmosphere.step(dt,flow);
+    if(before!=='GATHER'&&flow.state==='GATHER'){
+      gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
+      if(formalReveal){
+        session.transition(STATES.RESONANCE_COMPLETE);session.transition(STATES.GATHER);
+        document.body.dataset.state=STATES.GATHER;
+      }
+    }
+    if(formalReveal&&before==='GATHER'&&flow.state==='FORM'){
+      session.transition(STATES.ELEMENT_REVEAL);document.body.dataset.state=STATES.ELEMENT_REVEAL;
+    }
+    if(formalReveal&&flow.element==='fire'&&flow.state==='REVEAL'&&session.state===STATES.ELEMENT_REVEAL&&
+      FireScanTransition.sample(flow.elapsed,session.currentResult).scanStarted){
+      session.transition(STATES.MANA_SCAN);document.body.dataset.state=STATES.MANA_SCAN;
+    }
+  }
+  function hideFireScan(){
+    fireScanReadout.hidden=true;fireScanValue.textContent='000';fireScanRank.textContent='—';
+    revealTitle.classList.remove('fireScanTitle');revealTitle.style.left='';revealTitle.style.top='';
+  }
+  function drawFireScan(sample,layout){
+    const n=layout.numbers;
+    fireScanReadout.hidden=sample.opacity<=0;fireScanReadout.style.opacity=String(sample.opacity);
+    fireScanReadout.style.setProperty('--scan-x',n.x+'px');
+    fireScanReadout.style.setProperty('--scan-y',n.y+'px');
+    fireScanReadout.style.setProperty('--scan-ignition',String(sample.ignition));
+    fireScanValue.style.top=n.y+'px';fireScanValue.style.fontSize=n.fontSize+'px';
+    fireScanRank.style.top=n.rankY+'px';fireScanRank.style.fontSize=n.rankFontSize+'px';
+    fireScanLabel.style.top=n.labelY+'px';fireScanLabel.style.fontSize=n.labelFontSize+'px';
+    const value=String(sample.value).padStart(3,'0');
+    if(fireScanValue.textContent!==value)fireScanValue.textContent=value;
+    if(fireScanRank.textContent!==sample.rank)fireScanRank.textContent=sample.rank;
+    fireScanLabel.textContent=flowPreview?'預覽數值':'魔力值';
+    revealTitle.classList.add('fireScanTitle');
+    revealTitle.style.left=n.x+'px';revealTitle.style.top=(n.labelY-28)+'px';
+  }
+  function drawRevealFlow(){
+    const {w,h}=getViewportSize(),state=flow.state;
+    const drawing=state==='DRAWING'||state==='WAITING';
+    const scan=flow.element==='fire'&&state==='REVEAL'
+      ?FireScanTransition.sample(flow.elapsed,formalReveal?session.currentResult:FireScanTransition.previewResult):null;
+    const scanLayout=scan?FireScanTransition.layout(w,h,materialRenderer.layout(w,h),scan.shift,{preview:flowPreview}):null;
+    const box=scanLayout?.box||materialRenderer.layout(w,h);
+    const firePower=flow.element==='fire'?(scan?.power||0):undefined;
+    const target={x:box.x+box.width/2,y:box.y+box.height/2+(flow.element==='fire'?box.width*.33:0)};
+    const transform=(q,kind)=>flowAtmosphere.point(q,kind,w,h,target);
+    if(drawing)flowPortal.draw(quality.profile,{transform});
+    else{
+      const dim=state==='GATHER'?.16*flow.progress:.16;
+      flowPortal.draw(quality.profile,{transform,trails:false,dim});
+      const frame=flow.materialFrame;
+      if(frame)elementBackdrop.draw(ctx,w,h,{element:flow.element,time:frame.time,opacity:frame.opacity,focus:box,firePower});
+      if(state==='GATHER'||state==='FORM'){
+        gather.draw(ctx,{progress:state==='GATHER'?flow.progress:1,formation:state==='FORM'?flow.progress:0,
+          width:w,height:h,element:flow.element,time:state==='GATHER'?flow.elapsed:flow.gatherDuration+frame.time,
+          target});
+      }
+      if(frame&&flow.element!==null)materialRenderer.draw(ctx,canvas,w,h,{...frame,box,firePower,
+        fireTime:flow.element==='fire'?(scan?flow.formationDuration*.7+scan.fireTime:frame.time*.7):undefined,
+        heat:(scan?.heat||0)*(.15+.85*(scan?.power||0)),formation:state==='FORM'?flow.progress:1});
+      if(frame&&scan){
+        FireRankEmbers.draw(ctx,w,h,{time:frame.time,mana:scan.value,box});
+        FireRankSparkles.draw(ctx,w,h,{time:frame.time,mana:scan.value,box});
+      }
+    }
+    RevealShockwaves.draw(ctx,{state,elapsed:flow.elapsed,width:w,height:h});
+    materialError.hidden=flow.element===null||!materialRenderer.error;
+    if(materialRenderer.error)materialError.textContent=materialRenderer.error;
+    const labels={DRAWING:'畫完後放開',WAITING:'可接著畫',GATHER:'魔力收束',FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
+    const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.elapsed>=1.2?'魔力蓄勢':labels[state];
+    if(materialStatus.textContent!==label)materialStatus.textContent=label;
+    const titleOpacity=state==='REVEAL'?Math.max(0,Math.min(1,(flow.elapsed-.7)/.8)):
+      state==='SETTLE'||state==='DONE'?1:0;
+    revealTitle.hidden=titleOpacity===0;revealTitle.style.opacity=String(titleOpacity);
+    revealTitle.textContent=flow.element===null?'未顯現屬性':ElementMaterialRenderer.names[flow.element]+'屬性';
+    if(scan)drawFireScan(scan,scanLayout);else hideFireScan();
+    formalReplay.hidden=!formalReveal||(scan?!scan.complete:state!=='REVEAL'||titleOpacity<1);
+  }
+  function openFlowPreview(event){
+    flowPreviewOrigin=event?.currentTarget||document.getElementById('flowPreviewOpen');
+    resetPortal();effectPreview=false;flowPreview=true;
+    prepareFlow(flow?.element||'fire');
+    document.body.dataset.state='FLOW_PREVIEW';
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    materialControls.hidden=false;document.getElementById('effectPreviewBack').hidden=false;
+    onViewportChange();drawRevealFlow();
+  }
+  document.getElementById('flowPreviewOpen').addEventListener('click',openFlowPreview);
+  document.querySelectorAll('[data-flow-preview]').forEach(button=>button.addEventListener('click',openFlowPreview));
+  document.getElementById('materialPreviewOpen').addEventListener('click',()=>{
+    resetPortal();effectPreview=false;materialPreview=true;
+    const {w,h}=getViewportSize();
+    materialRenderer??=new ElementMaterialRenderer();
+    materialBackdrop??=new PortalScene(ctx,w,h,undefined,EffectSettings.defaults);
+    materialBackdrop.reset();materialRenderer.restart();
+    document.body.dataset.state='ELEMENT_PREVIEW';
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    materialControls.hidden=false;document.getElementById('effectPreviewBack').hidden=false;
+    updateMaterialControls();onViewportChange();drawMaterialPreview();
+  });
+  for(const key of Object.keys(ElementMaterialRenderer.names))document.getElementById('material_'+key).addEventListener('click',()=>{
+    if(flowPreview){restartRevealFlow(key);drawRevealFlow();return;}
+    if(!materialPreview)return;
+    if(!materialPreview)return;
+    materialRenderer.select(key);materialBackdrop.reset();updateMaterialControls();drawMaterialPreview();
+  });
+  document.getElementById('materialPause').addEventListener('click',()=>{
+    if(flowPreview){
+      if(!flow.paused)releasePointer(undefined,true);
+      flow.paused=!flow.paused;updateMaterialControls();drawRevealFlow();return;
+    }
+    if(!materialPreview)return;materialRenderer.paused=!materialRenderer.paused;updateMaterialControls();drawMaterialPreview();
+  });
+  document.getElementById('materialReplay').addEventListener('click',()=>{
+    if(flowPreview){restartRevealFlow();drawRevealFlow();return;}
+    if(!materialPreview)return;materialRenderer.restart();materialBackdrop.reset();updateMaterialControls();drawMaterialPreview();
+  });
+  document.getElementById('effectPreviewBack').addEventListener('click',()=>{
+    if(formalReveal){showSettingsPage();selectSettingsTab(0);btnStart.focus({preventScroll:true});return;}
+    const returnButton=flowPreview?flowPreviewOrigin:document.getElementById(materialPreview?'materialPreviewOpen':'effectPreview');
+    showSettingsPage();selectSettingsTab(2);returnButton?.focus({preventScroll:true});
+  });
+  btnStart.addEventListener('click',()=>{
+    readTogglesToEnabled();renderToggles();beginRound();
+  },{passive:true});
+  applyEnabledToToggles();showSettingsPage();
+  RAF.particle=requestAnimationFrame(drawParticles);
+})();
+</script>
+</body>
+</html>

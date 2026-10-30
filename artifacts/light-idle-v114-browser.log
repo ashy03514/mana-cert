@@ -1,0 +1,4 @@
+A idle formal mesh moved: { vertices: 2250, maxPixels: 51.21 }
+S idle formal mesh moved: { vertices: 2259, maxPixels: 57.28 }
+SS idle formal mesh moved: { vertices: 2263, maxPixels: 60.91 }
+PASS formal A/S/SS idle: moving wing meshes, unchanged UVs, settled color/ranks, stable pause/replay, immutable results, no GL errors.

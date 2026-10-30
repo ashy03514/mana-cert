@@ -1,0 +1,15 @@
+Tool: built-in image_gen
+Reference: assets/light-angel-wings-v1.png (SS style reference)
+Status: S-rank static design for review; not yet wired into animation.
+Transparent background requested: true
+
+Use case: stylized-concept.
+Asset type: original transparent fantasy game wing-pair sprite, static S-rank art approval.
+Input image 1 is the existing SS-rank angel wings, a style and family reference, NOT an image to simply scale down.
+Create one newly designed S-rank pair of angel feather wings. Same beautiful, premium pearlescent white/ivory feather rendering, subtle cool blue-gray and lavender shadow between overlapping feathers, restrained champagne rim lighting. S is one rank below the reference: still majestic and exquisitely rendered, but clearly less elaborate and physically more compact by STRUCTURAL DESIGN.
+
+Redesign the silhouette: shorten the primary flight feathers by roughly 20%, reduce the number of long individually projecting feathers, remove the tallest thin curled crown tips and most flowing decorative lower tail feathers. Have just two to three clear organized layers of overlapping feathers, with a softly padded feather-covered shoulder, and a natural rounded outer fan containing about 8-10 principal flight feathers per side. Outer tips remain gently pointed and lightly curved rather than long ribbon-like wisps. Lower feathers end in a shorter, cohesive arc with only two modest tapered trailing feathers. A compact graceful uplifted bird-wing silhouette, moderate V opening, fuller natural inner shoulder. Preserve fine feather barbs, softness, translucent edges, contact shadows, beautiful volume, and realistic angelic avian anatomy. LESS ORNATE does not mean lower rendering quality, crude feathers, or a simplified icon. This must visibly be a DIFFERENT wing design from the SS reference, not that reference resized or cropped.
+
+Composition: front-facing, one matched left and right pair only, no body. Root attachment points face each other near lower center with a small clean open gap. Wide 3:2 canvas. Entire pair fully visible with at least 8% transparent padding on all sides. Balanced approximate bilateral symmetry with natural slight feather variations.
+Background: genuine transparent alpha; clean cutout for later compositing into a warm gold scene. No painted backdrop, no gray/black fill, no checkerboard, no halo, no central glowing orb, no rays, no sparkles, no cast shadow outside the wings. Glow effects are added later in the game, so keep clear feather edges and restrained rim lighting only.
+No person, face, character, costume, armor, ornaments, jewelry, lettering, logos, watermarks, extra wings, insect/alien forms, metallic blades or rigid geometric feathers.

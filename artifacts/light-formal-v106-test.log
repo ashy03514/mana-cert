@@ -1,0 +1,6 @@
+Formal light A 750 passed.
+Formal light S 900 passed.
+Formal light S 950 passed.
+Formal light SS 1000 passed.
+Formal light SS 9999 passed.
+PASS formal light: immutable A/S/SS outcomes, real stroke-to-scan, three wing assets, continuous growth snapshots/boundaries, midway GPU recovery, stable clocks, live completion, three layouts and replay/disposal.

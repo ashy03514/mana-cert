@@ -1,0 +1,13 @@
+Tool: built-in image_gen
+Source reference: assets/light-angel-wings-v1.png
+Output: assets/light-angel-feather-v1.png
+Transparent background requested: true
+
+Use case: stylized-concept.
+Asset type: ONE original transparent feather sprite for an existing premium angel-wing effect in a fantasy game.
+Input image 1: STYLE REFERENCE ONLY, the existing pearlescent angel wings. Derive ONE isolated feather from this same artistic family; do not reproduce the pair of wings.
+Primary request: a single exquisitely beautiful, soft white angel flight feather, gently and visibly curved like a relaxed shallow S, floating weightlessly. One feather only, with a slender bowed ivory rachis, asymmetric but natural vanes, individually resolved fine silky barbs, a few soft separated wisps at the edges, downy soft base and a short delicate quill. The tip curls subtly to the right. It must feel feather-light and organic, not a leaf, blade, solid plastic object, or a geometric vector.
+Materials and lighting: closely match the reference's pearlescent white and ivory, soft cool blue-gray and pale lavender shaded vane folds, restrained warm champagne rim highlights, very delicate translucence in the fine tips. Fine physically plausible feather texture and softly raised overlapping barbs. Preserve enough gentle blue-gray interior shading that the texture remains readable over a pale gold background. High quality fantasy RPG illustration with realistic material detail.
+Composition: portrait-oriented single feather pointing mostly upward, short quill downward, broad vane visible from slightly oblique front view, slight 3D twist and shallow S curvature. The feather occupies around 80 percent of canvas height, width of the physical feather around one quarter of its length. Entire feather and all wisps fully visible with at least 10 percent transparent padding. No other objects.
+Background: actual transparent alpha, clean cutout. No backdrop, no checkerboard, no ground, no cast shadow outside the feather, no halo, no baked bloom, no particles or light rays. Lighting effects are added later in game.
+No wings, no bird, no person, no extra feathers, no jewelry, no text or watermark.

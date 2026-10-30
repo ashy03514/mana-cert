@@ -1,0 +1,2 @@
+Ocean spray browser passed: visible volume, bounded white/count, shared 3x sea/foam clock, unchanged host clock, deterministic motion, real water occlusion, restored GL state, context recovery and disposal.
+{"changed":8953,"meanDelta":1.8788498622589531,"count":1566,"restore":true}

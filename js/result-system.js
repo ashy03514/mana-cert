@@ -9,9 +9,10 @@
     GATHER:['ELEMENT_REVEAL'], ELEMENT_REVEAL:['MANA_SCAN'],
     MANA_SCAN:['RANK_CONFIRM'], RANK_CONFIRM:['RESULT'], RESULT:[] };
   function validSettings(s) {
-    const ranks=s.normalRanks||C.normalRanks;
-    if(!Object.keys(C.normalRanks).every(k=>Number.isFinite(ranks[k])&&ranks[k]>=0)||
-      Object.keys(C.normalRanks).reduce((sum,k)=>sum+ranks[k],0)<=0)return false;
+    const distributionValid=(weights,keys)=>keys.every(k=>Number.isFinite(weights[k])&&weights[k]>=0)
+      &&keys.reduce((sum,k)=>sum+weights[k],0)>0;
+    if(['火','水','風','土'].some(k=>s.elements[k])&&!distributionValid(s.normalRanks||C.normalRanks,Object.keys(C.normalRanks)))return false;
+    if(['光','暗'].some(k=>s.elements[k])&&!distributionValid(s.rareElementRanks||C.rareElementRanks,['A','S','SS']))return false;
     return Number.isFinite(s.muggleChance) && s.muggleChance >= 0 && s.muggleChance <= 1 &&
       (Object.keys(C.elementWeights).some(k => s.elements[k]) ||
         (s.muggleEnabled && s.muggleChance === 1));
@@ -30,14 +31,19 @@
     } else {
       element = weightedPick(Object.fromEntries(Object.entries(C.elementWeights)
         .filter(([k]) => settings.elements[k])), random);
-      rank = weightedPick(element === '光' || element === '暗' ? C.rareElementRanks : settings.normalRanks||C.normalRanks, random);
+      let weights=settings.normalRanks||C.normalRanks;
+      if(element==='光'||element==='暗'){
+        const rare=settings.rareElementRanks||C.rareElementRanks;
+        weights=Object.fromEntries(['A','S','SS'].map(k=>[k,rare[k]]));
+      }
+      rank = weightedPick(weights, random);
     }
     const [min,max] = C.ranks[rank].range;
     return Object.freeze({ type, element, rank, mana: min + Math.floor(random() * (max-min+1)) });
   }
   function rankForNumber(n) {
-    for (const code of ['S','A','B','C','D']) if (n >= C.ranks[code].range[0]) return code;
-    return 'E'; // During SS overflow, S remains visible until confirmation.
+    for (const code of ['SS','S','A','B','C','D']) if (n >= C.ranks[code].range[0]) return code;
+    return 'E';
   }
   class Session {
     constructor() { this.state = STATES.SETTINGS; this.currentResult = null; this.generation = 0; }

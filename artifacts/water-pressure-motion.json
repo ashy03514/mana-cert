@@ -1,0 +1,86 @@
+[
+  {
+    "width": 390,
+    "height": 844,
+    "phase": "before",
+    "time": 2.3440000000000003,
+    "roundFraction": 0.9482758620689655,
+    "tipPush": 0,
+    "maxPush": 33,
+    "top": 26.40637254901961,
+    "bottom": 422.0957088989443,
+    "titleY": 472.03300000000013
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "phase": "peak",
+    "time": 2.42,
+    "roundFraction": 0.8803418803418803,
+    "tipPush": 47.5,
+    "maxPush": 47.5,
+    "top": 26.40637254901961,
+    "bottom": 422.90821266968334,
+    "titleY": 472.03300000000013
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "phase": "returned",
+    "time": 2.714,
+    "roundFraction": 1,
+    "tipPush": 0,
+    "maxPush": 2.5,
+    "top": 26.40637254901961,
+    "bottom": 425.3457239819005,
+    "titleY": 472.03300000000013
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "impactDuration": 0.25,
+    "attackDuration": 0.06599999999999984
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "phase": "before",
+    "time": 2.3440000000000003,
+    "roundFraction": 0.9416666666666667,
+    "tipPush": 0,
+    "maxPush": 23,
+    "top": 14.34225680933852,
+    "bottom": 267.83330739299606,
+    "titleY": 305.46000000000004
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "phase": "peak",
+    "time": 2.42,
+    "roundFraction": 0.8833333333333333,
+    "tipPush": 33,
+    "maxPush": 33,
+    "top": 14.34225680933852,
+    "bottom": 268.50038910505833,
+    "titleY": 305.46000000000004
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "phase": "returned",
+    "time": 2.714,
+    "roundFraction": 0.9666666666666667,
+    "tipPush": 0,
+    "maxPush": 5.5,
+    "top": 13.675175097276263,
+    "bottom": 270.5016342412451,
+    "titleY": 305.46000000000004
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "impactDuration": 0.25,
+    "attackDuration": 0.06599999999999984
+  }
+]

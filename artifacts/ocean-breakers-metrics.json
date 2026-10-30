@@ -1,0 +1,86 @@
+{
+  "strong": {
+    "meanDelta": 13.372133930789042,
+    "changedFraction": 0.28402282308029925,
+    "positiveFraction": 0.19760949668779537,
+    "front": {
+      "screenX": 252.7410901891062,
+      "screenY": 180.81400068243448,
+      "weight": 111366,
+      "peakAlong": 0.20312500000000006
+    }
+  },
+  "weak": {
+    "meanDelta": 0.7812673698137785,
+    "changedFraction": 0.03238841546378042,
+    "positiveFraction": 0.007140591912103201,
+    "front": {
+      "screenX": null,
+      "screenY": null,
+      "weight": 0,
+      "peakAlong": -0.43854166666666666
+    }
+  },
+  "timeMetrics": [
+    {
+      "time": 0,
+      "hash": 3686306673,
+      "clipped": 0,
+      "opaque": 99643
+    },
+    {
+      "time": 1,
+      "hash": 286441365,
+      "clipped": 0,
+      "opaque": 99605
+    },
+    {
+      "time": 2,
+      "hash": 3362023931,
+      "clipped": 0,
+      "opaque": 99169
+    },
+    {
+      "time": 112,
+      "hash": 320178400,
+      "clipped": 0,
+      "opaque": 100148
+    },
+    {
+      "time": 1800,
+      "hash": 3009546587,
+      "clipped": 0,
+      "opaque": 99504
+    }
+  ],
+  "direction": [
+    {
+      "time": 0,
+      "screenX": 189.97556724339753,
+      "screenY": 251.07663678783894,
+      "weight": 155907.5,
+      "peakAlong": -0.18645833333333334
+    },
+    {
+      "time": 0.45,
+      "screenX": 218.35853975686695,
+      "screenY": 218.7622951123328,
+      "weight": 134967.25,
+      "peakAlong": -0.048958333333333326
+    },
+    {
+      "time": 0.9,
+      "screenX": 246.2056962427415,
+      "screenY": 187.90579746974836,
+      "weight": 118051.5,
+      "peakAlong": 0.15729166666666666
+    },
+    {
+      "time": 1.35,
+      "screenX": 271.6716804149624,
+      "screenY": 162.3651924380565,
+      "weight": 131289,
+      "peakAlong": 0.340625
+    }
+  ]
+}

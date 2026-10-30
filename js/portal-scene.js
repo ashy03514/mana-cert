@@ -1,103 +1,91 @@
-/* A quiet portal: fixed pools orbit clockwise; touching only changes their speed. */
+/* The approved ribbon preview's quiet backdrop; touch only changes orbit speed. */
 (function(root){
   'use strict';
   const TAU=Math.PI*2;
   const fraction=value=>value-Math.floor(value);
   const sample=(index,salt)=>fraction(Math.sin(index*127.1+salt*311.7)*43758.5453);
+  const REFERENCE_WIDTH=390,REFERENCE_HEIGHT=600;
+  const rgb=hex=>[1,3,5].map(offset=>parseInt(hex.slice(offset,offset+2),16)).join(',');
+  const rgba=(color,alpha)=>'rgba('+color+','+Math.min(1,Math.max(0,alpha))+')';
   class PortalScene {
-    constructor(context,width,height,createCanvas=()=>document.createElement('canvas')) {
+    constructor(context,width,height,createCanvas=()=>document.createElement('canvas'),settings={}) {
       this.ctx=context;
       this.pointer={id:null};
-      this.motion=root.ManaConfig.portalMotion;
+      this.settings=root.EffectSettings.normalize(settings);
+      const v=this.settings;
+      this.motion={...root.ManaConfig.portalMotion,idleSpeed:TAU/v.idleSeconds,maxSpeed:TAU/v.activeSeconds,
+        accelerationSeconds:v.acceleration,decelerationSeconds:v.deceleration,
+        mistDrift:root.ManaConfig.portalMotion.mistDrift*v.mistDrift/100};
       this.idleSpeed=this.motion.idleSpeed;
       this.activeSpeed=this.motion.maxSpeed;
-      this.mistSprites=[];
-      const colors=['107,92,166','76,99,163','99,87,154'];
-      // Irregular, translucent cloud textures are built once, never in the frame loop.
-      for(let variant=0;variant<colors.length;variant++) {
-        const canvas=createCanvas();canvas.width=canvas.height=160;
-        const c=canvas.getContext('2d');
-        for(let lobe=0;lobe<15;lobe++) {
-          const angle=sample(lobe,variant+1)*TAU;
-          const distance=Math.sqrt(sample(lobe,variant+5))*31;
-          const x=80+Math.cos(angle)*distance,y=80+Math.sin(angle)*distance;
-          const radius=25+sample(lobe,variant+9)*25;
-          const g=c.createRadialGradient(x,y,0,x,y,radius);
-          g.addColorStop(0,'rgba('+colors[variant]+',0.23)');
-          g.addColorStop(0.32,'rgba('+colors[variant]+',0.14)');
-          g.addColorStop(0.7,'rgba('+colors[variant]+',0.045)');
-          g.addColorStop(1,'rgba('+colors[variant]+',0)');
-          c.fillStyle=g;c.fillRect(0,0,160,160);
-        }
-        this.mistSprites.push(canvas);
-      }
-      // One continuous fog bank, distributed between the opening and the screen corners.
-      this.mists=Array.from({length:72},(_,i)=>({
-        band:((i*7)%18+0.5)/18,
-        seed:i*2.3999632297,initialAngle:TAU*(i+sample(i,21)*0.6)/72,
-        depth:(i%3+sample(i,26)*0.8)/3,
-        angle:0,orbit:0.88+sample(i,22)*0.23,
-        rate:this.motion.mistRateMin+sample(i,23)*(this.motion.mistRateMax-this.motion.mistRateMin),
-        driftRate:0.12+sample(i,27)*0.27,excursion:i%4===0,
-        size:0.20+sample(i,24)*0.12,alpha:0.25+sample(i,25)*0.12,
-        tint:i%3,x:0,y:0,radius:0
+      this.mistColors=v.mistPalette.map(rgb);
+      this.dotColors=v.dotPalette.map(rgb);
+      // Use the preview's actual haze/point formulas, not an approximate sprite bank.
+      // All positions are authored in its 390 x 600 space, then scaled with the screen.
+      this.mists=Array.from({length:v.mistEnabled?v.mistCount:0},(_,i)=>({
+        seed:i,initialAngle:i/v.mistCount*TAU,angle:0,
+        rate:.025+sample(i,1)*.025+(sample(i,1)-.5)*.025*(v.mistDrift/100-1),
+        size:(25+sample(i,3)*40)*(v.mistSize/100),
+        alpha:(.04+sample(i,2)*.07)*(v.mistOpacity/100),
+        tint:Math.floor(sample(i,8)*this.mistColors.length),x:0,y:0,referenceX:0,referenceY:0,radius:0,orbitScale:1
       }));
-      this.mistDrawOrder=this.mists.slice().sort((a,b)=>a.depth-b.depth);
-      this.dots=Array.from({length:102},(_,i)=>{
-        const depth=sample(i,36),outer=i>=54;
+      this.mistDrawOrder=this.mists;
+      const depthFactor=v.dotDepth<=100?.1+.9*v.dotDepth/100:v.dotDepth/100;
+      this.dots=Array.from({length:v.dotEnabled?v.dotCount:0},(_,i)=>{
+        const depth=v.dotDepth===100?sample(i,4):Math.max(0,Math.min(1,.5+(sample(i,4)-.5)*depthFactor));
         return {
-          outer,depth,orbitScale:outer?1.08+sample(i,37)*.30:1,
-          seed:i*2.3999632297,initialAngle:TAU*((outer?i-54:i)+sample(i,31)*0.8)/(outer?48:54),
-          angle:0,orbit:0.78+sample(i,32)*0.48,
-          // Nearer dots are larger, clearer and faster, with an individual speed offset.
-          rate:0.45+depth*.95+sample(i,33)*.18,
-          size:0.65+depth*.8+sample(i,34)*.15,alpha:0.30+depth*.4+sample(i,35)*.08,
-          x:0,y:0,radius:0
+          depth,seed:i,initialAngle:i/v.dotCount*TAU,angle:0,
+          orbitScale:.92+sample(i,5)*.25,
+          rate:(.02+depth*.04)*(v.dotSpeed/100),
+          size:(.45+sample(i,6)*.5+(sample(i,6)-.5)*.5*(depthFactor-1))*(v.dotSize/100),
+          alpha:(.18+sample(i,7)*.35+(sample(i,7)-.5)*.35*(depthFactor-1))*(v.dotOpacity/100),
+          tint:Math.floor(sample(i,9)*this.dotColors.length),x:0,y:0,referenceX:0,referenceY:0,radius:0
         };
       });
-      this.dotDrawOrder=this.dots.slice().sort((a,b)=>a.depth-b.depth);
-      this.sparkleConfig=root.ManaConfig.portalSparkles;
-      this.sparkles=Array.from({length:this.sparkleConfig.maxCount},()=>({active:false,age:0,life:1,angle:0,orbit:1,size:8,rate:1,x:0,y:0}));
-      this.sparkleSprite=createCanvas();this.sparkleSprite.width=this.sparkleSprite.height=128;
-      const sc=this.sparkleSprite.getContext('2d');
+      this.dotDrawOrder=this.dots;
+      const base=root.ManaConfig.portalSparkles;
+      this.sparkleConfig={...base,idleLimit:Math.ceil(base.idleLimit*v.starIdle/100),maxCount:Math.ceil(base.maxCount*v.starHeld/100),
+        lifeMin:base.lifeMin*(v.starDuration/1.1),lifeMax:base.lifeMax*(v.starDuration/1.1),
+        idleInterval:base.idleInterval/(v.starIdle/100),activeInterval:base.activeInterval/(v.starHeld/100),
+        sizeMin:base.sizeMin*v.starSize/100,sizeMax:base.sizeMax*v.starSize/100,rareSize:base.rareSize*v.starSize/100};
+      this.sparkles=Array.from({length:v.starEnabled?Math.max(this.sparkleConfig.idleLimit,this.sparkleConfig.maxCount):0},()=>({active:false,age:0,life:1,angle:0,orbit:1,size:8,rate:1,x:0,y:0}));
+      // Cache the palette; each new sparkle keeps its chosen color until it fades.
+      const defaultHalos={'#65eaff':'35,195,255','#ce83ff':'168,70,255','#ffffff':'225,233,255'};
+      this.sparkleSprites=v.starPalette.map(core=>{
+      const halo=defaultHalos[core]||rgb(core);
+      const sprite=createCanvas();sprite.width=sprite.height=128;
+      const sc=sprite.getContext('2d');
       const glow=sc.createRadialGradient(64,64,0,64,64,60);
-      glow.addColorStop(0,'rgba(208,198,255,0.25)');
-      glow.addColorStop(.35,'rgba(161,150,234,0.12)');
-      glow.addColorStop(1,'rgba(135,126,211,0)');
+      glow.addColorStop(0,'rgba('+halo+',0.25)');
+      glow.addColorStop(.35,'rgba('+halo+',0.12)');
+      glow.addColorStop(1,'rgba('+halo+',0)');
       sc.fillStyle=glow;sc.fillRect(0,0,128,128);
-      sc.fillStyle='#f8f5ff';sc.beginPath();sc.moveTo(64,24);
+      sc.fillStyle=core;sc.beginPath();sc.moveTo(64,24);
       sc.quadraticCurveTo(66,60,92,64);sc.quadraticCurveTo(66,68,64,104);
       sc.quadraticCurveTo(62,68,36,64);sc.quadraticCurveTo(62,60,64,24);
       sc.closePath();sc.fill();
-      this.time=0;this.phase=0;this.speed=this.idleSpeed;
+      return sprite;
+      });
+      this.trails=new root.FingerTrails(v,createCanvas);
+      this.time=0;this.phase=0;this.orbitTime=0;this.speed=this.idleSpeed;
       this.resize(width,height);this.reset();
     }
     resize(width,height) {
       this.width=Math.max(1,Number.isFinite(width)?width:1);
       this.height=Math.max(1,Number.isFinite(height)?height:1);
+      this.trails.resize(this.width,this.height);
       this.cx=this.width/2;this.cy=this.height/2;
       this.radius=Math.min(this.width,this.height)*0.34;
       this.radius=Math.min(this.radius,260);
       this.radiusX=this.width*0.43;
       this.radiusY=this.height*0.44;
-      const c=this.ctx;
-      // The portal follows the viewport proportions, including the faint rim haze.
-      this.background=c.createRadialGradient(0,0,0,0,0,1.6);
-      this.background.addColorStop(0,'#070812');
-      this.background.addColorStop(0.26,'#090a19');
-      this.background.addColorStop(0.52,'#101128');
-      this.background.addColorStop(0.78,'#17182f');
-      this.background.addColorStop(1,'#1c1d37');
-      this.haze=c.createRadialGradient(0,0,0.65,0,0,1.22);
-      this.haze.addColorStop(0,'rgba(60,55,108,0)');
-      this.haze.addColorStop(0.3,'rgba(60,55,108,0.025)');
-      this.haze.addColorStop(0.56,'rgba(74,66,132,0.12)');
-      this.haze.addColorStop(0.76,'rgba(62,67,122,0.045)');
-      this.haze.addColorStop(1,'rgba(62,67,122,0)');
+      this.referenceScaleX=this.width/REFERENCE_WIDTH;
+      this.referenceScaleY=this.height/REFERENCE_HEIGHT;
       this.positionPools();
     }
     reset() {
-      this.pointer.id=null;this.time=0;this.phase=0;this.speed=this.idleSpeed;
+      this.trails.reset();
+      this.pointer.id=null;this.time=0;this.phase=0;this.orbitTime=0;this.speed=this.idleSpeed;
       this.speedFrom=this.idleSpeed;this.speedElapsed=0;
       this.sparkleSequence=0;this.sparkleCountdown=.18;
       for(const q of this.sparkles)q.active=false;
@@ -133,21 +121,24 @@
         const margin=size*.7+5;
         if(x<margin||x>this.width-margin||y<margin||y>this.height-margin)continue;
         if(this.sparkles.some(s=>s.active&&Math.hypot(s.x-x,s.y-y)<48))continue;
-        Object.assign(q,{active:true,age:0,life:cfg.lifeMin+sample(n,45)*(cfg.lifeMax-cfg.lifeMin),angle,orbit,size,
-          rate:.8+sample(n,46)*.4,x,y});
+        Object.assign(q,{active:true,seed:n,age:0,life:cfg.lifeMin+sample(n,45)*(cfg.lifeMax-cfg.lifeMin),angle,orbit,size,
+          rate:.8+sample(n,46)*.4,tint:Math.floor(sample(n,49)*this.sparkleSprites.length),x,y});
         break;
       }
     }
     down(id,x,y,now) {
       if(id===null||id===undefined||this.pointer.id!==null)return false;
-      this.pointer.id=id;this.speedFrom=this.speed;this.speedElapsed=0;return true;
+      this.pointer.id=id;this.speedFrom=this.speed;this.speedElapsed=0;this.trails.down(x,y,now);return true;
     }
-    move(id,x,y,now) {return this.pointer.id!==null&&this.pointer.id===id;}
+    move(id,x,y,now) {
+      if(this.pointer.id===null||this.pointer.id!==id)return false;
+      this.trails.move(x,y,now);return true;
+    }
     release(id) {
       if(this.pointer.id===null||(id!==undefined&&id!==this.pointer.id))return false;
-      this.pointer.id=null;this.speedFrom=this.speed;this.speedElapsed=0;return true;
+      this.pointer.id=null;this.speedFrom=this.speed;this.speedElapsed=0;this.trails.release();return true;
     }
-    step(seconds) {
+    step(seconds,{freezeTrails=false,holdTrails=false}={}) {
       const dt=Number.isFinite(seconds)?Math.max(0,Math.min(seconds,0.05)):0;
       const held=this.pointer.id!==null,target=held?this.activeSpeed:this.idleSpeed;
       const duration=held?this.motion.accelerationSeconds:this.motion.decelerationSeconds;
@@ -156,77 +147,90 @@
       const ease=progress*progress*(3-2*progress);
       this.speed=progress===1?target:this.speedFrom+(target-this.speedFrom)*ease;
       this.time+=dt;this.phase=(this.phase+this.speed*dt)%TAU;
-      for(let i=0;i<this.mists.length;i++) {
-        const q=this.mists[i];
-        const localFlow=1+Math.sin(this.time*q.driftRate+q.seed)*0.23+Math.sin(this.time*.11+q.seed*2)*0.09;
-        q.angle=(q.angle+this.speed*q.rate*localFlow*dt)%TAU;
-      }
-      for(let i=0;i<this.dots.length;i++) {
-        const q=this.dots[i];q.angle=(q.angle+this.speed*q.rate*dt)%TAU;
-      }
+      // Idle reproduces the preview's quiet motion; at full hold the reference
+      // mean rate (.04 rad/s) maps to the configured turns/second, not half speed.
+      const power=Math.max(0,Math.min(1,(this.speed-this.idleSpeed)/(this.activeSpeed-this.idleSpeed)));
+      const idleRate=this.idleSpeed/root.ManaConfig.portalMotion.idleSpeed;
+      this.orbitTime+=(idleRate+(this.activeSpeed/.04-idleRate)*power)*dt;
       this.positionPools();
       this.stepSparkles(dt);
+      if(!freezeTrails)this.trails.step(dt,{freezeAging:holdTrails});
     }
     positionPools() {
       for(let i=0;i<this.mists.length;i++) {
         const q=this.mists[i];
-        const drift=Math.sin(this.time*q.driftRate+q.seed)*0.45+Math.sin(this.time*q.driftRate*.63+q.seed*2)*0.25;
-        const excursion=q.excursion?Math.pow(Math.max(0,Math.sin(this.time*.21+q.seed)),4)*0.7:0;
-        const band=1+(q.orbit-1+this.motion.mistDrift*(drift+excursion))*0.35;
-        q.radius=this.radius*band;
-        const cos=Math.cos(q.angle),sin=Math.sin(q.angle);
-        const blend=Math.max(0,Math.min(1,q.band+Math.sin(this.time*q.driftRate*.4+q.seed)*.045));
-        // Larger ellipses pass outside the viewport; never bend the orbit to its corners.
-        q.orbitScale=1+blend*.52;
-        const rx=this.radiusX*q.orbitScale,ry=this.radiusY*q.orbitScale;
-        q.x=this.cx+cos*rx*band;q.y=this.cy+sin*ry*band;
-        q.tangent=Math.atan2(cos*ry,-sin*rx);
+        q.angle=(q.initialAngle+this.orbitTime*q.rate)%TAU;
+        // The default exactly matches the reference. Values above 100% add excursions.
+        q.orbitScale=1+Math.sin(this.time*.19+q.seed)*.055*Math.max(0,this.settings.mistDrift/100-1);
+        q.radius=this.radius*q.orbitScale;
+        q.referenceX=REFERENCE_WIDTH/2+Math.cos(q.angle)*190*q.orbitScale;
+        q.referenceY=REFERENCE_HEIGHT/2+Math.sin(q.angle)*295*q.orbitScale;
+        q.x=q.referenceX*this.referenceScaleX;q.y=q.referenceY*this.referenceScaleY;
       }
       for(let i=0;i<this.dots.length;i++) {
         const q=this.dots[i];
-        const band=1+(q.orbit-1+Math.sin(this.time*0.19+q.seed)*0.018)*0.35;
-        q.radius=this.radius*band;
-        q.x=this.cx+Math.cos(q.angle)*this.radiusX*band*q.orbitScale;
-        q.y=this.cy+Math.sin(q.angle)*this.radiusY*band*q.orbitScale;
+        q.angle=(q.initialAngle+this.orbitTime*q.rate)%TAU;
+        q.radius=this.radius*q.orbitScale;
+        q.referenceX=REFERENCE_WIDTH/2+Math.cos(q.angle)*170*q.orbitScale;
+        q.referenceY=REFERENCE_HEIGHT/2+Math.sin(q.angle)*260*q.orbitScale;
+        q.x=q.referenceX*this.referenceScaleX;q.y=q.referenceY*this.referenceScaleY;
       }
     }
-    draw(quality=null) {
-      const c=this.ctx,low=quality&&quality.name==='LOW';
+    drawBackground(c=this.ctx,transform=null,{dim=0}={}) {
       c.save();c.globalCompositeOperation='source-over';c.globalAlpha=1;
-      c.save();c.translate(this.cx,this.cy);c.scale(this.radiusX,this.radiusY);
-      const left=-this.cx/this.radiusX,top=-this.cy/this.radiusY;
-      c.fillStyle=this.background;c.fillRect(left,top,-left*2,-top*2);
-      c.fillStyle=this.haze;c.fillRect(left,top,-left*2,-top*2);
+      c.scale(this.referenceScaleX,this.referenceScaleY);
+      const g=c.createRadialGradient(195,300,25,195,300,410);
+      g.addColorStop(0,this.settings.backgroundCenter);
+      g.addColorStop(.6,'#101126');g.addColorStop(1,this.settings.backgroundOuter);
+      c.fillStyle=g;c.fillRect(0,0,REFERENCE_WIDTH,REFERENCE_HEIGHT);
+      // Dim the backdrop before the moving atmosphere, so the inward wisps
+      // and white points retain their contrast against the magic spheres.
+      if(dim>0){c.fillStyle=rgba('6,7,19',dim);c.fillRect(0,0,REFERENCE_WIDTH,REFERENCE_HEIGHT);}
+      for(const q of this.mists) {
+        const pose=transform?.(q,'mist');
+        if(pose&&pose.alpha<=.001)continue;
+        const color=this.mistColors[q.tint],x=pose?pose.x/this.referenceScaleX:q.referenceX,
+          y=pose?pose.y/this.referenceScaleY:q.referenceY,size=q.size*(pose?.scale??1),
+          alpha=q.alpha*(pose?.alpha??1)*(pose?.brightness??1);
+        const stretched=pose?.stretch>1;
+        if(stretched){
+          c.save();c.translate(x,y);
+          c.rotate(Math.atan2(Math.sin(pose.heading)/this.referenceScaleY,Math.cos(pose.heading)/this.referenceScaleX));
+          c.scale(pose.stretch,1);
+        }
+        const gx=stretched?0:x,gy=stretched?0:y;
+        const glow=c.createRadialGradient(gx,gy,0,gx,gy,size);
+        glow.addColorStop(0,rgba(color,alpha));
+        glow.addColorStop(.35,rgba(color,alpha*.45));glow.addColorStop(1,rgba(color,0));
+        c.fillStyle=glow;c.fillRect(gx-size,gy-size,size*2,size*2);
+        if(stretched)c.restore();
+      }
+      for(const q of this.dots) {
+        const pose=transform?.(q,'dot');
+        if(pose&&pose.alpha<=.001)continue;
+        c.fillStyle=rgba(this.dotColors[q.tint],q.alpha*(pose?.alpha??1)*(pose?.brightness??1));
+        c.beginPath();c.arc(pose?pose.x/this.referenceScaleX:q.referenceX,
+          pose?pose.y/this.referenceScaleY:q.referenceY,Math.max(.1,q.size*(pose?.scale??1)),0,TAU);c.fill();
+      }
       c.restore();
-      // Source-over keeps overlapping fog soft and colored, even while spinning quickly.
-      for(let i=0;i<this.mistDrawOrder.length;i++) {
-        if(low&&i%3===2)continue;
-        const q=this.mistDrawOrder[i],breath=1+Math.sin(this.time*q.driftRate+q.seed)*0.15;
-        const size=this.radius*q.size*breath*(0.85+q.depth*.4)*(1.7+q.band*.35);
-        const thickness=0.6+q.depth*.3+Math.sin(this.time*q.driftRate*.8+q.seed)*.08;
-        const tangent=q.tangent;
-        c.save();c.translate(q.x,q.y);c.rotate(tangent+Math.sin(this.time*q.driftRate*.7+q.seed)*0.38);
-        c.globalAlpha=q.alpha*(0.65+q.depth*.6)*(1-q.band*.18)*(0.86+Math.sin(this.time*q.driftRate*.9+q.seed)*0.14);
-        c.drawImage(this.mistSprites[q.tint],-size*1.35,-size*thickness,size*2.7,size*thickness*2);
-        c.restore();
-      }
-      c.fillStyle='#f1f1fa';
-      for(let i=0;i<this.dotDrawOrder.length;i++) {
-        const q=this.dotDrawOrder[i];
-        if(low&&i%3===2&&!q.outer)continue;
-        c.globalAlpha=q.alpha*(0.86+Math.sin(this.time*0.55+q.seed)*0.14);
-        c.beginPath();c.arc(q.x,q.y,q.size,0,TAU);c.fill();
-      }
+    }
+    draw(quality=null,{transform=null,trails=true,dim=0}={}) {
+      const c=this.ctx;
+      c.save();c.globalCompositeOperation='source-over';c.globalAlpha=1;
+      this.drawBackground(c,transform,{dim});
       for(const q of this.sparkles) {
         if(!q.active)continue;
+        const pose=transform?.(q,'star');
+        if(pose&&pose.alpha<=.001)continue;
         const t=q.age/q.life;
         const phase=t<.2?t/.2:Math.max(0,(1-t)/.8);
         const envelope=phase*phase*(3-2*phase);
         const edge=Math.max(0,Math.min(1,Math.min(q.x,this.width-q.x,q.y,this.height-q.y)/(q.size*.8)));
-        const size=q.size*(.45+.55*envelope)*1.6;
-        c.globalAlpha=.86*envelope*edge;
-        c.drawImage(this.sparkleSprite,q.x-size/2,q.y-size/2,size,size);
+        const size=q.size*(.45+.55*envelope)*1.6*(pose?.scale??1);
+        c.globalAlpha=Math.min(1,.86*envelope*edge*this.settings.starOpacity/100)*(pose?.alpha??1);
+        c.drawImage(this.sparkleSprites[q.tint],(pose?.x??q.x)-size/2,(pose?.y??q.y)-size/2,size,size);
       }
+      if(trails)this.trails.draw(c);
       c.restore();
     }
   }

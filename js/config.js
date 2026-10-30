@@ -11,9 +11,10 @@
     },
     portalSparkles: {
       maxCount:5, idleLimit:3,
-      idleInterval:0.55, activeInterval:0.22,
+      // Increase spawn frequency by 5% while retaining the simultaneous-count limits.
+      idleInterval:0.55/1.05, activeInterval:0.22/1.05,
       lifeMin:0.8, lifeMax:1.4,
-      sizeMin:8, sizeMax:20, rareSize:24
+      sizeMin:16, sizeMax:40, rareSize:48
     },
     muggleChance: 0.08,
     elementWeights: { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 },
@@ -25,8 +26,8 @@
       C: { range:[350,549], note:'魔力穩定<br>偶爾放個小法術。' },
       B: { range:[550,749], note:'勤加鍛鍊<br>有望突破A級門檻！' },
       A: { range:[750,899], note:'高階魔法使認證<br>請收下榮譽徽章。' },
-      S: { range:[900,999], note:'魔力如暴風般湧動<br>所有任務都難不倒你！' },
-      SS: { range:[1000,9999], note:'魔力已超出可檢測範圍<br>無法正常測定' },
+      S: { range:[900,998], note:'魔力如暴風般湧動<br>所有任務都難不倒你！' },
+      SS: { range:[999,999], note:'魔力達到最高值<br>最高階級 SS！' },
       MUGGLE: { range:[1,9], note:'未偵測到魔力屬性<br>平凡之中，也有自己的光。' }
     },
     timing: { gather:1100, reveal:1200,
@@ -38,7 +39,7 @@
     interaction: { particles:354, touchParticles:96, mistClouds:24, followSpeed:1.5, trails:1024, dprMax:1.75,
       fieldRadius:190, maxSpeed:1250, trailLife:3 },
     scan: { duration:2400, ssNormalDuration:1800, ssRushDuration:900,
-      ssLimitHold:180, ssUnknownHold:220, ssStart:1000, ssLimit:9999 },
+      ssLimitHold:180, ssUnknownHold:220, ssStart:999, ssLimit:999 },
     resultText: { scanning:'魔力測定中', confirmed:'鑑定完成',
       overflow:'⚠ 超出標準測定範圍', unknown:'無法正常測定' }
   };

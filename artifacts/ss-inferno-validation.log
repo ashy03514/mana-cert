@@ -1,0 +1,350 @@
+{
+  "metrics": [
+    {
+      "mana": 1000,
+      "power": 2.52,
+      "clock": 2.508,
+      "windows": [
+        {
+          "slot": 0,
+          "phase": 0.2,
+          "start": 1.9000000000000001,
+          "calm": false,
+          "before": 14.108119946942082,
+          "after": 14.059412479213709,
+          "ratio": 0.9965475578665652,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.35,
+          "start": 3.3249999999999997,
+          "calm": false,
+          "before": 15.113192428748789,
+          "after": 19.871816626152814,
+          "ratio": 1.314865586462859,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.5,
+          "start": 4.75,
+          "calm": false,
+          "before": 13.876517531506536,
+          "after": 18.066815161263666,
+          "ratio": 1.3019704057767438,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.65,
+          "start": 6.175,
+          "calm": false,
+          "before": 14.346245912075238,
+          "after": 14.521605160930399,
+          "ratio": 1.0122233544531367,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.93,
+          "start": 8.835,
+          "calm": true,
+          "before": 15.167454723802981,
+          "after": 15.167454723802981,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 1,
+          "phase": 0.2,
+          "start": 11.4,
+          "calm": false,
+          "before": 15.129360840594533,
+          "after": 17.202385744604992,
+          "ratio": 1.1370199921762854,
+          "exact": false
+        },
+        {
+          "slot": 1,
+          "phase": 0.35,
+          "start": 12.825000000000001,
+          "calm": false,
+          "before": 15.387996254824923,
+          "after": 19.455128517866264,
+          "ratio": 1.264305514226135,
+          "exact": false
+        },
+        {
+          "slot": 1,
+          "phase": 0.5,
+          "start": 14.25,
+          "calm": false,
+          "before": 15.487472687033561,
+          "after": 15.487472687033561,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 1,
+          "phase": 0.65,
+          "start": 15.674999999999999,
+          "calm": false,
+          "before": 14.195559061485756,
+          "after": 14.195559061485756,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 1,
+          "phase": 0.93,
+          "start": 18.335,
+          "calm": true,
+          "before": 14.476293032057574,
+          "after": 14.476293032057574,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 2,
+          "phase": 0.2,
+          "start": 20.900000000000002,
+          "calm": false,
+          "before": 13.722949996958773,
+          "after": 14.579703108669223,
+          "ratio": 1.062432138272042,
+          "exact": false
+        },
+        {
+          "slot": 2,
+          "phase": 0.35,
+          "start": 22.325,
+          "calm": false,
+          "before": 16.143746442728172,
+          "after": 20.903021443156717,
+          "ratio": 1.2948061044759733,
+          "exact": false
+        },
+        {
+          "slot": 2,
+          "phase": 0.5,
+          "start": 23.75,
+          "calm": false,
+          "before": 14.669869417008062,
+          "after": 15.009300662681365,
+          "ratio": 1.023137986850774,
+          "exact": false
+        },
+        {
+          "slot": 2,
+          "phase": 0.65,
+          "start": 25.175,
+          "calm": false,
+          "before": 14.644327021708852,
+          "after": 14.644327021708852,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 2,
+          "phase": 0.93,
+          "start": 27.835,
+          "calm": true,
+          "before": 14.852167362322726,
+          "after": 14.852167362322726,
+          "ratio": 1,
+          "exact": true
+        }
+      ],
+      "calmMotion": 14.831971706061095,
+      "surgeRatio": 1.2939869027354276,
+      "rootBottomRange": 8.125037707390618,
+      "originalRootBottomRange": 8.125037707390618,
+      "rootMaxDelta": 0,
+      "rootCentroidRange": 213.96448863636363,
+      "rootMeanDelta": 0
+    },
+    {
+      "mana": 9999,
+      "power": 3,
+      "clock": 2.7,
+      "windows": [
+        {
+          "slot": 0,
+          "phase": 0.2,
+          "start": 1.9000000000000001,
+          "calm": false,
+          "before": 15.344224170563583,
+          "after": 15.344631622944277,
+          "ratio": 1.0000265541207014,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.35,
+          "start": 3.3249999999999997,
+          "calm": false,
+          "before": 15.326401893834753,
+          "after": 19.724219381021076,
+          "ratio": 1.2869438970509708,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.5,
+          "start": 4.75,
+          "calm": false,
+          "before": 15.133931918357941,
+          "after": 18.651331891523604,
+          "ratio": 1.2324181179181164,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.65,
+          "start": 6.175,
+          "calm": false,
+          "before": 15.048831783094561,
+          "after": 15.004124359909813,
+          "ratio": 0.9970291764949508,
+          "exact": false
+        },
+        {
+          "slot": 0,
+          "phase": 0.93,
+          "start": 8.835,
+          "calm": true,
+          "before": 15.20612007707066,
+          "after": 15.20612007707066,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 1,
+          "phase": 0.2,
+          "start": 11.4,
+          "calm": false,
+          "before": 14.180966823311278,
+          "after": 15.953476056724298,
+          "ratio": 1.1249921289216538,
+          "exact": false
+        },
+        {
+          "slot": 1,
+          "phase": 0.35,
+          "start": 12.825000000000001,
+          "calm": false,
+          "before": 16.537628047106146,
+          "after": 19.454738118370404,
+          "ratio": 1.1763922893268066,
+          "exact": false
+        },
+        {
+          "slot": 1,
+          "phase": 0.5,
+          "start": 14.25,
+          "calm": false,
+          "before": 14.904776923457293,
+          "after": 14.904776923457293,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 1,
+          "phase": 0.65,
+          "start": 15.674999999999999,
+          "calm": false,
+          "before": 14.306953909595803,
+          "after": 14.306953909595803,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 1,
+          "phase": 0.93,
+          "start": 18.335,
+          "calm": true,
+          "before": 14.536952549033462,
+          "after": 14.536952549033462,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 2,
+          "phase": 0.2,
+          "start": 20.900000000000002,
+          "calm": false,
+          "before": 13.970461559143931,
+          "after": 14.583893721075944,
+          "ratio": 1.0439092265731555,
+          "exact": false
+        },
+        {
+          "slot": 2,
+          "phase": 0.35,
+          "start": 22.325,
+          "calm": false,
+          "before": 15.590506209036935,
+          "after": 21.52649022772063,
+          "ratio": 1.3807435075612196,
+          "exact": false
+        },
+        {
+          "slot": 2,
+          "phase": 0.5,
+          "start": 23.75,
+          "calm": false,
+          "before": 14.310516704813052,
+          "after": 14.747243091511855,
+          "ratio": 1.0305178628911364,
+          "exact": false
+        },
+        {
+          "slot": 2,
+          "phase": 0.65,
+          "start": 25.175,
+          "calm": false,
+          "before": 15.053603273853252,
+          "after": 15.053603273853252,
+          "ratio": 1,
+          "exact": true
+        },
+        {
+          "slot": 2,
+          "phase": 0.93,
+          "start": 27.835,
+          "calm": true,
+          "before": 14.862578112745846,
+          "after": 14.862578112745846,
+          "ratio": 1,
+          "exact": true
+        }
+      ],
+      "calmMotion": 14.868550246283322,
+      "surgeRatio": 1.2691244529642784,
+      "rootBottomRange": 8.937541478129674,
+      "originalRootBottomRange": 8.937541478129674,
+      "rootMaxDelta": 0,
+      "rootCentroidRange": 216.67897727272728,
+      "rootMeanDelta": 0
+    }
+  ],
+  "boundaries": [
+    {
+      "time": 9.5,
+      "motion": 0.2425611391981256,
+      "changed": true
+    },
+    {
+      "time": 19,
+      "motion": 0.24967426450672095,
+      "changed": true
+    },
+    {
+      "time": 28.5,
+      "motion": 0.24887110014509883,
+      "changed": true
+    }
+  ]
+}
+SS inferno WebGL passed: calm burning between stronger gusts, continuous randomized cycles, unchanged non-SS fire, fixed source and exact pause.

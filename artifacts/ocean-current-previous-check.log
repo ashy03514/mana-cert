@@ -1,0 +1,9 @@
+AssertionError [ERR_ASSERTION]: sea texture moves right in left at 0 s: {"region":"left","tracks":[{"score":0.9109452050736321,"dx":-8,"dy":1},{"score":0.8488901082724234,"dx":-7,"dy":1},{"score":0.9151773320660948,"dx":-6,"dy":1},{"score":0.9535924532884348,"dx":-8,"dy":1},{"score":0.9083218531396534,"dx":-7,"dy":1},{"score":0.9354814854041844,"dx":-7,"dy":0},{"score":0.9495502878778214,"dx":-7,"dy":1},{"score":0.9527048111348365,"dx":-8,"dy":0},{"score":0.9685407250254676,"dx":-8,"dy":0}],"reliable":9,"dx":-7,"dy":1,"score":0.9354814854041844}
+    at C:\Codex\mana-cert-main\artifacts\check-ocean-previous-current.cjs:84:14 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

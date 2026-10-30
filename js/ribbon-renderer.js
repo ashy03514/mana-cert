@@ -1,0 +1,160 @@
+/* Approved soft ribbon renderer. Default formulas match magic-trail-redesign.html.
+ * Geometry is cached; light, wisps and fine dust animate along that fixed curve. */
+(function(root){
+  'use strict';
+  const TAU=Math.PI*2;
+  const clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
+  const smooth=v=>{v=clamp(v);return v*v*(3-2*v);};
+  const rand=(i,s=0)=>{const n=Math.sin(i*127.1+s*311.7)*43758.5453;return n-Math.floor(n);};
+  const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
+  const tint=(a,b,t)=>a.map((n,i)=>Math.round(n+(b[i]-n)*t));
+  const rgba=(c,a)=>'rgba('+c.join(',')+','+clamp(a)+')';
+
+
+  class RibbonRenderer {
+    constructor(options={}){
+      this.options={color:'#7deaff',flow:80,detail:100,hold:2,fade:1.5,width:1,
+        glowSize:1,glowOpacity:1,fingerSize:1,flowEnabled:true,flowDensity:100,
+        dustEnabled:true,dustDensity:100,...options};
+      this.time=0;this.ageTime=undefined;this.finger=false;
+    }
+    routeSampleCount(stroke){
+      if(stroke.routeDemand!==undefined&&stroke.routeDemand!==null)return stroke.routeDemand;
+      const src=stroke.points;let prev=src[0],count=1;
+      for(let i=1;i<src.length;i++){
+        const ctrl=src[i],end=i===src.length-1?ctrl:{x:(ctrl.x+src[i+1].x)/2,y:(ctrl.y+src[i+1].y)/2};
+        count+=Math.max(1,Math.ceil((Math.hypot(prev.x-ctrl.x,prev.y-ctrl.y)+Math.hypot(end.x-ctrl.x,end.y-ctrl.y))/2.5));
+        prev=end;
+      }
+      return stroke.routeDemand=count;
+    }
+    route(stroke){
+      if(stroke.route)return stroke.route;
+      const src=stroke.points,points=[];let prev=src[0],length=0;
+      const budget=Math.max(32,stroke.sampleBudget||4096);
+      let upperLength=0;for(let i=1;i<src.length;i++)upperLength+=Math.hypot(src[i].x-src[i-1].x,src[i].y-src[i-1].y)*1.5;
+      const spacing=this.routeSampleCount(stroke)<=budget?2.5:
+        budget<=src.length?Infinity:Math.max(2.5,upperLength/(budget-src.length));
+      const add=p=>{if(points.length)length+=Math.hypot(p.x-points.at(-1).x,p.y-points.at(-1).y);points.push({...p,d:length});};
+      add(src[0]);
+      for(let i=1;i<src.length;i++){
+        const ctrl=src[i],end=i===src.length-1?ctrl:{x:(ctrl.x+src[i+1].x)/2,y:(ctrl.y+src[i+1].y)/2,speed:ctrl.speed};
+        const count=Math.max(1,Math.ceil((Math.hypot(prev.x-ctrl.x,prev.y-ctrl.y)+Math.hypot(end.x-ctrl.x,end.y-ctrl.y))/spacing));
+        for(let j=1;j<=count;j++){const t=j/count,u=1-t;add({x:u*u*prev.x+2*u*t*ctrl.x+t*t*end.x,y:u*u*prev.y+2*u*t*ctrl.y+t*t*end.y,speed:prev.speed*u+end.speed*t});}
+        prev=end;
+      }
+      for(let i=0;i<points.length;i++){
+        const before=points[Math.max(0,i-1)],after=points[Math.min(points.length-1,i+1)];
+        const len=Math.hypot(after.x-before.x,after.y-before.y)||1;
+        points[i].nx=-(after.y-before.y)/len;points[i].ny=(after.x-before.x)/len;
+      }
+      return stroke.route={points,length};
+    }
+    at(route,d){
+      const arr=route.points;if(arr.length===1)return arr[0];
+      let lo=1,hi=arr.length-1;
+      while(lo<hi){const mid=(lo+hi)>>1;if(arr[mid].d<d)lo=mid+1;else hi=mid;}
+      const a=arr[lo-1],b=arr[lo],t=clamp((d-a.d)/Math.max(.001,b.d-a.d));
+      return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,nx:a.nx+(b.nx-a.nx)*t,ny:a.ny+(b.ny-a.ny)*t};
+    }
+    line(c,pts,width,color,alpha){
+      if(pts.length<2)return;const soft=width>=3;alpha*=soft?this.options.glowOpacity:1;
+      width*=this.options.width*(soft?this.options.glowSize:1);c.lineWidth=width;c.strokeStyle=rgba(color,alpha);c.beginPath();c.moveTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++)c.lineTo(pts[i].x,pts[i].y);c.stroke();
+    }
+    haze(c,x,y,size,color,alpha){
+      size*=this.finger?this.options.fingerSize:this.options.glowSize;alpha*=this.options.glowOpacity;
+      const g=c.createRadialGradient(x,y,0,x,y,size);g.addColorStop(0,rgba(color,alpha));
+      g.addColorStop(.35,rgba(color,alpha*.45));g.addColorStop(1,rgba(color,0));
+      c.fillStyle=g;c.fillRect(x-size,y-size,size*2,size*2);
+    }
+    orb(c,x,y,r,color,alpha){if(this.finger)r*=this.options.fingerSize;c.fillStyle=rgba(color,alpha);c.beginPath();c.arc(x,y,Math.max(.1,r),0,TAU);c.fill();}
+    star(c,x,y,r,color,alpha){
+      c.fillStyle=rgba(color,alpha);c.beginPath();c.moveTo(x,y-r);
+      c.quadraticCurveTo(x+.8,y-.8,x+r*.65,y);c.quadraticCurveTo(x+.8,y+.8,x,y+r);
+      c.quadraticCurveTo(x-.8,y+.8,x-r*.65,y);c.quadraticCurveTo(x-.8,y-.8,x,y-r);c.fill();
+    }
+    renderStroke(stroke,c){
+      const route=this.route(stroke),points=route.points,len=route.length;
+      // A reveal may retain the ink while its light still flows. Keeping its
+      // lifetime separate from the visual clock also preserves a true pause.
+      const ageTime=this.ageTime??this.time;
+      const age=(stroke.released===null?0:Math.max(0,ageTime-stroke.released-this.options.hold))*1.5/this.options.fade;
+      if(age>2.4)return;
+      const fade=1-smooth(age/1.5),base=rgb(this.options.color),violet=tint(base,[172,114,243],.75);
+      const core=tint(base,[240,247,255],.5),detail=this.options.detail/100;
+      const ribbon=true,flowDetail=this.options.flowEnabled?this.options.flowDensity/100:0;
+      if(len<2){this.finger=true;this.haze(c,points[0].x,points[0].y,12,base,.25*fade);this.orb(c,points[0].x,points[0].y,1.4,core,fade);this.finger=false;return;}
+      this.line(c,points,ribbon?20:11,base,.018*fade);
+      this.line(c,points,ribbon?11:6,base,.035*fade);
+      this.line(c,points,1.1,base,.23*fade);
+      for(let i=1;i<points.length;i++){
+        const p=points[i],last=points[i-1],s=p.d;
+        const wave=(s*flowDetail-this.time*this.options.flow+stroke.seed*47)%190;
+        const wrapped=(wave+285)%190-95,pulse=flowDetail?Math.exp(-wrapped*wrapped/(ribbon?1300:420)):0;
+        const edge=.25+.75*smooth(Math.min(s,len-s)/16);
+        const breakUp=age>0?1-smooth((age-(.15+.35*Math.sin(s*.038+stroke.seed)))/1.3):1;
+        const strength=edge*breakUp;
+        const col=tint(violet,base,.4+.35*Math.sin(s*.013-this.time*.55));
+        this.line(c,[last,p],(ribbon?6:3.2)+pulse*3,col,(.06+pulse*.23)*strength);
+        this.line(c,[last,p],(.65+(1-p.speed)*.45+pulse*.45)*(.5+.5*fade),col,(.18+pulse*.48)*strength);
+        if(pulse>.45)this.line(c,[last,p],.65,core,(pulse-.45)*.95*strength);
+      }
+      // Two continuously deforming, intermittent filaments; the drawing's center stays fixed.
+      for(let strand=0;strand<2;strand++){
+        const shifted=points.map(p=>{
+          const tip=smooth(Math.min(p.d,len-p.d)/18);
+          const offset=Math.sin(p.d*.046-this.time*(strand?1.7:2.1)+strand*2.4)*(ribbon?5.5:2.8)*detail*tip;
+          return {x:p.x+p.nx*offset,y:p.y+p.ny*offset,d:p.d};
+        });
+        for(let i=1;i<shifted.length;i++){
+          const p=shifted[i],patch=Math.pow(.5+.5*Math.sin(p.d*.023-this.time*1.2+strand*2.5),3);
+          this.line(c,[shifted[i-1],p],strand?.55:.7,strand?violet:base,patch*.34*fade*detail);
+        }
+      }
+      // Soft local eddies and short luminous packets travel along the same curve.
+      const packets=Math.min(Math.ceil(5*flowDetail),Math.ceil(len/150*flowDetail));
+      for(let j=0;j<packets;j++){
+        const d=(this.time*this.options.flow+len*(j+.2)/packets)%len,p=this.at(route,d);
+        const edge=smooth(Math.min(d,len-d)/18);
+        this.haze(c,p.x,p.y,ribbon?23:11,j%2?violet:base,(ribbon?.12:.15)*fade*edge);
+        this.orb(c,p.x,p.y,.8,core,.85*fade*edge);
+      }
+      // Sparse loose wisps trail around the pulse without pulling the drawn silhouette.
+      for(let j=0;j<Math.min(Math.ceil(9*flowDetail),Math.ceil(len/100*detail*flowDetail));j++){
+        const d=(rand(j,21)*len+this.time*this.options.flow*.35)%len;
+        const phase=.5+.5*Math.sin(this.time*1.6+j*2.2),wisp=[];
+        for(let k=0;k<=12;k++){
+          const along=clamp(d-23+k*3,0,len),p=this.at(route,along);
+          const offset=(j%2?1:-1)*(3+Math.sin(k/12*Math.PI)*(4+phase*3))*detail;
+          wisp.push({x:p.x+p.nx*offset,y:p.y+p.ny*offset});
+        }
+        this.line(c,wisp,.6,j%2?base:violet,.2*phase*fade);
+        const p=this.at(route,d);
+        this.haze(c,p.x+p.nx*4,p.y+p.ny*4,ribbon?21:13,j%2?base:violet,.065*phase*fade);
+      }
+      const count=this.options.dustEnabled?Math.min(Math.ceil(65*this.options.dustDensity/100),Math.ceil(len/14*detail*this.options.dustDensity/100)):0;
+      for(let i=0;i<count;i++){
+        const s=rand(i,stroke.seed+11)*len,p=this.at(route,s);
+        const life=.9+rand(i,13)*.8,phase=(this.time*.7+rand(i,12)*life)%life/life;
+        const sign=i%2?1:-1;
+        const drift=sign*(2+phase*(ribbon?13:9));
+        const x=p.x+p.nx*drift+Math.sin(phase*3+i)*2,y=p.y+p.ny*drift-phase*4;
+        const dissolve=age>0?Math.sin(clamp(age/2.4)*Math.PI):0;
+        const intensity=Math.sin(phase*Math.PI)**2*(.36*fade+.48*dissolve);
+        const color=i%3===0?violet:base;
+        this.orb(c,x,y,.45+rand(i,17)*.85,color,intensity);
+        if(i%9===0&&phase>.3&&phase<.8){
+          const a=smooth((phase-.3)/.2)*(1-smooth((phase-.6)/.2))*(fade+dissolve*.5);
+          this.haze(c,x,y,10,color,.12*a);this.star(c,x,y,2.8+rand(i,18)*1.2,core,.8*a);
+        }
+      }
+      if(stroke.released===null){
+        this.finger=true;const p=points.at(-1),breath=.9+.1*Math.sin(this.time*4);
+        this.haze(c,p.x,p.y,12*breath,base,.28);this.haze(c,p.x,p.y,5,base,.35);
+        this.orb(c,p.x,p.y,1.6,core,.9);this.finger=false;
+      }
+    }
+  }
+  root.RibbonRenderer=RibbonRenderer;
+})(globalThis);

@@ -1,0 +1,23 @@
+Tool: built-in image_gen
+Status: A-rank juvenile wing pair, static design for review; not wired into animation.
+Transparent background requested: true
+
+Initial prompt (reference: S-rank light-angel-wings-s-v1.png):
+Use case: stylized-concept.
+Asset type: transparent fantasy game angel wing pair sprite, A-rank static design.
+Input image 1 is the existing mature S-rank wing pair. Use it ONLY to match the fine pearlescent feather material, soft ivory whites, cool lavender-blue shadows and premium rendering. Design a visibly different, younger A-rank pair.
+
+Primary request: ONE PAIR of small newly grown angel wings, like an angel whose wings have only recently sprouted and are still developing. These must be structurally smaller and less mature than S wings, not a scaled copy. Compact rounded wings, tender fluffy down feathers densely covering the roots and shoulders; only 5-7 short, softly tapered main flight feathers on each side, with a modest rounded fan. Two simple overlapping feather tiers. The primary feathers are thick enough to have readable softness, around half the proportionate length of those on the reference. The upper outline rises in a low, gentle arc with rounded shoulders, no towering crown tips. Short rounded lower edge, no trailing tails or sweeping wisps. Slightly spread upward and outward in a modest open V, conveying early growth and calm sacred innocence. Realistic feather anatomy and exquisite fine feather barbs, soft contact shadows and believable volume. Graceful and beautiful, not a flat cute icon, not rubber, not a costume.
+
+Composition: front-on view, exactly one left and one right wing, balanced bilateral silhouette with natural slight feather differences. Both roots face each other across a small open gap at lower center. Wide 3:2 canvas, pair centered, smaller compact silhouette filling about 65% of canvas width and 55-60% of height, ample transparent margins. All feathers fully inside frame. The image must read immediately as younger, shorter and less ornate than the reference, while maintaining equal art quality.
+
+Lighting: very restrained warm champagne rim highlights, white pearl feathers, cool soft recess shadows, detailed visible feather surfaces. No large glow obscuring anatomy.
+Background: genuinely transparent alpha cutout for future compositing. No painted background, black/gray fill or checkerboard. No halo, central light source, sparkles, rays, shadow outside wings.
+No person, face, body, child figure, costume, ornaments, armor, gems, text, watermark, extra wings, insect wings, blade shapes, or long mature decorative feathers.
+
+Final refinement prompt (reference: first generated A draft):
+Use case: precise-object-edit.
+Edit the provided A-rank angel wing draft. Keep the beautiful pearl-white feathers, fine feather barbs, soft cool shadows, restrained warm rim light, frontal pair composition and genuine transparent background.
+Change ONLY the wing anatomy and silhouette to clearly newly sprouted juvenile angel wings. The current wings still look too mature. Make each wing much shorter from root to outer tip, with a chubby, rounded compact teardrop silhouette. Shorten ALL outer primary feathers by another 40 percent, especially the upper two tall pointed feathers. Remove those long upward curled tips. Their tips should form one shallow rounded fan, not a tall majestic V. Increase fluffy soft down around the rounded shoulders and wing roots. Only 5 or 6 short visible outer flight feathers per wing; about two simple readable tiers over the down. Lower edge is a short soft scalloped arc, not long drooping tails. Keep tiny natural pointed feather tips, but no long sickle shapes.
+These are newly grown wings of a young angel, not scaled-down adult wings, not stumps, not broken wings, and not folded adult wings. Both little wings still open outward and slightly upward, symmetrical and clearly recognizable as angel feather wings. Preserve premium realistic fantasy illustration quality.
+Center the compact pair in the same wide 3:2 canvas with generous transparent padding, occupying approximately 60-65 percent of the image width and 50 percent of image height; don't zoom in to fill canvas. The structural proportions must communicate young small wings even without size comparison. No body, human, child, face, costume, ornament, halo, orb, background, text, sparkles or extra wings. True transparent alpha cutout. No painted glow or backdrop.
