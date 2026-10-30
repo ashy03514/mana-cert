@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09131d">
+  <title>暴風之眼 · 風屬性階級樣板</title>
+  <style>
+    :root { color-scheme:dark; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:#e0ece8; background:#071019; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:280px; min-height:100svh; background:radial-gradient(ellipse at 50% 15%,#263d4866,transparent 57%),linear-gradient(#0c1722,#060c14 65%,#101d25); }
+    button,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button { font:inherit; cursor:pointer; }
+    button:focus-visible,a:focus-visible { outline:2px solid #c6e8d9; outline-offset:4px; }
+    .shell { position:relative; z-index:1; max-width:1040px; margin:auto; padding:max(12px,env(safe-area-inset-top)) 16px max(20px,env(safe-area-inset-bottom)); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; position:relative; z-index:1; min-height:40px; }
+    .eyebrow { color:#8fa6aa; font-size:10px; letter-spacing:.12em; }
+    .back { padding:9px 12px; border:1px solid #c5dfd725; border-radius:11px; background:#17222ac4; color:#d1ddd9; font-size:13px; text-decoration:none; white-space:nowrap; }
+    main { display:grid; justify-items:center; }
+    .stage { position:relative; width:min(calc(100vw - 12px),480px); height:min(57svh,550px); min-height:280px; margin:0 -10px; }
+    #tornado { display:block; position:fixed; z-index:0; left:0; top:0; width:100vw; height:100vh; pointer-events:none; }
+    .error { position:absolute; inset:25% 8%; margin:0; padding:24px; border:1px solid #91aba34d; border-radius:16px; background:#13202aee; color:#d3e2dd; font-size:14px; line-height:1.8; }
+    .error[hidden] { display:none; }
+    .panel { width:min(100%,400px); text-align:center; }
+    .rank { display:inline-flex; align-items:center; gap:10px; color:#b8d8c9; font-size:10px; letter-spacing:.24em; }
+    .rank::before,.rank::after { content:""; width:25px; height:1px; background:linear-gradient(90deg,transparent,#b5d4c566); }
+    .rank::after { rotate:180deg; }
+    h1 { font-family:Georgia,"Noto Serif TC","Times New Roman",serif; font-size:clamp(26px,6.5vw,34px); font-weight:500; letter-spacing:.16em; margin:6px 0 9px; }
+    .description { color:#8fa6a7; font-size:12px; line-height:1.8; margin:0 0 17px; }
+    .controls { padding:13px; border:1px solid #b4cec21c; border-radius:18px; background:linear-gradient(145deg,#23323999,#101a25dd); box-shadow:0 12px 40px #0003; text-align:left; }
+    .playback { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .control { min-height:42px; border:1px solid #bbd7ca27; border-radius:10px; background:#19272e; color:#d9e6df; font-size:13px; font-weight:600; }
+    .control.primary { background:linear-gradient(110deg,#3d615d,#2a4548); border-color:#b5dacc3b; color:#edf6ef; }
+    .adjustments { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:14px; margin-top:13px; }
+    .label { color:#9db3ae; font-size:11px; }
+    .speeds { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .ranks { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin-bottom:10px; }
+    .rankChoice { min-width:0; min-height:34px; padding:5px 2px; border:1px solid #bbd7ca27; border-radius:8px; background:#19272e; color:#a7bdb4; font-size:12px; }
+    .rankChoice[aria-pressed="true"] { color:#e3f2e9; background:#41685f66; border-color:#a4d4bb70; }
+    .speed { border:1px solid transparent; border-radius:8px; background:transparent; color:#92aba5; padding:7px 8px; font-size:12px; }
+    .speed[aria-pressed="true"] { color:#e3f2e9; background:#a4d4bb12; border-color:#a4d4bb36; }
+    .footnote { min-height:16px; margin:10px 0 0; color:#647e80; font-size:10px; line-height:1.6; }
+    @media (max-height:720px) and (orientation:portrait) { .shell { padding-top:8px; } .stage { height:49svh; min-height:240px; } h1 { margin:4px 0 5px; font-size:25px; } .description { margin-bottom:11px; } .controls { padding:10px; } .adjustments { margin-top:9px; } }
+    @media (max-height:650px) and (orientation:portrait) { .stage { height:min(49svh,calc(100svh - 370px)); min-height:180px; } }
+    @media (min-width:650px) and (orientation:landscape) { .shell { min-height:100svh; display:grid; grid-template-rows:auto 1fr; } main { grid-template-columns:minmax(0,1fr) minmax(250px,35%); gap:20px; align-items:center; } .stage { width:min(56vw,590px); height:min(calc(100svh - 80px),700px); min-height:260px; } .panel { padding-right:10px; } }
+  </style>
+</head>
+<body>
+  <canvas id="tornado" aria-label="厚重螺旋雲層連接扭動風柱，風流與葉片沿表面盤旋的超級龍捲風"></canvas>
+  <div class="shell">
+    <header><span class="eyebrow">風屬性 · E–SS 動畫樣板</span><a class="back" href="./index.html">返回設定</a></header>
+    <main>
+      <div class="stage" id="stage">
+        <p class="error" id="error" role="alert" hidden></p>
+      </div>
+      <section class="panel" aria-labelledby="title">
+        <div class="rank" id="rankBadge" aria-label="階級 SS">SS</div>
+        <h1 id="title">暴風之眼</h1>
+        <p class="description" id="description">厚重雲海由四周捲入風眼，<br>強風沿著扭動的風柱奔流。</p>
+        <div class="controls">
+          <div class="ranks" role="group" aria-label="選擇風屬性階級">
+            <button id="studyRank_E" class="rankChoice" data-rank="E" type="button" aria-pressed="false">E</button>
+            <button id="studyRank_D" class="rankChoice" data-rank="D" type="button" aria-pressed="false">D</button>
+            <button id="studyRank_C" class="rankChoice" data-rank="C" type="button" aria-pressed="false">C</button>
+            <button id="studyRank_B" class="rankChoice" data-rank="B" type="button" aria-pressed="false">B</button>
+            <button id="studyRank_A" class="rankChoice" data-rank="A" type="button" aria-pressed="false">A</button>
+            <button id="studyRank_S" class="rankChoice" data-rank="S" type="button" aria-pressed="false">S</button>
+            <button id="studyRank_SS" class="rankChoice" data-rank="SS" type="button" aria-pressed="true">SS</button>
+          </div>
+          <div class="playback">
+            <button id="pause" class="control primary" type="button" aria-pressed="false">暫停</button>
+            <button id="replay" class="control" type="button">重新播放</button>
+          </div>
+          <div class="adjustments">
+            <span class="label" id="speedLabel">播放速度</span>
+            <div class="speeds" role="group" aria-labelledby="speedLabel">
+              <button class="speed" data-speed="0.5" aria-pressed="false" type="button">0.5×</button>
+              <button class="speed" data-speed="1" aria-pressed="true" type="button">1×</button>
+              <button class="speed" data-speed="1.5" aria-pressed="false" type="button">1.5×</button>
+            </div>
+          </div>
+        </div>
+        <p class="footnote" id="status" role="status">SS 美術預覽 · 不產生鑑定結果</p>
+      </section>
+    </main>
+  </div>
+  <script src="./js/wind-tornado-shader.js"></script>
+  <script src="./js/fire-rank-sparkles.js"></script>
+  <script src="./js/wind-rank-effects.js"></script>
+  <script src="./js/wind-backdrop.js"></script>
+  <script src="./js/wind-tornado-renderer.js"></script>
+  <script>
+    (()=>{
+      'use strict';
+      const canvas=document.querySelector('#tornado'),stage=document.querySelector('#stage');
+      const ctx=canvas.getContext('2d'),background=document.createElement('canvas');
+      const pauseButton=document.querySelector('#pause'),replayButton=document.querySelector('#replay');
+      const speedButtons=[...document.querySelectorAll('[data-speed]')];
+      const rankButtons=[...document.querySelectorAll('[data-rank]')];
+      const rankBadge=document.getElementById('rankBadge'),description=document.getElementById('description');
+      const status=document.querySelector('#status'),error=document.querySelector('#error');
+      let renderer=null,time=0,speed=1,paused=false,hidden=document.hidden,pageHidden=false,last=null;
+      let rank='SS';
+      let raf=0,disposed=false,failed=false,waiting=false,width=1,height=1,dpr=1;
+
+      function state(){
+        document.body.dataset.still=String(paused||hidden||pageHidden||waiting);
+        pauseButton.textContent=paused?'繼續播放':'暫停';
+        pauseButton.setAttribute('aria-pressed',String(paused));
+        if(!failed)status.textContent=waiting?'繪圖暫時中斷 · 等待恢復':paused?'已暫停 · 可調整播放速度':rank+' 美術預覽 · 不產生鑑定結果';
+      }
+      function fail(problem){
+        if(failed)return;
+        failed=true;last=null;error.hidden=false;
+        error.textContent='目前無法顯示暴風之眼，請重新整理後再試。';
+        status.textContent='特效暫時無法顯示';
+        canvas.dataset.error=String(problem&&problem.message||problem||'render failed');
+      }
+      function contextLost(){
+        if(disposed||failed)return;
+        waiting=true;last=null;error.hidden=false;
+        error.textContent='繪圖暫時中斷，正在等待恢復。';state();
+      }
+      function contextRestored(){
+        if(disposed||failed)return;
+        if(renderer.error){fail(renderer.error);return;}
+        waiting=false;last=null;error.hidden=true;state();draw();
+      }
+      function draw(){
+        if(disposed||failed||!renderer||!ctx)return false;
+        if(renderer.lost){contextLost();return false;}
+        try{
+          ctx.setTransform(dpr,0,0,dpr,0,0);
+          ctx.clearRect(0,0,width,height);
+          const inset=16,rect=stage.getBoundingClientRect();
+          const boxWidth=Math.min(Math.max(1,rect.width-inset*2),Math.max(1,rect.height-inset*2)/1.34);
+          const boxHeight=boxWidth*1.34;
+          const rendered=renderer.draw(ctx,background,width,height,{
+            time,rank,opacity:1,formation:1,
+            box:renderer.rankBox({x:rect.left+(rect.width-boxWidth)/2,y:rect.top+(rect.height-boxHeight)/2,width:boxWidth,height:boxHeight},WindRankEffects.forRank(rank))
+          });
+          if(renderer.lost){contextLost();return false;}
+          if(rendered===false||renderer.error){
+            fail(renderer.error||'render unavailable');return false;
+          }
+          return true;
+        }catch(problem){fail(problem);return false;}
+      }
+      function setPaused(value=true){
+        paused=Boolean(value);last=null;state();return paused;
+      }
+      function resize(){
+        if(disposed)return;
+        width=Math.max(1,window.innerWidth);height=Math.max(1,window.innerHeight);
+        dpr=Math.min(1.5,window.devicePixelRatio||1);
+        canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+        canvas.style.width=width+'px';canvas.style.height=height+'px';
+        background.width=canvas.width;background.height=canvas.height;
+        draw();
+      }
+      function tick(now){
+        if(disposed)return;
+        const active=!paused&&!hidden&&!pageHidden&&!failed&&!waiting;
+        if(active){
+          if(last!==null)time+=Math.min(.05,Math.max(0,(now-last)/1000))*speed;
+          draw();
+        }
+        last=active&&!waiting?now:null;
+        raf=requestAnimationFrame(tick);
+      }
+      function replay(){
+        if(disposed)return;
+        time=0;setPaused(false);draw();
+      }
+      function visibility(){hidden=document.hidden;last=null;state();}
+      function pagehide(){pageHidden=true;last=null;state();}
+      function pageshow(){pageHidden=false;hidden=document.hidden;last=null;state();resize();}
+      function togglePause(){setPaused(!paused);}
+      function changeSpeed(event){
+        speed=Number(event.currentTarget.dataset.speed);last=null;
+        speedButtons.forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.speed)===speed)));
+      }
+      function changeRank(event){
+        const selected=event.currentTarget.dataset.rank;if(selected===rank)return;
+        rank=selected;
+        rankButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.rank===rank)));
+        rankBadge.textContent=rank;rankBadge.setAttribute('aria-label','階級 '+rank);
+        description.textContent=rank==='SS'||rank==='S'?'厚重雲海捲入風眼，風柱與星芒隨風翻騰。'
+          :rank==='E'?'幾股鬆散氣流捲起葉片，尚未連成完整風柱。':rank==='D'?'斷續的風捲逐漸連成旋柱，邊緣仍散成薄霧。':'風霧沿風柱盤旋，隨階級增加速度與扭曲。';
+        replay();
+      }
+      function dispose(){
+        if(disposed)return;
+        disposed=true;cancelAnimationFrame(raf);
+        window.removeEventListener('resize',resize);
+        window.removeEventListener('scroll',draw);
+        window.removeEventListener('pagehide',pagehide);
+        window.removeEventListener('pageshow',pageshow);
+        document.removeEventListener('visibilitychange',visibility);
+        pauseButton.removeEventListener('click',togglePause);
+        replayButton.removeEventListener('click',replay);
+        speedButtons.forEach(button=>button.removeEventListener('click',changeSpeed));
+        rankButtons.forEach(button=>button.removeEventListener('click',changeRank));
+        if(renderer){
+          renderer.canvas.removeEventListener('webglcontextlost',contextLost);
+          renderer.canvas.removeEventListener('webglcontextrestored',contextRestored);
+          renderer.dispose();
+        }
+      }
+      window.windTornadoStudy={
+        get renderer(){return renderer;},
+        get time(){return time;},
+        get rank(){return rank;},
+        renderAt(value){
+          if(disposed)return false;
+          time=Math.max(0,Number(value)||0);setPaused(true);return draw();
+        },
+        pause:setPaused,dispose,resize
+      };
+      pauseButton.addEventListener('click',togglePause);
+      replayButton.addEventListener('click',replay);
+      speedButtons.forEach(button=>button.addEventListener('click',changeSpeed));
+      rankButtons.forEach(button=>button.addEventListener('click',changeRank));
+      window.addEventListener('resize',resize);
+      window.addEventListener('scroll',draw,{passive:true});
+      window.addEventListener('pagehide',pagehide);
+      window.addEventListener('pageshow',pageshow);
+      document.addEventListener('visibilitychange',visibility);
+      try{
+        if(!ctx)throw new Error('Canvas 2D unavailable');
+        renderer=new WindTornadoRenderer();
+        renderer.canvas.addEventListener('webglcontextlost',contextLost);
+        renderer.canvas.addEventListener('webglcontextrestored',contextRestored);
+        if(renderer.error)throw new Error(renderer.error);
+        resize();state();raf=requestAnimationFrame(tick);
+      }catch(problem){fail(problem);}
+    })();
+  </script>
+</body>
+</html>
