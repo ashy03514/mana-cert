@@ -14,7 +14,7 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
  for(const element of ['光','暗']){
   await page.evaluate(e=>window.target=e,element);assert.equal(await page.locator('#btnStart').isVisible(),true);await page.locator('#btnStart').click({force:true});
   const history=await page.evaluate(()=>{
-   const out=[];for(const t of [.3,1,1.3,1.5,1.8,2,2.2,2.5,3,4,6]){testFlow.state='REVEAL';testFlow.elapsed=t;tick();out.push({rank:fireScanRank.textContent,art:fireScanRank.dataset.rankArt,value:Number(fireScanValue.textContent)});}return out;
+   const out=[];for(const t of [.3,1,1.3,1.5,1.8,2,2.2,2.5,3,4,6]){testFlow.state='REVEAL';testFlow.elapsed=t;tick();out.push({rank:fireScanRank.textContent,art:fireScanRank.dataset.rank,value:Number(fireScanValue.textContent)});}return out;
   });
   for(const rank of ['E','D','C','B','A','S','SS'])assert.ok(history.some(frame=>frame.rank===rank),element+' shows '+rank);
   assert.ok(history.every(frame=>frame.art===frame.rank));assert.equal(history.at(-1).value,999);

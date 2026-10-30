@@ -1,4 +1,4 @@
-const CACHE_NAME = "mana-pwa-v3-portal-127";
+const CACHE_NAME = "mana-pwa-v3-portal-128";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,7 +7,6 @@ const ASSETS = [
   "./js/probability-settings.js",
   "./js/cert-settings.js",
   "./js/rank-lettering.js",
-  "./assets/rank-lettering-concept-v1.png",
   "./js/result-system.js",
   "./js/portal-scene.js",
   "./js/element-material-fluids.js",

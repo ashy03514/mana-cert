@@ -141,36 +141,29 @@
   #fireScanReadout::before { content:""; position:absolute; left:var(--scan-x); top:var(--scan-y); width:260px; height:150px; transform:translate(-50%,-50%); background:radial-gradient(ellipse,#f1a13d22,transparent 67%); opacity:var(--scan-ignition,0); }
   #fireScanLabel { display:none; }
   #fireScanValue { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-variant-numeric:lining-nums tabular-nums; letter-spacing:.035em; color:#fff0d9; text-shadow:0 2px 9px #080305,0 0 24px #ef983338; }
-  #fireScanRank { color:#ebc694; font-weight:500; letter-spacing:.12em; }
+  #fireScanRank { color:#fff; font-family:Georgia,"Times New Roman",serif; font-weight:500; letter-spacing:.025em; }
   #fireScanRank::before { content:none; }
-  .rankArtwork { display:none; background-repeat:no-repeat; }
-  .rankArtReady #fireScanRank.rankHasArt { letter-spacing:0; }
-  .rankArtReady .rankHasArt .rankArtwork { display:block; }
-  .rankArtReady .rankHasArt .rankText { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .rankText { position:relative; display:block; z-index:1; color:#fff;
+    text-shadow:0 1px 2px #161622b0,0 0 4px rgb(255 255 255 / var(--rank-glow,.12)),0 0 var(--rank-glow-radius,5px) rgb(255 255 255 / var(--rank-glow,.12)),0 0 calc(var(--rank-glow-radius,5px) * 1.8) rgb(207 226 255 / calc(var(--rank-glow,.12) * .45)); }
+  .rankSparkles { position:absolute; inset:0; z-index:2; pointer-events:none; color:#fff; }
+  .rankSpark { position:absolute; display:block; overflow:visible; fill:currentColor; filter:drop-shadow(0 0 3px #ffffffb0); transform-origin:center; }
+  #fireScanReadout[data-element="light"] .rankText { -webkit-text-stroke:.45px #80652d80; text-shadow:0 1px 3px #70501d99,0 0 4px rgb(255 255 255 / var(--rank-glow,.12)),0 0 var(--rank-glow-radius,5px) rgb(255 255 255 / var(--rank-glow,.12)),0 0 calc(var(--rank-glow-radius,5px) * 1.8) rgb(255 250 214 / var(--rank-glow,.12)); }
+  #fireScanReadout[data-element="light"] .rankSpark { filter:drop-shadow(0 1px 1px #80652d80) drop-shadow(0 0 3px #fff); }
+  @media (prefers-reduced-motion:reduce) { .rankSparkles { display:none; } }
   #revealTitle.fireScanTitle[data-element="water"], #fireScanReadout[data-element="water"] #fireScanLabel { color:#94cee4; }
   #fireScanReadout[data-element="water"] #fireScanValue { color:#e4faff; text-shadow:0 2px 9px #030d19,0 0 24px #61d8ff38; }
-  #fireScanReadout[data-element="water"] #fireScanRank { color:#b1e7f5; }
-  #fireScanReadout[data-element="water"] #fireScanRank::before { color:#80adbf; }
   #fireScanReadout[data-element="water"]::before { background:radial-gradient(ellipse,#48bfff22,transparent 67%); }
   #revealTitle.fireScanTitle[data-element="wind"], #fireScanReadout[data-element="wind"] #fireScanLabel { color:#b5d9ce; }
   #fireScanReadout[data-element="wind"] #fireScanValue { color:#e5f5ed; text-shadow:0 2px 9px #040e16,0 0 24px #a1d7cc28; }
-  #fireScanReadout[data-element="wind"] #fireScanRank { color:#c1e9da; }
-  #fireScanReadout[data-element="wind"] #fireScanRank::before { color:#8aafa4; }
   #fireScanReadout[data-element="wind"]::before { background:radial-gradient(ellipse,#acdacc18,transparent 67%); }
   #revealTitle.fireScanTitle[data-element="earth"], #fireScanReadout[data-element="earth"] #fireScanLabel { color:#c9b18b; }
   #fireScanReadout[data-element="earth"] #fireScanValue { color:#f1e5cd; text-shadow:0 2px 9px #0b0b0d,0 0 24px #c4a66b26; }
-  #fireScanReadout[data-element="earth"] #fireScanRank { color:#ddc59b; }
-  #fireScanReadout[data-element="earth"] #fireScanRank::before { color:#a48e6b; }
   #fireScanReadout[data-element="earth"]::before { background:radial-gradient(ellipse,#b79a6222,transparent 67%); }
   #revealTitle.fireScanTitle[data-element="light"], #fireScanReadout[data-element="light"] #fireScanLabel { color:#725221; text-shadow:0 1px 8px #fff8dc; }
   #fireScanReadout[data-element="light"] #fireScanValue { color:#634518; text-shadow:0 1px 10px #fffbe8,0 0 26px #fff6cf80; }
-  #fireScanReadout[data-element="light"] #fireScanRank { color:#725221; }
-  #fireScanReadout[data-element="light"] #fireScanRank::before { color:#8a6a34; }
   #fireScanReadout[data-element="light"]::before { background:radial-gradient(ellipse,#fff9df80,transparent 67%); }
   #revealTitle.fireScanTitle[data-element="dark"], #fireScanReadout[data-element="dark"] #fireScanLabel { color:#c7b4ee; text-shadow:0 1px 8px #130b26; }
   #fireScanReadout[data-element="dark"] #fireScanValue { color:#eee6ff; text-shadow:0 2px 9px #080613,0 0 26px #a08bea50; }
-  #fireScanReadout[data-element="dark"] #fireScanRank { color:#d9c9ff; }
-  #fireScanReadout[data-element="dark"] #fireScanRank::before { color:#a692c6; }
   #fireScanReadout[data-element="dark"]::before { background:radial-gradient(ellipse,#a28adf25,transparent 67%); }
   #materialControls {
     position:fixed; z-index:60; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
@@ -1619,11 +1612,11 @@
   }
   function drawFireScan(sample,layout){
     const n=layout.numbers;
-    // Use the label's former space for a compact title / number / letter
-    // stack. Equal numeric/letter sizes must still clear the bottom controls.
+    // Reserve space for the larger rank and its star halo above the controls.
     const {h}=getViewportSize(),bottom=flowPreview?h-166:h-106;
-    const valueY=Math.min(n.y-12,bottom-n.fontSize*1.18-12);
-    const rankY=valueY+n.fontSize+12;
+    const rankSize=n.fontSize*1.2;
+    const valueY=Math.min(n.y-12,bottom-n.fontSize*.18-20-rankSize-16);
+    const rankY=valueY+n.fontSize*.18+20+rankSize*.82;
     fireScanReadout.setAttribute('data-element',flow.element);
     fireScanReadout.setAttribute('aria-label',ElementMaterialRenderer.names[flow.element]+'屬性魔力鑑定');
     revealTitle.setAttribute('data-element',flow.element);
@@ -1632,11 +1625,11 @@
     fireScanReadout.style.setProperty('--scan-y',valueY+'px');
     fireScanReadout.style.setProperty('--scan-ignition',String(sample.ignition));
     fireScanValue.style.top=valueY+'px';fireScanValue.style.fontSize=n.fontSize+'px';
-    fireScanRank.style.top=rankY+'px';fireScanRank.style.fontSize=n.fontSize+'px';
+    fireScanRank.style.top=rankY+'px';fireScanRank.style.fontSize=rankSize+'px';
     fireScanLabel.style.top=n.labelY+'px';fireScanLabel.style.fontSize=n.labelFontSize+'px';
     const value=String(sample.value).padStart(3,'0');
     if(fireScanValue.textContent!==value)fireScanValue.textContent=value;
-    RankLettering.apply(fireScanRank,sample.rank);
+    RankLettering.apply(fireScanRank,sample.rank,flow.elapsed);
     fireScanLabel.textContent='';
     revealTitle.classList.add('fireScanTitle');
     revealTitle.style.left=n.x+'px';revealTitle.style.top=(valueY-n.fontSize*.82-16)+'px';

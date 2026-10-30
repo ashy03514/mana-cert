@@ -17,12 +17,12 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
    assert.equal(await page.locator('#fireScanLabel').isVisible(),false);
    const style=await page.evaluate(()=>({value:getComputedStyle(fireScanValue).fontSize,rank:getComputedStyle(fireScanRank).fontSize,before:getComputedStyle(fireScanRank,'::before').content,
     main:parseFloat(getComputedStyle(document.querySelector('.elementName')).fontSize),title:parseFloat(getComputedStyle(revealTitle).fontSize)}));
-   assert.equal(style.rank,style.value);assert.equal(style.before,'none');assert.ok(Math.abs(style.main/style.title-1.3)<.001);
+   assert.ok(Math.abs(parseFloat(style.rank)/parseFloat(style.value)-1.2)<.001);assert.equal(style.before,'none');assert.ok(Math.abs(style.main/style.title-1.3)<.001);
    const boxes=[];for(const id of ['revealTitle','fireScanValue','fireScanRank','formalReplay']){const b=await page.locator('#'+id).boundingBox();assert.ok(b&&b.x>=0&&b.y>=0&&b.x+b.width<=width+1&&b.y+b.height<=height+1,element+' '+id+' fits');boxes.push(b);}
    for(let i=0;i<3;i++)assert.ok(boxes[i].y+boxes[i].height<boxes[i+1].y,element+' text rows do not overlap');
    if(element==='風')await page.screenshot({path:path.resolve(`artifacts/result-type-wind-${width}x${height}.png`)});
   }
   await page.locator('#formalReplay').click();await page.locator('#btnGoHome').click();
  }
- assert.deepEqual(errors,[]);console.log('PASS six elements, removed labels, 130% main character, equal number/rank font size, three viewport layouts and result actions.');
+ assert.deepEqual(errors,[]);console.log('PASS six elements, removed labels, 130% main character, 120% rank font size, three viewport layouts and result actions.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
