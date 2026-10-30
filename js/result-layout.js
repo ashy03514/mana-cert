@@ -23,16 +23,19 @@
   const rankTop=valueTop+font+gap+pad,x=wide?width*.76:width/2;
   const effectBottom=wide?height-30:titleTop-26;
   const ref=bounds(referenceBox,element),fitWidth=wide?width*.49:width*1.08;
-  const scale=Math.min(1,effectBottom/Math.max(1,ref.bottom),wide?fitWidth/ref.width:1);
+  // Lower the composition by about ten percent of the viewport. Fit the
+  // subject into the remaining stage height rather than push it into text.
+  const offsetY=Math.min(height*.10,effectBottom*.22);
+  const scale=Math.min(1,(effectBottom-offsetY)/Math.max(1,ref.bottom),wide?fitWidth/ref.width:1);
   const sourceX=referenceBox.x+referenceBox.width/2,targetX=wide?width*.27:width/2;
-  const box={...base.box,x:targetX+(base.box.x-sourceX)*scale,y:base.box.y*scale,
+  const box={...base.box,x:targetX+(base.box.x-sourceX)*scale,y:base.box.y*scale+offsetY,
    width:base.box.width*scale,height:base.box.height*scale};
-  if(Number.isFinite(box.gatherY))box.gatherY*=scale;
+  if(Number.isFinite(box.gatherY))box.gatherY=box.gatherY*scale+offsetY;
   const envelope=bounds(box,element);
   return {...base,box,sideBySide:wide,
    numbers:{...base.numbers,x},
    composition:{titleTop,titleY:titleTop+titleHeight,valueY:valueTop+font*.82,
-    rankY:rankTop+rankSize*.82,rankSize,effectBottom,bottom,envelope,scale},
+    rankY:rankTop+rankSize*.82,rankSize,effectBottom,bottom,envelope,scale,offsetY},
    readout:{x:x-(wide?width*.20:width*.43),y:titleTop-8,width:wide?width*.40:width*.86,height:bottom-titleTop+16}};
  }
  root.ResultLayout=Object.freeze({compose,bounds});

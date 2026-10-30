@@ -16,7 +16,7 @@ The stars are aria-hidden and do not receive pointer events. White lettering
 uses a faint warm key shadow on the light background to retain its silhouette.
 The numeric value, rank thresholds and committed result remain unchanged.
 The previous PNG stays in assets as source artwork but is neither requested
-nor precached. Service-worker cache v131 includes the live lettering module.
+nor precached. Service-worker cache v132 includes the live lettering module.
 
 Validation:
 
@@ -40,3 +40,8 @@ birth positions. Bottom safe areas and the action button remain reserved.
 Additional verification: node tests/result-composition-browser.cjs renders all
 six SS subjects with real graphics on portrait, compact and landscape layouts,
 including a simulated 34px bottom safe area, bounds checks and menu interaction.
+
+Version 132 lowers the subject composition by 10% of viewport height (bounded
+on extremely short stages) and refits only within its reserved artwork area.
+Text and action positions stay unchanged. Gather anchors and light feather
+birth positions follow the same translated/scaled box.
