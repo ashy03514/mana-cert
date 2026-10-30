@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#100c1a">
+  <title>闇王之翼 · SS 動畫樣板</title>
+  <style>
+    :root { color-scheme:dark; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:#e6ddec; background:#100c1a; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:280px; min-height:100svh; background:radial-gradient(ellipse at 48% 30%,#49273a38,transparent 65%),linear-gradient(#100d1d,#0b0e18 75%); }
+    button,a,label { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button { font:inherit; cursor:pointer; }
+    button:disabled { cursor:default; opacity:.45; }
+    button:focus-visible,a:focus-visible,input:focus-visible { outline:2px solid #c6a6de; outline-offset:4px; }
+    button:hover:not(:disabled),a:hover { filter:brightness(1.14); }
+    #demonWings { display:block; position:fixed; inset:0; z-index:0; width:100vw; height:100vh; pointer-events:none; }
+    .shell { position:relative; z-index:1; width:min(100%,1280px); margin:auto; padding:max(12px,env(safe-area-inset-top)) 20px max(18px,env(safe-area-inset-bottom)); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:42px; }
+    .eyebrow { color:#9b8da6; font-size:10px; letter-spacing:.1em; }
+    .back { flex:none; padding:10px 13px; border:1px solid #c1a4d22b; border-radius:11px; color:#d9cde2; background:#171421b8; text-decoration:none; font-size:12px; }
+    main { display:grid; justify-items:center; }
+    .stage { position:relative; width:min(calc(100vw - 12px),640px); height:min(47svh,520px); min-height:230px; margin:0 -14px; }
+    .error { position:absolute; left:9%; right:9%; top:35%; margin:0; padding:20px; border:1px solid #c3a1d33c; border-radius:14px; background:#17131fee; color:#e3d5eb; font-size:13px; line-height:1.8; }
+    .error[hidden] { display:none; }
+    .panel { width:min(100%,380px); text-align:center; padding-top:5px; }
+    .rank { display:inline-flex; align-items:center; gap:15px; color:#c2a9cf; font-family:Georgia,serif; font-size:12px; letter-spacing:.25em; }
+    .rank::before,.rank::after { content:""; width:32px; height:1px; background:linear-gradient(90deg,transparent,#b59ac25c); }
+    .rank::after { transform:rotate(180deg); }
+    h1 { margin:8px 0 10px; padding-left:.17em; color:#e9dff0; font-family:Georgia,"Noto Serif TC","Times New Roman",serif; font-size:clamp(28px,7vw,40px); font-weight:500; letter-spacing:.17em; text-shadow:0 0 34px #b080be22; }
+    .description { margin:0 0 17px; color:#aa9bb5; font-size:12px; line-height:1.85; letter-spacing:.025em; }
+    .controls { padding:12px; border:1px solid #b39ac22d; border-radius:16px; background:linear-gradient(130deg,#2c2030d9,#141522ed); box-shadow:0 14px 40px #0002; }
+    .playback { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .control { min-height:42px; padding:9px 8px; border:1px solid #bca2ce30; border-radius:9px; color:#c9bad4; background:#191722; font-size:12px; font-weight:600; }
+    #pause { color:#f0e7f5; background:linear-gradient(115deg,#65455f,#3b354f); border-color:#c3a0cf52; }
+    .speed { display:grid; grid-template-columns:1.25fr repeat(3,1fr); align-items:center; gap:5px; margin-top:9px; }
+    .speed-label { color:#a899b6; font-size:10px; text-align:left; }
+    .speed button,.phases button { min-height:32px; padding:6px 4px; border:1px solid #bca2ce20; border-radius:7px; color:#ae9fbc; background:#171521; font-size:10px; }
+    .speed button[aria-pressed="true"],.phases button[aria-pressed="true"] { background:#55405d; border-color:#bea1d05e; color:#f1e8f6; }
+    .phases { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+    .ornament { display:flex; justify-content:center; align-items:center; gap:9px; min-height:33px; margin-top:6px; color:#b3a2bf; font-size:11px; cursor:pointer; }
+    .ornament input { width:16px; height:16px; margin:0; accent-color:#a486bd; }
+    .footnote { min-height:18px; margin:10px 0 0; color:#9482a4; font-size:10px; line-height:1.8; }
+    @media (max-height:740px) and (orientation:portrait) {
+      .shell { padding-top:8px; padding-bottom:12px; }
+      .stage { height:calc(100svh - 360px); min-height:190px; }
+      .panel { padding-top:0; }
+      h1 { margin:5px 0 7px; font-size:27px; }
+      .description { margin-bottom:11px; font-size:11px; }
+      .controls { padding:9px; }
+      .footnote { margin-top:6px; }
+    }
+    @media (max-height:600px) and (orientation:portrait) {
+      .stage { height:calc(100svh - 375px); min-height:155px; }
+      .description { margin-bottom:8px; line-height:1.6; }
+      .control { min-height:38px; }
+      .speed { margin-top:7px; }
+      .ornament { margin-top:3px; min-height:28px; }
+    }
+    @media (min-width:650px) and (orientation:landscape) {
+      .shell { min-height:100svh; display:grid; grid-template-rows:auto 1fr; }
+      main { grid-template-columns:minmax(0,1fr) minmax(260px,32%); align-items:center; gap:26px; }
+      .stage { width:min(100%,640px); height:min(calc(100svh - 88px),720px); min-height:240px; margin:0; }
+      .panel { padding:10px 0; }
+    }
+    @media (min-width:650px) and (max-height:470px) {
+      .shell { padding:8px 16px; }
+      header { min-height:36px; }
+      .stage { height:calc(100svh - 68px); min-height:220px; }
+      .panel { padding:0; }
+      h1 { margin:4px 0 6px; font-size:26px; }
+      .description { margin-bottom:9px; font-size:10px; line-height:1.6; }
+      .controls { padding:8px; }
+      .control { min-height:36px; }
+      .speed { margin-top:6px; }
+      .phases { margin-top:6px; }
+      .ornament { min-height:26px; margin-top:2px; }
+      .footnote { margin-top:5px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="demonWings" aria-label="黑藍惡魔雙翼凝聚魔力後展開，翼膜緩緩起伏，鎖鏈隨之擺動"></canvas>
+  <div class="shell">
+    <header><span class="eyebrow">闇屬性 · SS 動畫樣板</span><a class="back" href="./dark-demon-wing-study.html?v=117">靜態美術</a></header>
+    <main>
+      <div class="stage" id="stage"><p class="error" id="error" role="alert" hidden></p></div>
+      <section class="panel" aria-labelledby="title">
+        <div class="rank" aria-label="階級 SS">SS</div>
+        <h1 id="title">闇王之翼</h1>
+        <p class="description">魔力凝聚，雙翼向外舒展。<br>翼膜緩緩起伏，鎖鏈隨勢擺動。</p>
+        <div class="controls">
+          <div class="playback" role="group" aria-label="播放控制">
+            <button class="control" id="pause" type="button" aria-pressed="false">暫停</button>
+            <button class="control" id="replay" type="button">重新播放</button>
+          </div>
+          <div class="speed" role="group" aria-label="播放速度">
+            <span class="speed-label">播放速度</span>
+            <button type="button" data-speed="0.5" aria-pressed="false">0.5×</button>
+            <button type="button" data-speed="1" aria-pressed="true">1×</button>
+            <button type="button" data-speed="1.5" aria-pressed="false">1.5×</button>
+          </div>
+          <div class="phases" role="group" aria-label="停格觀察">
+            <button type="button" data-time="1.5" aria-pressed="false">凝聚停格</button>
+            <button type="button" data-time="2.5" aria-pressed="false">展翼停格</button>
+            <button type="button" data-time="5.8" aria-pressed="false">待機停格</button>
+          </div>
+          <label class="ornament" for="chainsToggle"><input id="chainsToggle" type="checkbox" checked><span>鎖鏈翼飾</span></label>
+        </div>
+        <p class="footnote" id="status" role="status">正在載入羽翼素材。</p>
+      </section>
+    </main>
+  </div>
+  <script src="./assets/dark-chain-v1.local.js?v=118"></script>
+  <script src="./assets/dark-demon-wings-ss-v2.local.js?v=118"></script>
+  <script src="./js/dark-demon-wing-motion.js?v=118"></script>
+  <script src="./js/dark-demon-wing-motion-renderer.js?v=118"></script>
+  <script src="./js/dark-demon-wing-motion-study.js?v=118"></script>
+</body>
+</html>

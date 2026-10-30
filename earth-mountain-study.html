@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#191713">
+  <title>地脈之心 · 土屬性 SS 美術樣板</title>
+  <style>
+    :root { color-scheme:dark; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:#e8dfce; background:#171611; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:280px; min-height:100svh; background:radial-gradient(ellipse at 44% 25%,#54452c38,transparent 60%),linear-gradient(#1c1b16,#141510 65%,#201e17); }
+    button,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button { font:inherit; cursor:pointer; }
+    button:focus-visible,a:focus-visible { outline:2px solid #e0c58c; outline-offset:4px; }
+    button:hover { filter:brightness(1.12); }
+    .shell { position:relative; z-index:1; max-width:1160px; margin:auto; padding:max(12px,env(safe-area-inset-top)) 20px max(22px,env(safe-area-inset-bottom)); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:40px; }
+    .eyebrow { color:#a39b85; font-size:10px; letter-spacing:.14em; }
+    .back { padding:9px 12px; border:1px solid #d7c69b25; border-radius:10px; background:#24241fc4; color:#d9cfbb; font-size:12px; text-decoration:none; white-space:nowrap; }
+    main { display:grid; justify-items:center; }
+    #mountain { display:block; position:fixed; z-index:0; inset:0; width:100vw; height:100vh; pointer-events:none; }
+    .stage { position:relative; width:min(calc(100vw - 16px),590px); height:min(53svh,580px); min-height:260px; margin:0 -12px; }
+    .error { position:absolute; inset:26% 10%; margin:0; padding:22px; border:1px solid #d6bb7e40; border-radius:14px; background:#23231eed; color:#dfd2b6; font-size:13px; line-height:1.8; }
+    .error[hidden] { display:none; }
+    .panel { width:min(100%,400px); text-align:center; }
+    .rank { display:inline-flex; align-items:center; gap:13px; color:#dbc18b; font-family:Georgia,serif; font-size:12px; letter-spacing:.26em; }
+    .rank::before,.rank::after { content:""; width:31px; height:1px; background:linear-gradient(90deg,transparent,#c6ab7266); }
+    .rank::after { rotate:180deg; }
+    h1 { font-family:Georgia,"Noto Serif TC","Times New Roman",serif; font-size:clamp(28px,7vw,38px); font-weight:500; letter-spacing:.18em; margin:8px 0 11px; padding-left:.18em; }
+    .description { color:#a59f8d; font-size:12px; line-height:1.9; margin:0 0 20px; }
+    .controls { padding:15px; border:1px solid #c8b88720; border-radius:16px; background:linear-gradient(140deg,#35332aab,#1d201bdd); box-shadow:0 14px 40px #0002; text-align:left; }
+    .playback { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .control { min-height:42px; border:1px solid #d5bf8c2e; border-radius:9px; background:#292c23; color:#e1dac8; font-size:13px; font-weight:600; }
+    .control.primary { background:linear-gradient(110deg,#655a3d,#454b34); border-color:#e1c68f45; color:#f1e7cc; }
+    .adjustments { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:14px; margin-top:13px; }
+    .label { color:#b0a68d; font-size:11px; }
+    .speeds { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .speed { border:1px solid transparent; border-radius:7px; background:transparent; color:#a79f89; padding:7px 8px; font-size:12px; }
+    .speed[aria-pressed="true"] { color:#e7d5ad; background:#dcc08610; border-color:#dcc08638; }
+    .phases { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; padding-top:13px; margin-top:12px; border-top:1px solid #d0bd8c16; }
+    .phase { min-height:35px; border:1px solid #c6b38526; border-radius:7px; background:#262921; color:#b9ad90; font-size:11px; }
+    .phase[aria-pressed="true"] { color:#ead6a5; border-color:#d8bb795e; background:#c2a35b17; }
+    .footnote { min-height:17px; margin:12px 0 0; color:#827c68; font-size:10px; line-height:1.7; }
+    @media (max-height:740px) and (orientation:portrait) { .shell { padding-top:8px; } .stage { height:45svh; min-height:230px; } h1 { margin:4px 0 7px; font-size:28px; } .description { margin-bottom:13px; } .controls { padding:12px; } .footnote { margin-top:9px; } }
+    @media (max-height:650px) and (orientation:portrait) { .stage { height:calc(100svh - 370px); min-height:185px; } .description { font-size:11px; } }
+    @media (min-width:650px) and (orientation:landscape) { .shell { min-height:100svh; display:grid; grid-template-rows:auto 1fr; } main { grid-template-columns:minmax(0,1fr) minmax(265px,34%); gap:28px; align-items:center; } .stage { width:100%; height:min(calc(100svh - 88px),760px); min-height:250px; margin:0; } .panel { padding:12px 0; } }
+  </style>
+</head>
+<body>
+  <canvas id="mountain" aria-label="多峰浮空巨岩緩緩撐開後快速撞合，岩縫噴出碎石、沙塵與短促火花"></canvas>
+  <div class="shell">
+    <header><span class="eyebrow">土屬性 · SS 美術樣板</span><a class="back" href="./index.html">返回設定</a></header>
+    <main>
+      <div class="stage" id="stage"><p class="error" id="error" role="alert" hidden></p></div>
+      <section class="panel" aria-labelledby="title">
+        <div class="rank" aria-label="階級 SS">SS</div>
+        <h1 id="title">地脈之心</h1>
+        <p class="description">岩隙蓄起金光，厚岩緩緩撐開，<br>驟然撞合，碎石與塵浪迸散。</p>
+        <div class="controls">
+          <div class="playback">
+            <button id="pause" class="control primary" type="button" aria-pressed="false">暫停</button>
+            <button id="replay" class="control" type="button">重新播放</button>
+          </div>
+          <div class="adjustments">
+            <span class="label" id="speedLabel">播放速度</span>
+            <div class="speeds" role="group" aria-labelledby="speedLabel">
+              <button class="speed" data-speed="0.5" aria-pressed="false" type="button">0.5×</button>
+              <button class="speed" data-speed="1" aria-pressed="true" type="button">1×</button>
+              <button class="speed" data-speed="1.5" aria-pressed="false" type="button">1.5×</button>
+            </div>
+          </div>
+          <div class="phases" role="group" aria-label="定格觀察蓄力、撐開與撞合">
+            <button class="phase" data-time="1.3" aria-pressed="false" type="button">定格 · 蓄力</button>
+            <button class="phase" data-time="3.6" aria-pressed="false" type="button">定格 · 撐開</button>
+            <button class="phase" data-time="4.43" aria-pressed="false" type="button">定格 · 撞合</button>
+          </div>
+        </div>
+        <p class="footnote" id="status" role="status">SS 美術預覽 · 不產生鑑定結果</p>
+      </section>
+    </main>
+  </div>
+  <script src="./js/earth-rank-effects.js"></script>
+  <script src="./js/earth-backdrop.js"></script>
+  <script src="./js/fire-rank-sparkles.js"></script>
+  <script src="./js/earth-mountain-renderer.js"></script>
+  <script>
+    (()=>{
+      'use strict';
+      const canvas=document.querySelector('#mountain'),stage=document.querySelector('#stage');
+      const ctx=canvas.getContext('2d');
+      const pauseButton=document.querySelector('#pause'),replayButton=document.querySelector('#replay');
+      const speedButtons=[...document.querySelectorAll('[data-speed]')];
+      const phaseButtons=[...document.querySelectorAll('[data-time]')];
+      const status=document.querySelector('#status'),error=document.querySelector('#error');
+      let renderer=null,time=0,speed=1,paused=false,hidden=document.hidden,pageHidden=false,last=null;
+      let raf=0,disposed=false,failed=false,waiting=false,width=1,height=1,dpr=1;
+
+      function state(){
+        document.body.dataset.still=String(paused||hidden||pageHidden||waiting||disposed);
+        pauseButton.textContent=paused?'繼續播放':'暫停';
+        pauseButton.setAttribute('aria-pressed',String(paused));
+        phaseButtons.forEach(button=>button.setAttribute('aria-pressed',String(paused&&Number(button.dataset.time)===time)));
+        if(!failed)status.textContent=disposed?'預覽已結束':waiting?'繪圖暫時中斷 · 等待恢復':paused?'已暫停 · 可定格觀察岩隙與核心':'SS 美術預覽 · 不產生鑑定結果';
+      }
+      function fail(problem){
+        if(failed||disposed)return;
+        failed=true;last=null;error.hidden=false;
+        error.textContent='目前無法顯示地脈之心，請重新整理後再試。';
+        status.textContent='特效暫時無法顯示';
+        canvas.dataset.error=String(problem&&problem.message||problem||'render failed');
+      }
+      function contextLost(event){
+        if(event&&event.preventDefault)event.preventDefault();
+        if(disposed||failed)return;
+        waiting=true;last=null;error.hidden=false;
+        error.textContent='繪圖暫時中斷，正在等待恢復。';state();
+      }
+      function contextRestored(){
+        if(disposed||failed)return;
+        if(renderer.error){fail(renderer.error);return;}
+        waiting=false;last=null;error.hidden=true;state();draw();
+      }
+      function draw(){
+        if(disposed||failed||!renderer||!ctx)return false;
+        if(renderer.lost){contextLost();return false;}
+        try{
+          ctx.setTransform(dpr,0,0,dpr,0,0);
+          ctx.clearRect(0,0,width,height);
+          const rect=stage.getBoundingClientRect(),inset=8;
+          const side=Math.max(1,Math.min(rect.width,rect.height)-inset*2);
+          const rendered=renderer.draw(ctx,null,width,height,{
+            time,opacity:1,
+            box:{x:rect.left+(rect.width-side)/2,y:rect.top+(rect.height-side)/2,width:side,height:side}
+          });
+          if(renderer.lost){contextLost();return false;}
+          if(rendered===false||renderer.error){fail(renderer.error||'render unavailable');return false;}
+          return true;
+        }catch(problem){fail(problem);return false;}
+      }
+      function setPaused(value=true){
+        if(disposed)return paused;
+        paused=Boolean(value);last=null;state();return paused;
+      }
+      function resize(){
+        if(disposed)return;
+        width=Math.max(1,window.innerWidth);height=Math.max(1,window.innerHeight);
+        dpr=Math.min(1.5,window.devicePixelRatio||1);
+        canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+        canvas.style.width=width+'px';canvas.style.height=height+'px';
+        draw();
+      }
+      function tick(now){
+        if(disposed)return;
+        const active=!paused&&!hidden&&!pageHidden&&!failed&&!waiting;
+        if(active){
+          if(last!==null)time+=Math.min(.05,Math.max(0,(now-last)/1000))*speed;
+          draw();
+        }
+        last=active&&!waiting?now:null;
+        raf=requestAnimationFrame(tick);
+      }
+      function replay(){if(disposed)return;time=0;setPaused(false);draw();}
+      function renderAt(value){
+        if(disposed)return false;
+        const requested=Number(value);
+        time=Number.isFinite(requested)?Math.max(0,requested):0;
+        setPaused(true);return draw();
+      }
+      function visibility(){hidden=document.hidden;last=null;state();}
+      function pagehide(){pageHidden=true;last=null;state();}
+      function pageshow(){pageHidden=false;hidden=document.hidden;last=null;state();resize();}
+      function togglePause(){setPaused(!paused);}
+      function changeSpeed(event){
+        speed=Number(event.currentTarget.dataset.speed);last=null;
+        speedButtons.forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.speed)===speed)));
+      }
+      function choosePhase(event){renderAt(event.currentTarget.dataset.time);}
+      function dispose(){
+        if(disposed)return;
+        disposed=true;last=null;cancelAnimationFrame(raf);
+        window.removeEventListener('resize',resize);
+        window.removeEventListener('scroll',draw);
+        window.removeEventListener('pagehide',pagehide);
+        window.removeEventListener('pageshow',pageshow);
+        document.removeEventListener('visibilitychange',visibility);
+        pauseButton.removeEventListener('click',togglePause);
+        replayButton.removeEventListener('click',replay);
+        speedButtons.forEach(button=>button.removeEventListener('click',changeSpeed));
+        phaseButtons.forEach(button=>button.removeEventListener('click',choosePhase));
+        if(renderer){
+          renderer.canvas.removeEventListener('webglcontextlost',contextLost);
+          renderer.canvas.removeEventListener('webglcontextrestored',contextRestored);
+          renderer.dispose();
+        }
+        state();
+      }
+      window.earthMountainStudy={get renderer(){return renderer;},get time(){return time;},renderAt,pause:setPaused,dispose,resize};
+      pauseButton.addEventListener('click',togglePause);
+      replayButton.addEventListener('click',replay);
+      speedButtons.forEach(button=>button.addEventListener('click',changeSpeed));
+      phaseButtons.forEach(button=>button.addEventListener('click',choosePhase));
+      window.addEventListener('resize',resize);
+      window.addEventListener('scroll',draw,{passive:true});
+      window.addEventListener('pagehide',pagehide);
+      window.addEventListener('pageshow',pageshow);
+      document.addEventListener('visibilitychange',visibility);
+      try{
+        if(!ctx)throw new Error('Canvas 2D unavailable');
+        renderer=new EarthMountainRenderer();
+        renderer.canvas.addEventListener('webglcontextlost',contextLost);
+        renderer.canvas.addEventListener('webglcontextrestored',contextRestored);
+        if(renderer.error)throw new Error(renderer.error);
+        resize();state();raf=requestAnimationFrame(tick);
+      }catch(problem){fail(problem);}
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090b15">
+  <title>深淵封印 · 闇屬性 SS 美術樣板</title>
+  <style>
+    :root { color-scheme:dark; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:#e3dfee; background:#090b15; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:280px; min-height:100svh; background:radial-gradient(ellipse at 45% 27%,#30253c45,transparent 65%),linear-gradient(#0b1020,#090b15 70%); }
+    button,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button { font:inherit; cursor:pointer; }
+    button:disabled { cursor:default; opacity:.5; }
+    button:focus-visible,a:focus-visible { outline:2px solid #c3a8f0; outline-offset:4px; }
+    button:hover:not(:disabled),a:hover { filter:brightness(1.15); }
+    #darkSeal { display:block; position:fixed; z-index:0; inset:0; width:100vw; height:100vh; pointer-events:none; }
+    .shell { position:relative; z-index:1; max-width:1200px; margin:auto; padding:max(12px,env(safe-area-inset-top)) 20px max(22px,env(safe-area-inset-bottom)); }
+    header { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:40px; }
+    .eyebrow { color:#8d879f; font-size:10px; letter-spacing:.14em; }
+    .back { padding:9px 12px; border:1px solid #b7a8cf30; border-radius:10px; background:#141625b8; color:#d6cee4; font-size:12px; text-decoration:none; white-space:nowrap; }
+    main { display:grid; justify-items:center; }
+    .stage { position:relative; width:min(calc(100vw - 16px),630px); height:min(53svh,590px); min-height:260px; margin:0 -12px; }
+    .error { position:absolute; inset:30% 10% auto; margin:0; padding:22px; border:1px solid #b6a4d23d; border-radius:14px; background:#141421ed; color:#ddd2ec; font-size:13px; line-height:1.8; }
+    .error[hidden] { display:none; }
+    .panel { width:min(100%,400px); text-align:center; }
+    .rank { display:inline-flex; align-items:center; gap:13px; color:#b9a7d8; font-family:Georgia,serif; font-size:12px; letter-spacing:.26em; }
+    .rank::before,.rank::after { content:""; width:31px; height:1px; background:linear-gradient(90deg,transparent,#b19ac566); }
+    .rank::after { rotate:180deg; }
+    h1 { font-family:Georgia,"Noto Serif TC","Times New Roman",serif; font-size:clamp(28px,7vw,38px); font-weight:500; letter-spacing:.18em; margin:8px 0 11px; padding-left:.18em; text-shadow:0 0 32px #b796e029; }
+    .description { color:#aaa1b9; font-size:12px; line-height:1.9; margin:0 0 20px; }
+    .controls { padding:15px; border:1px solid #a495bf2d; border-radius:16px; background:linear-gradient(140deg,#252032d9,#121620eb); box-shadow:0 14px 40px #0003; text-align:left; }
+    .playback { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .control { min-height:42px; border:1px solid #bda7d62f; border-radius:9px; background:#1b1b2b; color:#e0d7ec; font-size:13px; font-weight:600; }
+    .control.primary { background:linear-gradient(110deg,#4c3d65,#30334b); border-color:#c1a5e34a; color:#f0e7fa; }
+    .adjustments { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:14px; margin-top:13px; }
+    .label { color:#a79ab7; font-size:11px; }
+    .speeds { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+    .speed { border:1px solid transparent; border-radius:7px; background:transparent; color:#aaa0ba; padding:7px 8px; font-size:12px; }
+    .speed[aria-pressed="true"] { color:#e5d4fb; background:#c7ace112; border-color:#c5a4e63d; }
+    .phases { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; padding-top:13px; margin-top:12px; border-top:1px solid #c5aedb1b; }
+    .phase { min-height:35px; border:1px solid #b9a5d22b; border-radius:7px; background:#1b1a2a; color:#bfb0d1; font-size:11px; }
+    .phase[aria-pressed="true"] { color:#e7d7fc; border-color:#baa0d766; background:#b994db1d; }
+    .footnote { min-height:17px; margin:12px 0 0; color:#8d829e; font-size:10px; line-height:1.7; }
+    @media (max-height:740px) and (orientation:portrait) { .shell { padding-top:8px; } .stage { height:45svh; min-height:230px; } h1 { margin:4px 0 7px; font-size:28px; } .description { margin-bottom:13px; } .controls { padding:12px; } .footnote { margin-top:9px; } }
+    @media (max-height:650px) and (orientation:portrait) { .stage { height:calc(100svh - 365px); min-height:175px; } .description { font-size:11px; } }
+    @media (min-width:650px) and (orientation:landscape) { .shell { min-height:100svh; display:grid; grid-template-rows:auto 1fr; } main { grid-template-columns:minmax(0,1fr) minmax(265px,34%); gap:28px; align-items:center; } .stage { width:100%; height:min(calc(100svh - 88px),760px); min-height:250px; margin:0; } .panel { padding:12px 0; } }
+  </style>
+</head>
+<body>
+  <canvas id="darkSeal" aria-label="深淵裂隙衝撞封印，破損的深色鎖鏈繃緊並逐節震動"></canvas>
+  <div class="shell">
+    <header><span class="eyebrow">闇屬性 · SS 美術樣板</span><a class="back" href="./index.html">返回設定</a></header>
+    <main>
+      <div class="stage" id="stage"><p class="error" id="error" role="alert" hidden></p></div>
+      <section class="panel" aria-labelledby="title">
+        <div class="rank" aria-label="階級 SS">SS</div>
+        <h1 id="title">深淵封印</h1>
+        <p class="description">鎖鏈禁錮著甦醒的力量。<br>裂隙撐開，封印在拉扯中震顫。</p>
+        <div class="controls">
+          <div class="playback">
+            <button id="pause" class="control primary" type="button" aria-pressed="false">暫停</button>
+            <button id="replay" class="control" type="button">重新播放</button>
+          </div>
+          <div class="adjustments">
+            <span class="label" id="speedLabel">播放速度</span>
+            <div class="speeds" role="group" aria-labelledby="speedLabel">
+              <button class="speed" data-speed="0.5" aria-pressed="false" type="button">0.5×</button>
+              <button class="speed" data-speed="1" aria-pressed="true" type="button">1×</button>
+              <button class="speed" data-speed="1.5" aria-pressed="false" type="button">1.5×</button>
+            </div>
+          </div>
+          <div class="phases" role="group" aria-label="定格觀察蓄力、衝撞與束縛">
+            <button class="phase" data-time="1.8" aria-pressed="false" type="button">定格 · 蓄力</button>
+            <button class="phase" data-time="2.7" aria-pressed="false" type="button">定格 · 衝撞</button>
+            <button class="phase" data-time="3.25" aria-pressed="false" type="button">定格 · 束縛</button>
+          </div>
+        </div>
+        <p class="footnote" id="status" role="status">正在載入鎖鏈素材。</p>
+      </section>
+    </main>
+  </div>
+  <script src="./assets/dark-chain-v1.local.js"></script>
+  <script src="./assets/dark-seal-ring-v1.local.js"></script>
+  <script src="./js/dark-seal-shader.js"></script>
+  <script src="./js/dark-seal-motion.js"></script>
+  <script src="./js/dark-seal-renderer.js"></script>
+  <script src="./js/dark-seal-study.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1c1d37">
+<meta name="theme-color" content="#24223f">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
@@ -27,7 +27,7 @@
   }
   html, body {
     margin:0; padding:0; width:100%; height:100%;
-    background:#1c1d37; color:var(--text);
+    background:#24223f; color:var(--text);
     font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
     overflow:hidden;
     -webkit-user-select:none; user-select:none;
@@ -36,14 +36,14 @@
     touch-action:pan-y;
   }
   *{ box-sizing:border-box; }
-  body[data-state="SETTINGS"],body[data-state="MANA_SCAN"],body[data-state="RANK_CONFIRM"],body[data-state="RESULT"] { background:var(--bg); }
+  body[data-state="SETTINGS"],body[data-state="RANK_CONFIRM"],body[data-state="RESULT"] { background:var(--bg); }
   html { min-height:100%; overscroll-behavior:none; }
   body { min-height:100dvh; overscroll-behavior:none; }
 
   /* One clean portal surface; circular gradient fallback while Canvas loads. */
   #animLayer{
     position:fixed; inset:0; z-index:10; touch-action:none; overflow:hidden;
-    background:radial-gradient(ellipse at center,#070812 0%,#090a19 26%,#101128 52%,#17182f 78%,#1c1d37 100%);
+    background:radial-gradient(ellipse at center,#080915 0%,#101126 60%,#24223f 100%);
   }
   canvas#particleCanvas{
     position:absolute; inset:0; width:var(--viewport-w); height:var(--viewport-h);
@@ -56,26 +56,179 @@
     display:flex;
     align-items:flex-start;
     justify-content:center;
-    padding:18px;
+    padding:18px 18px 0;
     padding-top: calc(18px + env(safe-area-inset-top) + var(--global-offset-y));
-    padding-bottom: calc(18px + env(safe-area-inset-bottom));
     background: rgba(216, 211, 210, 0.96);
     backdrop-filter: blur(2px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow:hidden;
   }
   .settingsCard{
     pointer-events:auto;
-    width:min(92vw,560px);
+    width:min(100%,560px);
+    height:100%;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
     background: rgba(255,255,255,0.55);
     border: 1px solid rgba(255,255,255,0.75);
     border-radius:20px;
     box-shadow:0 10px 24px var(--shadow);
-    padding:18px 18px 14px;
-    max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    overflow-y: auto;
+    padding:18px 18px 0;
+    overflow:hidden;
+  }
+  .settingsScroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    padding-bottom:14px;
+    overscroll-behavior:contain;
     -webkit-overflow-scrolling: touch;
   }
+  .settingsTabs { display:grid; flex:0 0 auto; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 14px; }
+  .settingsTab { min-height:44px; border:1px solid #ad906555; border-radius:12px; background:rgba(255,255,255,.35); color:var(--text); font:inherit; font-weight:800; cursor:pointer; }
+  .settingsTab[aria-selected="true"] { background:#a68147; color:#fff; border-color:#a68147; }
+  .settingsTab:focus-visible { outline:3px solid #a6814770; outline-offset:2px; }
+  .settingsPanel { min-height:200px; }
+  .settingsPanel[hidden] { display:none; }
+  .effectGroup { border:1px solid #ad906544; border-radius:12px; padding:12px; margin:10px 0; }
+  .effectGroup summary { cursor:pointer; font-weight:800; padding:6px 0; min-height:24px; }
+  .effectHint { font-size:12px; line-height:1.6; margin:8px 0; }
+  .effectControl { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; margin:14px 0; }
+  .effectControl output { font-variant-numeric:tabular-nums; }
+  .effectControl input { grid-column:1/-1; width:100%; margin:0; height:32px; accent-color:#a68147; }
+  .effectToggle,.effectColor { display:flex; align-items:center; gap:8px; min-height:44px; }
+  .effectColor { justify-content:space-between; }
+  .effectColor input { width:54px; height:36px; padding:2px; background:transparent; border:1px solid #ad906555; border-radius:8px; }
+  .effectPalette { margin:16px 0; padding:14px; border:1px solid #ad906544; border-radius:14px; background:rgba(255,255,255,.38); }
+  .effectPaletteTitle { margin:0 0 12px; font-size:14px; font-weight:800; }
+  .effectPaletteGrid { display:grid; grid-template-columns:repeat(auto-fill,64px); gap:12px; align-items:start; }
+  .effectSwatch { display:flex; flex-direction:column; align-items:center; width:64px; border:1px solid #ad906544; border-radius:11px; background:#ffffff70; overflow:hidden; }
+  .effectSwatch input[type="color"] { display:block; width:62px; height:56px; margin:0; padding:5px; border:0; border-radius:10px; background:transparent; cursor:pointer; }
+  .effectSwatch input[type="color"]::-webkit-color-swatch-wrapper { padding:0; }
+  .effectSwatch input[type="color"]::-webkit-color-swatch { border:1px solid #00000012; border-radius:7px; }
+  .effectSwatch input[type="color"]::-moz-color-swatch { border:1px solid #00000012; border-radius:7px; }
+  .effectSwatch label { padding:0 3px 5px; font-size:11px; line-height:16px; cursor:pointer; }
+  .effectSwatchRemove { display:block; width:62px; min-height:44px; padding:6px; border:0; border-top:1px solid #ad906522; background:transparent; color:#97703b; font:inherit; font-size:20px; cursor:pointer; touch-action:manipulation; }
+  .effectSwatchRemove:disabled { color:#b8afa3; cursor:default; }
+  .effectPaletteAdd { width:64px; min-height:123px; padding:8px 3px; border:1px dashed #ad906588; border-radius:11px; background:#ffffff30; color:var(--text); font:inherit; font-size:12px; font-weight:800; white-space:pre-line; cursor:pointer; touch-action:manipulation; }
+  .effectPaletteAdd:disabled { opacity:.45; cursor:default; }
+  .effectSwatch input:focus-visible,.effectSwatchRemove:focus-visible,.effectPaletteAdd:focus-visible { outline:3px solid #a6814770; outline-offset:-3px; }
+  .effectPaletteHint { margin:12px 0 0; font-size:12px; line-height:1.6; }
+  .effectReset { font-size:12px; padding:8px 12px; margin-top:8px; }
+  .effectActions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .effectActions .btn { padding:12px 4px; font-size:12px; letter-spacing:0; }
+  .effectActions[hidden] { display:none; }
+  #effectPreviewBack { position:fixed; z-index:60; top:calc(12px + env(safe-area-inset-top)); right:12px; color:#fff; background:#242036dd; border:1px solid #ffffff55; border-radius:12px; padding:12px 16px; font:inherit; }
+  #effectPreviewBack[hidden] { display:none; }
+  #formalReplay { position:fixed; z-index:60; left:50%; transform:translateX(-50%); bottom:calc(28px + env(safe-area-inset-bottom)); width:72px; height:56px; padding:4px 12px; border:0; border-radius:16px; background:transparent; color:#fff; cursor:pointer; touch-action:manipulation; }
+  #formalReplay svg { display:block; width:48px; height:48px; overflow:visible; filter:drop-shadow(0 0 5px #ffffffb0) drop-shadow(0 1px 2px #51446380); animation:resultStarGlow 2.4s ease-in-out infinite; }
+  #formalReplay:focus-visible { outline:2px solid #fff; outline-offset:4px; box-shadow:0 0 0 6px #61527380; }
+  #formalReplay:hover svg { filter:drop-shadow(0 0 10px #fff) drop-shadow(0 1px 2px #51446380); }
+  @keyframes resultStarGlow { 0%,100% { opacity:.78; transform:scale(.92); } 50% { opacity:1; transform:scale(1); } }
+  @media (prefers-reduced-motion:reduce) { #formalReplay svg { animation:none; } }
+  #formalReplay[hidden] { display:none; }
+  .materialOpen { width:100%; min-height:44px; }
+  .materialOpen + .materialOpen { margin-top:8px; }
+  #revealTitle { position:fixed; z-index:30; bottom:calc(184px + env(safe-area-inset-bottom)); left:12px; right:12px; text-align:center; color:#e7deca; font-size:24px; letter-spacing:.24em; pointer-events:none; opacity:0; }
+  #revealTitle[hidden] { display:none; }
+  #revealTitle .elementName { font-size:1.3em; }
+  #revealTitle.lightAngelTitle { bottom:calc(236px + env(safe-area-inset-bottom)); color:#6b501e; text-shadow:0 1px 12px #fff5cf; }
+  #revealTitle.darkDemonTitle { bottom:calc(236px + env(safe-area-inset-bottom)); color:#d8caff; text-shadow:0 1px 12px #6857a9; }
+  #revealTitle.fireScanTitle { right:auto; bottom:auto; font-size:16px; line-height:1; letter-spacing:.22em; transform:translate(-50%,-100%); color:#e2b58a; }
+  #fireScanReadout { position:fixed; inset:0; z-index:30; pointer-events:none; color:#ffe8c7; text-align:center; }
+  #fireScanReadout[hidden] { display:none; }
+  #fireScanReadout > span { position:absolute; left:var(--scan-x); transform:translate(-50%,-82%); line-height:1; white-space:nowrap; }
+  #fireScanReadout::before { content:""; position:absolute; left:var(--scan-x); top:var(--scan-y); width:260px; height:150px; transform:translate(-50%,-50%); background:radial-gradient(ellipse,#f1a13d22,transparent 67%); opacity:var(--scan-ignition,0); }
+  #fireScanLabel { display:none; }
+  #fireScanValue { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-variant-numeric:lining-nums tabular-nums; letter-spacing:.035em; color:#fff0d9; text-shadow:0 2px 9px #080305,0 0 24px #ef983338; }
+  #fireScanRank { color:#ebc694; font-weight:500; letter-spacing:.12em; }
+  #fireScanRank::before { content:none; }
+  .rankArtwork { display:none; background-repeat:no-repeat; }
+  .rankArtReady #fireScanRank.rankHasArt { letter-spacing:0; }
+  .rankArtReady .rankHasArt .rankArtwork { display:block; }
+  .rankArtReady .rankHasArt .rankText { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  #revealTitle.fireScanTitle[data-element="water"], #fireScanReadout[data-element="water"] #fireScanLabel { color:#94cee4; }
+  #fireScanReadout[data-element="water"] #fireScanValue { color:#e4faff; text-shadow:0 2px 9px #030d19,0 0 24px #61d8ff38; }
+  #fireScanReadout[data-element="water"] #fireScanRank { color:#b1e7f5; }
+  #fireScanReadout[data-element="water"] #fireScanRank::before { color:#80adbf; }
+  #fireScanReadout[data-element="water"]::before { background:radial-gradient(ellipse,#48bfff22,transparent 67%); }
+  #revealTitle.fireScanTitle[data-element="wind"], #fireScanReadout[data-element="wind"] #fireScanLabel { color:#b5d9ce; }
+  #fireScanReadout[data-element="wind"] #fireScanValue { color:#e5f5ed; text-shadow:0 2px 9px #040e16,0 0 24px #a1d7cc28; }
+  #fireScanReadout[data-element="wind"] #fireScanRank { color:#c1e9da; }
+  #fireScanReadout[data-element="wind"] #fireScanRank::before { color:#8aafa4; }
+  #fireScanReadout[data-element="wind"]::before { background:radial-gradient(ellipse,#acdacc18,transparent 67%); }
+  #revealTitle.fireScanTitle[data-element="earth"], #fireScanReadout[data-element="earth"] #fireScanLabel { color:#c9b18b; }
+  #fireScanReadout[data-element="earth"] #fireScanValue { color:#f1e5cd; text-shadow:0 2px 9px #0b0b0d,0 0 24px #c4a66b26; }
+  #fireScanReadout[data-element="earth"] #fireScanRank { color:#ddc59b; }
+  #fireScanReadout[data-element="earth"] #fireScanRank::before { color:#a48e6b; }
+  #fireScanReadout[data-element="earth"]::before { background:radial-gradient(ellipse,#b79a6222,transparent 67%); }
+  #revealTitle.fireScanTitle[data-element="light"], #fireScanReadout[data-element="light"] #fireScanLabel { color:#725221; text-shadow:0 1px 8px #fff8dc; }
+  #fireScanReadout[data-element="light"] #fireScanValue { color:#634518; text-shadow:0 1px 10px #fffbe8,0 0 26px #fff6cf80; }
+  #fireScanReadout[data-element="light"] #fireScanRank { color:#725221; }
+  #fireScanReadout[data-element="light"] #fireScanRank::before { color:#8a6a34; }
+  #fireScanReadout[data-element="light"]::before { background:radial-gradient(ellipse,#fff9df80,transparent 67%); }
+  #revealTitle.fireScanTitle[data-element="dark"], #fireScanReadout[data-element="dark"] #fireScanLabel { color:#c7b4ee; text-shadow:0 1px 8px #130b26; }
+  #fireScanReadout[data-element="dark"] #fireScanValue { color:#eee6ff; text-shadow:0 2px 9px #080613,0 0 26px #a08bea50; }
+  #fireScanReadout[data-element="dark"] #fireScanRank { color:#d9c9ff; }
+  #fireScanReadout[data-element="dark"] #fireScanRank::before { color:#a692c6; }
+  #fireScanReadout[data-element="dark"]::before { background:radial-gradient(ellipse,#a28adf25,transparent 67%); }
+  #materialControls {
+    position:fixed; z-index:60; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
+    width:min(calc(100% - 24px),500px); margin:auto; color:#e3dfed;
+    padding:12px; border:1px solid #b3a5d52b; border-radius:18px;
+    background:linear-gradient(155deg,#171525ed,#0c0c18f5); box-shadow:0 8px 30px #0004;
+  }
+  #materialControls[hidden] { display:none; }
+  .materialHeading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:13px; }
+  #materialStatus { color:#a7a0b9; font-size:12px; }
+  .materialChoices { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; }
+  .materialWindRanks { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; margin-top:8px; }
+  .materialWindRanks[hidden] { display:none; }
+  .materialChoices button,.materialPlayback button,.materialWindRanks button {
+    min-height:44px; padding:7px 4px; border:1px solid #b3a5d52b; border-radius:10px;
+    font:inherit; background:#ffffff05; color:#c7c0d6; cursor:pointer; touch-action:manipulation;
+  }
+  .materialChoices button[aria-pressed="true"] { color:#f7efdd; background:#aa89542e; border-color:#c8a66b99; }
+  .materialWindRanks button { min-width:0; min-height:32px; padding:5px 2px; font-size:12px; }
+  .materialWindRanks button[aria-pressed="true"] { color:#e4f5ed; background:#629d8f30; border-color:#92cbb880; }
+  #materialEarthRanks button[aria-pressed="true"] { color:#f2e4c8; background:#a6814535; border-color:#cfac7180; }
+  #materialLightRanks { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  #materialLightRanks button { min-height:44px; }
+  #materialLightRanks button[aria-pressed="true"] { color:#fff2c8; background:#bb934135; border-color:#e2c37899; }
+  #materialDarkRanks { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  #materialDarkRanks button { min-height:44px; }
+  #materialDarkRanks button[aria-pressed="true"] { color:#eee4ff; background:#8363bb35; border-color:#b59ade99; }
+  .materialChoices button:focus-visible,.materialPlayback button:focus-visible,.materialWindRanks button:focus-visible { outline:2px solid #e1c691; outline-offset:2px; }
+  #revealTitle.windRankTitle { bottom:calc(224px + env(safe-area-inset-bottom)); }
+  #revealTitle.earthRankTitle { bottom:calc(224px + env(safe-area-inset-bottom)); }
+  .materialPlayback { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; font-size:13px; }
+  #materialError { position:fixed; z-index:60; top:40%; left:10%; width:80%; color:#ddd6e8; text-align:center; line-height:1.7; }
+  #materialError[hidden] { display:none; }
+  @media (max-height:760px) {
+    #materialControls { padding:10px; }
+    .materialHeading { margin-bottom:6px; }
+    .materialPlayback { margin-top:6px; }
+  }
+  @media (max-height:650px) and (orientation:portrait) {
+    #revealTitle.windRankTitle { bottom:calc(204px + env(safe-area-inset-bottom)); }
+    #revealTitle.earthRankTitle { bottom:calc(204px + env(safe-area-inset-bottom)); }
+  }
+  @media (max-height:500px) {
+    #materialControls { padding:8px; bottom:8px; }
+    .materialHeading { margin-bottom:5px; }
+    .materialPlayback { margin-top:5px; }
+    .materialWindRanks { margin-top:5px; }
+  }
+  @media (max-height:500px) and (orientation:landscape) {
+    #revealTitle.windRankTitle { left:78%; bottom:calc(212px + env(safe-area-inset-bottom)); font-size:20px; }
+    #materialControls.earthPreviewControls { left:auto; right:12px; width:42%; }
+    #revealTitle.earthRankTitle { left:56%; right:12px; bottom:calc(212px + env(safe-area-inset-bottom)); font-size:20px; }
+    #materialControls.lightPreviewControls { left:auto; right:12px; width:42%; }
+    #revealTitle.lightAngelTitle { left:56%; right:12px; bottom:calc(232px + env(safe-area-inset-bottom)); font-size:20px; }
+    #materialControls.darkPreviewControls { left:auto; right:12px; width:42%; }
+    #revealTitle.darkDemonTitle { left:56%; right:12px; bottom:calc(232px + env(safe-area-inset-bottom)); font-size:20px; }
+  }
+  .settingsPanel.probabilitySection { margin-top:0; padding-top:0; border-top:0; }
   .settingsTitle{
     font-weight:900;
     letter-spacing:.12em;
@@ -176,13 +329,20 @@
   }
 
   .settingsFooter{
-    margin-top:10px;
-    padding-top:12px;
-    border-top: 1px dashed rgba(0,0,0,.15);
+    position:relative;
+    z-index:3;
+    flex:0 0 auto;
+    margin-top:0;
+    padding:12px 0 calc(12px + env(safe-area-inset-bottom));
+    border-top:1px solid #ad906544;
+    background:#eeebeb;
+    box-shadow:0 -8px 18px #28203008;
     display:flex;
     gap:10px;
     flex-direction:column;
   }
+  .settingsFooter .btnRow { margin-top:0; }
+  .settingsFooter .btn { min-height:44px; }
   .sumLine{
     display:flex; justify-content:space-between; align-items:center;
     font-weight:900;
@@ -408,9 +568,10 @@
   }
 
   @media (max-width: 430px){
+    #settingsPage { padding-left:7px; padding-right:7px; }
     .settingsCard{
-      width:min(96vw,560px);
-      padding:14px 12px 12px;
+      width:100%;
+      padding:14px 12px 0;
     }
     .settingsTitle{ font-size:14px; margin:2px 2px 8px; }
     .settingsHint{ font-size:11px; margin:0 2px 10px; }
@@ -455,19 +616,28 @@
   .probabilityRow output { text-align:right; font-variant-numeric:tabular-nums; }
   .probabilityRow input { width:100%; margin:0; height:36px; accent-color:#a68147; touch-action:pan-y; cursor:pointer; }
   .probabilityRow input:disabled { opacity:.4; }
+  .probabilityGroup { margin:12px 0; padding:12px; border:1px solid #ad906555; border-radius:14px; min-width:0; }
+  .probabilityGroup h3 { margin:0 0 6px; font-size:15px; }
+  .probabilityGroup .effectHint { margin:4px 0 8px; }
+  .probabilityGroup[data-disabled="true"] { opacity:.5; }
+  .probabilityGroup input:disabled { cursor:not-allowed; }
   @media(max-width:430px) { .toggleGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   .probabilityHeading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
   .probabilityHeading .btn { flex:0 0 auto; font-size:12px; padding:8px 12px; box-shadow:none; }
-  .settingsFooter { margin-top:8px; padding-top:8px; }
-  .settingsFooter .btnRow { margin-top:0; }
 </style>
 </head>
 
 <body>
 
 <div id="settingsPage">
-  <div class="settingsCard" role="dialog" aria-label="設定鑑定屬性開關">
-    <div class="settingsTitle">鑑定設定</div>
+  <div class="settingsCard" role="dialog" aria-label="鑑定設定">
+    <div class="settingsTabs" role="tablist" aria-label="設定分類">
+      <button id="tab_switches" class="settingsTab" type="button" role="tab" aria-controls="panel_switches" aria-selected="true">開關</button>
+      <button id="tab_probabilities" class="settingsTab" type="button" role="tab" aria-controls="panel_probabilities" aria-selected="false" tabindex="-1">機率</button>
+      <button id="tab_effects" class="settingsTab" type="button" role="tab" aria-controls="panel_effects" aria-selected="false" tabindex="-1">特效</button>
+    </div>
+    <div class="settingsScroll" role="region" aria-label="設定內容" tabindex="0">
+    <section id="panel_switches" class="settingsPanel" role="tabpanel" aria-labelledby="tab_switches">
     <h2 class="switchHeading">結果開關</h2>
 <div class="toggleGrid" aria-label="屬性與麻瓜開關">
       <div class="toggleCell">
@@ -525,9 +695,21 @@
       </div>
       <div class="toggleCell"><div class="sLabel">總開關</div><label class="toggleSwitch" aria-label="總開關"><input id="s_master" type="checkbox" checked><span class="toggleTrack" aria-hidden="true"></span></label><div class="sValue" id="v_master">開</div></div>
     </div>
-    <section class="probabilitySection" aria-label="機率設定">
+    <div style="margin-top:14px; line-height:2">
+      <label><input id="soundEnabled" type="checkbox" checked> 音效</label>
+      <label style="margin-left:20px"><input id="hapticsEnabled" type="checkbox" checked> 震動（支援裝置）</label>
+    </div>
+    </section>
+    <section id="panel_probabilities" class="settingsPanel probabilitySection" role="tabpanel" aria-labelledby="tab_probabilities" hidden>
       <div class="probabilityHeading"><h2>機率設定</h2><button id="restoreProbabilities" class="btn btnGhost" type="button">回復預設值</button></div>
+      <div id="probability_muggle" class="probabilityGroup" role="group" aria-labelledby="muggleHeading">
+      <h3 id="muggleHeading">麻瓜機率</h3>
+      <p id="muggleProbabilityHint" class="effectHint"></p>
       <label class="probabilityRow" for="muggleChance"><span>麻瓜</span><input id="muggleChance" type="range" min="0" max="100" step="1"><output id="percent_muggle"></output></label>
+      </div>
+      <div id="probability_basic" class="probabilityGroup" role="group" aria-labelledby="basicHeading">
+      <h3 id="basicHeading">基礎屬性階級機率</h3>
+      <p id="basicProbabilityHint" class="effectHint"></p>
       <label class="probabilityRow" for="chance_E"><span>E</span><input id="chance_E" type="range" min="0" max="100" step="1"><output id="percent_E"></output></label>
       <label class="probabilityRow" for="chance_D"><span>D</span><input id="chance_D" type="range" min="0" max="100" step="1"><output id="percent_D"></output></label>
       <label class="probabilityRow" for="chance_C"><span>C</span><input id="chance_C" type="range" min="0" max="100" step="1"><output id="percent_C"></output></label>
@@ -535,14 +717,128 @@
       <label class="probabilityRow" for="chance_A"><span>A</span><input id="chance_A" type="range" min="0" max="100" step="1"><output id="percent_A"></output></label>
       <label class="probabilityRow" for="chance_S"><span>S</span><input id="chance_S" type="range" min="0" max="100" step="1"><output id="percent_S"></output></label>
       <label class="probabilityRow" for="chance_SS"><span>SS</span><input id="chance_SS" type="range" min="0" max="100" step="1"><output id="percent_SS"></output></label>
+      </div>
+      <div id="probability_rare" class="probabilityGroup" role="group" aria-labelledby="rareHeading">
+      <h3 id="rareHeading">光闇屬性階級機率</h3>
+      <p id="rareProbabilityHint" class="effectHint"></p>
+      <label class="probabilityRow" for="rareChance_A"><span>A</span><input id="rareChance_A" type="range" min="0" max="100" step="1"><output id="rarePercent_A"></output></label>
+      <label class="probabilityRow" for="rareChance_S"><span>S</span><input id="rareChance_S" type="range" min="0" max="100" step="1"><output id="rarePercent_S"></output></label>
+      <label class="probabilityRow" for="rareChance_SS"><span>SS</span><input id="rareChance_SS" type="range" min="0" max="100" step="1"><output id="rarePercent_SS"></output></label>
+      </div>
     </section>
+    <section id="panel_effects" class="settingsPanel" role="tabpanel" aria-labelledby="tab_effects" hidden>
+<p class="effectHint">100% 為目前預設效果；調整後可全螢幕預覽。</p>
+<details class="effectGroup"><summary>屬性揭曉樣板</summary>
+<p class="effectHint">切換六種屬性，比較材質與動態；可暫停檢視或重新播放。火、水的收筆預覽包含數字與階級攀升；水屬性會從小水球成長為 SS 水之星球。風屬性可切換 E～SS 階級，以 SS 的 1.5× 為速度基準；正式鑑定會隨魔力值從斷續風捲逐漸形成龍捲風。</p>
+<button id="materialPreviewOpen" class="btn btnGhost materialOpen" type="button">預覽六種屬性</button>
+<button id="flowPreviewOpen" class="btn materialOpen" type="button">預覽收筆到屬性</button>
+</details>
+<details class="effectGroup"><summary>整體動態</summary>
+<p class="effectHint">每圈秒數越少，轉得越快；個別粒子仍有速度差異。</p>
+<div class="effectControl"><label for="effect_idleSeconds">待機每圈秒數</label><output id="effect_value_idleSeconds" for="effect_idleSeconds"></output><input id="effect_idleSeconds" type="range" min="10" max="180" step="0.1"></div>
+<div class="effectControl"><label for="effect_activeSeconds">按住每圈秒數</label><output id="effect_value_activeSeconds" for="effect_activeSeconds"></output><input id="effect_activeSeconds" type="range" min="0.3" max="5" step="0.1"></div>
+<div class="effectControl"><label for="effect_acceleration">加速時間</label><output id="effect_value_acceleration" for="effect_acceleration"></output><input id="effect_acceleration" type="range" min="0.2" max="8" step="0.1"></div>
+<div class="effectControl"><label for="effect_deceleration">恢復時間</label><output id="effect_value_deceleration" for="effect_deceleration"></output><input id="effect_deceleration" type="range" min="0.2" max="8" step="0.1"></div>
+<button id="effect_reset_motion" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>霧</summary>
+<label class="effectToggle"><input id="effect_mistEnabled" type="checkbox">顯示霧</label>
+<div class="effectControl"><label for="effect_mistCount">霧團總數</label><output id="effect_value_mistCount" for="effect_mistCount"></output><input id="effect_mistCount" type="range" min="12" max="144" step="1"></div>
+<div class="effectControl"><label for="effect_mistSize">大小</label><output id="effect_value_mistSize" for="effect_mistSize"></output><input id="effect_mistSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_mistOpacity">濃淡</label><output id="effect_value_mistOpacity" for="effect_mistOpacity"></output><input id="effect_mistOpacity" type="range" min="10" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_mistDrift">飄動程度</label><output id="effect_value_mistDrift" for="effect_mistDrift"></output><input id="effect_mistDrift" type="range" min="0" max="200" step="5"></div>
+<p class="effectHint">0% 沿固定軌道旋轉；越高越有飄移與形變。</p>
+<div id="effect_mistPalette" class="effectPalette" role="group" aria-labelledby="mistPaletteTitle"><h3 id="mistPaletteTitle" class="effectPaletteTitle">霧的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每團霧從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<button id="effect_reset_mist" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>圓點粒子</summary>
+<p class="effectHint">總數包含畫面外的粒子。</p>
+<label class="effectToggle"><input id="effect_dotEnabled" type="checkbox">顯示圓點</label>
+<div class="effectControl"><label for="effect_dotCount">圓點總數</label><output id="effect_value_dotCount" for="effect_dotCount"></output><input id="effect_dotCount" type="range" min="12" max="306" step="1"></div>
+<div class="effectControl"><label for="effect_dotSize">大小</label><output id="effect_value_dotSize" for="effect_dotSize"></output><input id="effect_dotSize" type="range" min="50" max="250" step="5"></div>
+<div class="effectControl"><label for="effect_dotOpacity">亮度</label><output id="effect_value_dotOpacity" for="effect_dotOpacity"></output><input id="effect_dotOpacity" type="range" min="10" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_dotSpeed">速度倍率</label><output id="effect_value_dotSpeed" for="effect_dotSpeed"></output><input id="effect_dotSpeed" type="range" min="25" max="200" step="5"></div>
+<div id="effect_dotPalette" class="effectPalette" role="group" aria-labelledby="dotPaletteTitle"><h3 id="dotPaletteTitle" class="effectPaletteTitle">圓點的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每顆圓點從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<div class="effectControl"><label for="effect_dotDepth">深度感</label><output id="effect_value_dotDepth" for="effect_dotDepth"></output><input id="effect_dotDepth" type="range" min="0" max="200" step="5"></div>
+<p class="effectHint">越高，近遠粒子的大小、亮度與速度差異越明顯。</p>
+<button id="effect_reset_dots" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>閃爍星芒</summary>
+<p class="effectHint">待機與按住時出現的柔和星芒。</p>
+<label class="effectToggle"><input id="effect_starEnabled" type="checkbox">顯示星芒</label>
+<div class="effectControl"><label for="effect_starSize">大小</label><output id="effect_value_starSize" for="effect_starSize"></output><input id="effect_starSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_starOpacity">亮度</label><output id="effect_value_starOpacity" for="effect_starOpacity"></output><input id="effect_starOpacity" type="range" min="10" max="115" step="5"></div>
+<div class="effectControl"><label for="effect_starIdle">待機出現頻率</label><output id="effect_value_starIdle" for="effect_starIdle"></output><input id="effect_starIdle" type="range" min="25" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_starHeld">按住出現頻率</label><output id="effect_value_starHeld" for="effect_starHeld"></output><input id="effect_starHeld" type="range" min="25" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_starDuration">平均持續時間</label><output id="effect_value_starDuration" for="effect_starDuration"></output><input id="effect_starDuration" type="range" min="0.3" max="3.5" step="0.1"></div>
+<p class="effectHint">每顆略有長短差異；時間越長，展開與淡出越緩慢。</p>
+<div id="effect_starPalette" class="effectPalette" role="group" aria-labelledby="starPaletteTitle"><h3 id="starPaletteTitle" class="effectPaletteTitle">星芒的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每顆星芒從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<button id="effect_reset_stars" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>背景</summary>
+<div class="effectColor"><label for="effect_backgroundCenter">中央顏色</label><input id="effect_backgroundCenter" type="color"></div>
+<div class="effectColor"><label for="effect_backgroundOuter">外圍顏色</label><input id="effect_backgroundOuter" type="color"></div>
+<button id="effect_reset_background" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>手指軌跡</summary>
+<p class="effectHint">畫線時保留整筆；放開後先停留，再縮細淡出。</p>
+<label class="effectToggle"><input id="effect_trailEnabled" type="checkbox">顯示手指軌跡</label>
+<div class="effectControl"><label for="effect_trailWidth">光帶粗細</label><output id="effect_value_trailWidth" for="effect_trailWidth"></output><input id="effect_trailWidth" type="range" min="1" max="6" step="0.5"></div>
+<div class="effectControl"><label for="effect_trailOpacity">線條亮度</label><output id="effect_value_trailOpacity" for="effect_trailOpacity"></output><input id="effect_trailOpacity" type="range" min="10" max="100" step="1"></div>
+<div class="effectControl"><label for="effect_trailGlowSize">光暈大小</label><output id="effect_value_trailGlowSize" for="effect_trailGlowSize"></output><input id="effect_trailGlowSize" type="range" min="4" max="24" step="1"></div>
+<div class="effectControl"><label for="effect_trailGlowOpacity">光暈亮度</label><output id="effect_value_trailGlowOpacity" for="effect_trailGlowOpacity"></output><input id="effect_trailGlowOpacity" type="range" min="0" max="60" step="5"></div>
+<div class="effectControl"><label for="effect_trailFingerSize">指尖光點大小</label><output id="effect_value_trailFingerSize" for="effect_trailFingerSize"></output><input id="effect_trailFingerSize" type="range" min="8" max="32" step="1"></div>
+<div class="effectControl"><label for="effect_trailHold">放開後停留時間</label><output id="effect_value_trailHold" for="effect_trailHold"></output><input id="effect_trailHold" type="range" min="0" max="8" step="0.1"></div>
+<div class="effectControl"><label for="effect_trailFade">淡出時間</label><output id="effect_value_trailFade" for="effect_trailFade"></output><input id="effect_trailFade" type="range" min="0.2" max="4" step="0.1"></div>
+<label class="effectToggle"><input id="effect_trailFlowEnabled" type="checkbox">沿線能量流動</label>
+<div class="effectControl"><label for="effect_trailFlowDensity">流動亮段數量</label><output id="effect_value_trailFlowDensity" for="effect_trailFlowDensity"></output><input id="effect_trailFlowDensity" type="range" min="0" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_trailFlowSpeed">能量流動速度</label><output id="effect_value_trailFlowSpeed" for="effect_trailFlowSpeed"></output><input id="effect_trailFlowSpeed" type="range" min="25" max="200" step="5"></div>
+<label class="effectToggle"><input id="effect_trailDustEnabled" type="checkbox">星塵、細閃與消散光點</label>
+<div class="effectControl"><label for="effect_trailDustDensity">星塵與光點數量</label><output id="effect_value_trailDustDensity" for="effect_trailDustDensity"></output><input id="effect_trailDustDensity" type="range" min="0" max="200" step="5"></div>
+<label class="effectToggle"><input id="effect_trailRandom" type="checkbox">每筆隨機選色</label>
+<p class="effectHint">關閉隨機選色時，使用色彩池的第一格。</p>
+<div id="effect_trailPalette" class="effectPalette" role="group" aria-labelledby="trailPaletteTitle"><h3 id="trailPaletteTitle" class="effectPaletteTitle">軌跡的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每筆從這些顏色中隨機選色；關閉隨機時使用第一格。點色格調色，可新增或刪除。</p></div>
+<button id="effect_reset_trails" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>爆炸與收束</summary>
+<p class="effectHint">收筆後，軌跡化為魔力球向外展開，再收束到中央。100% 保留目前效果。</p>
+<div class="effectControl"><label for="effect_burstCount">魔力球數量</label><output id="effect_value_burstCount" for="effect_burstCount"></output><input id="effect_burstCount" type="range" min="25" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_burstSize">魔力球大小</label><output id="effect_value_burstSize" for="effect_burstSize"></output><input id="effect_burstSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_burstOpacity">魔力球亮度</label><output id="effect_value_burstOpacity" for="effect_burstOpacity"></output><input id="effect_burstOpacity" type="range" min="10" max="100" step="5"></div>
+<div class="effectControl"><label for="effect_burstRadius">向外擴散範圍</label><output id="effect_value_burstRadius" for="effect_burstRadius"></output><input id="effect_burstRadius" type="range" min="50" max="160" step="5"></div>
+<div class="effectControl"><label for="effect_burstDepth">前後景深度</label><output id="effect_value_burstDepth" for="effect_burstDepth"></output><input id="effect_burstDepth" type="range" min="0" max="150" step="5"></div>
+<div class="effectControl"><label for="effect_burstDuration">爆炸到收束時間</label><output id="effect_value_burstDuration" for="effect_burstDuration"></output><input id="effect_burstDuration" type="range" min="1.2" max="4" step="0.1"></div>
+<label class="effectToggle"><input id="effect_burstUseTrail" type="checkbox">沿用軌跡顏色</label>
+<p class="effectHint">關閉後，魔力球會從下方色彩池中隨機選色。</p>
+<div id="effect_burstPalette" class="effectPalette" role="group" aria-labelledby="burstPaletteTitle"><h3 id="burstPaletteTitle" class="effectPaletteTitle">魔力球的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">關閉「沿用軌跡顏色」後，每顆魔力球從這些顏色中隨機選色。</p></div>
+<button type="button" class="btn btnGhost materialOpen" data-flow-preview>預覽收筆到屬性</button>
+<button id="effect_reset_burst" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>爆炸星芒</summary>
+<p class="effectHint">爆炸時散開的柔和星芒，有大小差異並會自轉。</p>
+<label class="effectToggle"><input id="effect_burstStarEnabled" type="checkbox">顯示爆炸星芒</label>
+<div class="effectControl"><label for="effect_burstStarCount">出現數量</label><output id="effect_value_burstStarCount" for="effect_burstStarCount"></output><input id="effect_burstStarCount" type="range" min="0" max="96" step="1"></div>
+<div class="effectControl"><label for="effect_burstStarSize">大小</label><output id="effect_value_burstStarSize" for="effect_burstStarSize"></output><input id="effect_burstStarSize" type="range" min="50" max="200" step="5"></div>
+<div class="effectControl"><label for="effect_burstStarOpacity">亮度</label><output id="effect_value_burstStarOpacity" for="effect_burstStarOpacity"></output><input id="effect_burstStarOpacity" type="range" min="10" max="100" step="5"></div>
+<div class="effectControl"><label for="effect_burstStarSpin">自轉速度</label><output id="effect_value_burstStarSpin" for="effect_burstStarSpin"></output><input id="effect_burstStarSpin" type="range" min="0" max="200" step="5"></div>
+<div id="effect_burstStarPalette" class="effectPalette" role="group" aria-labelledby="burstStarPaletteTitle"><h3 id="burstStarPaletteTitle" class="effectPaletteTitle">爆炸星芒的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每顆星芒從這些顏色中隨機選色。點色格調色，可新增或刪除。</p></div>
+<button type="button" class="btn btnGhost materialOpen" data-flow-preview>預覽收筆到屬性</button>
+<button id="effect_reset_burstStars" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<details class="effectGroup"><summary>瞬閃星芒</summary>
+<p class="effectHint">尖細亮光在畫面各處短暫閃現，位置固定、不自轉，保留色票設定的鮮明色彩。</p>
+<label class="effectToggle"><input id="effect_flashEnabled" type="checkbox">顯示瞬閃星芒</label>
+<div class="effectControl"><label for="effect_flashCount">出現數量</label><output id="effect_value_flashCount" for="effect_flashCount"></output><input id="effect_flashCount" type="range" min="0" max="60" step="1"></div>
+<div class="effectControl"><label for="effect_flashSize">大小</label><output id="effect_value_flashSize" for="effect_flashSize"></output><input id="effect_flashSize" type="range" min="50" max="250" step="5"></div>
+<div class="effectControl"><label for="effect_flashOpacity">亮度</label><output id="effect_value_flashOpacity" for="effect_flashOpacity"></output><input id="effect_flashOpacity" type="range" min="10" max="100" step="5"></div>
+<div class="effectControl"><label for="effect_flashDuration">平均閃現時間</label><output id="effect_value_flashDuration" for="effect_flashDuration"></output><input id="effect_flashDuration" type="range" min="0.06" max="0.3" step="0.01"></div>
+<div id="effect_flashPalette" class="effectPalette" role="group" aria-labelledby="flashPaletteTitle"><h3 id="flashPaletteTitle" class="effectPaletteTitle">瞬閃星芒的色彩池</h3><div class="effectPaletteGrid"></div><p class="effectPaletteHint">每道閃光從這些顏色中隨機選色，星芒與光暈使用相同色彩。點色格調色，可新增或刪除。</p></div>
+<button type="button" class="btn btnGhost materialOpen" data-flow-preview>預覽收筆到屬性</button>
+<button id="effect_reset_flashes" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
+<p id="effectSaveStatus" class="effectHint" role="status">調整會自動儲存在此裝置</p></section>
     <div style="margin-top:14px; line-height:2">
-      <label><input id="soundEnabled" type="checkbox" checked> 音效</label>
-      <label style="margin-left:20px"><input id="hapticsEnabled" type="checkbox" checked> 震動（支援裝置）</label>
       <div id="pwaStatus" class="sumNote" role="status">V2 · 第六階段</div>
       <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
     </div>
+    </div>
     <div class="settingsFooter">
+      <div id="effectActions" class="effectActions" hidden>
+        <button id="effectPreview" class="btn btnPrimary" type="button">預覽特效</button>
+        <button id="effectSetDefault" class="btn btnGhost" type="button">設為預設</button>
+        <button id="effectResetAll" class="btn btnGhost" type="button" aria-label="回復全部特效預設">回復預設</button>
+      </div>
       <div class="btnRow">
         <button class="btn btnPrimary" id="btnStart" type="button">開始鑑定</button>
       </div>
@@ -553,6 +849,60 @@
 <div id="animLayer" aria-label="傳送門：按住加速旋轉，放開恢復慢速">
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
 </div>
+<button id="effectPreviewBack" type="button" hidden>返回設定</button>
+<div id="materialControls" role="region" aria-label="屬性樣板控制" hidden>
+  <div class="materialHeading"><span id="materialHeadingTitle">屬性材質樣板</span><span id="materialStatus" role="status">形成</span></div>
+  <div class="materialChoices" role="group" aria-label="選擇預覽屬性">
+    <button id="material_fire" type="button" aria-pressed="true" aria-label="預覽火屬性">火</button>
+    <button id="material_water" type="button" aria-pressed="false" aria-label="預覽水屬性">水</button>
+    <button id="material_wind" type="button" aria-pressed="false" aria-label="預覽風屬性">風</button>
+    <button id="material_earth" type="button" aria-pressed="false" aria-label="預覽土屬性">土</button>
+    <button id="material_light" type="button" aria-pressed="false" aria-label="預覽光屬性">光</button>
+    <button id="material_dark" type="button" aria-pressed="false" aria-label="預覽暗屬性">暗</button>
+  </div>
+  <div id="materialWindRanks" class="materialWindRanks" role="group" aria-label="選擇風屬性預覽階級" hidden>
+    <button id="windRank_E" type="button" aria-pressed="false" aria-label="預覽 E 級風屬性">E</button>
+    <button id="windRank_D" type="button" aria-pressed="false" aria-label="預覽 D 級風屬性">D</button>
+    <button id="windRank_C" type="button" aria-pressed="false" aria-label="預覽 C 級風屬性">C</button>
+    <button id="windRank_B" type="button" aria-pressed="false" aria-label="預覽 B 級風屬性">B</button>
+    <button id="windRank_A" type="button" aria-pressed="false" aria-label="預覽 A 級風屬性">A</button>
+    <button id="windRank_S" type="button" aria-pressed="false" aria-label="預覽 S 級風屬性">S</button>
+    <button id="windRank_SS" type="button" aria-pressed="true" aria-label="預覽 SS 級風屬性">SS</button>
+  </div>
+  <div id="materialEarthRanks" class="materialWindRanks" role="group" aria-label="選擇土屬性預覽階級" hidden>
+    <button id="earthRank_E" type="button" aria-pressed="false" aria-label="預覽 E 級土屬性">E</button>
+    <button id="earthRank_D" type="button" aria-pressed="false" aria-label="預覽 D 級土屬性">D</button>
+    <button id="earthRank_C" type="button" aria-pressed="false" aria-label="預覽 C 級土屬性">C</button>
+    <button id="earthRank_B" type="button" aria-pressed="false" aria-label="預覽 B 級土屬性">B</button>
+    <button id="earthRank_A" type="button" aria-pressed="false" aria-label="預覽 A 級土屬性">A</button>
+    <button id="earthRank_S" type="button" aria-pressed="false" aria-label="預覽 S 級土屬性">S</button>
+    <button id="earthRank_SS" type="button" aria-pressed="true" aria-label="預覽 SS 級土屬性">SS</button>
+  </div>
+  <div id="materialLightRanks" class="materialWindRanks" role="group" aria-label="選擇光屬性預覽階級" hidden>
+    <button id="lightRank_A" type="button" aria-pressed="false" aria-label="預覽 A 級光屬性">A</button>
+    <button id="lightRank_S" type="button" aria-pressed="false" aria-label="預覽 S 級光屬性">S</button>
+    <button id="lightRank_SS" type="button" aria-pressed="true" aria-label="預覽 SS 級光屬性">SS</button>
+  </div>
+  <div id="materialDarkRanks" class="materialWindRanks" role="group" aria-label="選擇闇屬性預覽階級" hidden>
+    <button id="darkRank_A" type="button" aria-pressed="false" aria-label="預覽 A 級闇屬性">A</button>
+    <button id="darkRank_S" type="button" aria-pressed="false" aria-label="預覽 S 級闇屬性">S</button>
+    <button id="darkRank_SS" type="button" aria-pressed="true" aria-label="預覽 SS 級闇屬性">SS</button>
+  </div>
+  <div class="materialPlayback">
+    <button id="materialPause" type="button" aria-pressed="false">暫停</button>
+    <button id="materialReplay" type="button">重新播放</button>
+  </div>
+</div>
+<p id="materialError" role="status" hidden></p>
+<div id="revealTitle" hidden></div>
+<div id="fireScanReadout" hidden aria-label="火屬性魔力鑑定">
+  <span id="fireScanLabel" aria-hidden="true"></span>
+  <span id="fireScanValue">000</span>
+  <span id="fireScanRank">—</span>
+</div>
+<button id="formalReplay" type="button" aria-label="開啟鑑定後操作" aria-haspopup="dialog" aria-controls="resultActionSheet" aria-expanded="false" hidden>
+  <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path fill="currentColor" d="M32 2 C35 26 38 29 62 32 C38 35 35 38 32 62 C29 38 26 35 2 32 C26 29 29 26 32 2Z"/></svg>
+</button>
 
 <div id="resultWrap" aria-live="polite">
   <div id="resultCard" class="resultCard" role="group" aria-label="鑑定結果">
@@ -560,7 +910,7 @@
     <div id="scanStatus" class="scan-status" role="status"></div>
     <div id="attrPill" class="attr-pill">---</div>
     <div id="rankBadge" class="rank-badge" data-rank="">—</div>
-    <div class="kv"><div class="label">魔力值</div><div id="manaValue" class="value">0</div></div>
+    <div class="kv"><div id="manaValue" class="value">0</div></div>
     <div id="remark" class="remark"></div>
     <div id="rankWave" aria-hidden="true"></div>
     <div class="footer">本系統由狐狸樹屋開發</div>
@@ -578,21 +928,68 @@
   <div class="resultActionDialog" role="dialog" aria-modal="true" aria-label="鑑定後操作">
     <div class="resultActionTitle">鑑定完成</div>
     <div class="resultActionButtons">
-      <button class="btn btnGhost" id="btnRetryCert" type="button">重新鑑定</button>
-      <button class="btn btnPrimary" id="btnGoHome" type="button">回設定</button>
+      <button class="btn btnGhost" id="btnGoHome" type="button">返回設定</button>
+      <button class="btn btnPrimary" id="btnRetryCert" type="button">重新鑑定</button>
     </div>
   </div>
 </div>
 
 <script src="./js/config.js"></script>
+<script src="./js/effect-settings.js"></script>
 <script src="./js/probability-settings.js"></script>
+<script src="./js/cert-settings.js"></script>
+<script src="./js/rank-lettering.js"></script>
 <script src="./js/result-system.js"></script>
+<script src="./js/ribbon-renderer.js"></script>
+<script src="./js/finger-trails.js"></script>
 <script src="./js/portal-scene.js"></script>
+<script src="./js/element-material-fluids.js"></script>
+<script src="./js/element-material-matter.js"></script>
+<script src="./js/element-material-energy.js"></script>
+<script src="./js/element-material-renderer.js"></script>
+<script src="./js/ocean-surface-shader.js"></script>
+<script src="./js/ocean-spray-field.js"></script>
+<script src="./js/ocean-spray.js"></script>
+<script src="./js/water-ocean-study.js"></script>
+<script src="./js/water-rank-effects.js"></script>
+<script src="./js/water-ocean-reveal.js"></script>
+<script src="./js/wind-tornado-shader.js"></script>
+<script src="./js/fire-rank-sparkles.js"></script>
+<script src="./js/light-holy-shader.js"></script>
+<script src="./assets/light-angel-wings-v1.local.js"></script>
+<script src="./assets/light-angel-wings-ranks.local.js"></script>
+<script src="./js/light-angel-motion.js"></script>
+<script src="./js/light-angel-motion-renderer.js"></script>
+<script src="./js/light-angel-layered-growth-renderer.js"></script>
+<script src="./js/wind-rank-effects.js"></script>
+<script src="./js/wind-backdrop.js"></script>
+<script src="./js/wind-tornado-renderer.js"></script>
+<script src="./js/earth-rank-effects.js"></script>
+<script src="./js/earth-backdrop.js"></script>
+<script src="./js/earth-mountain-renderer.js"></script>
+<script src="./js/element-reveal-backdrop.js"></script>
+<script src="./js/reveal-flow.js"></script>
+<script src="./assets/light-angel-feather-v1.local.js"></script>
+<script src="./js/light-feathers.js"></script>
+<script src="./js/light-awakening.js"></script>
+<script src="./js/fire-scan-transition.js"></script>
+<script src="./js/light-rank-growth.js"></script>
+<script src="./assets/dark-chain-v1.local.js"></script>
+<script src="./assets/dark-demon-wings-ss-v2.local.js"></script>
+<script src="./assets/dark-demon-wings-ranks.local.js"></script>
+<script src="./js/dark-demon-wing-motion.js"></script>
+<script src="./js/dark-demon-wing-motion-renderer.js"></script>
+<script src="./js/dark-demon-wing-growth-renderer.js"></script>
+<script src="./js/dark-rank-growth.js"></script>
+<script src="./js/fire-rank-embers.js"></script>
+<script src="./js/reveal-gather.js"></script>
+<script src="./js/reveal-atmosphere.js"></script>
+<script src="./js/reveal-shockwaves.js"></script>
 <script src="./js/runtime.js"></script>
 <script src="./js/audio.js"></script>
 <script defer src="./js/pwa.js"></script>
 <script>
-/** Portal stage 1: idle clockwise rotation and touch-controlled speed. */
+/** Shared drawing/reveal pipeline with mana-driven fire, water, wind and earth. */
 (function(){
   'use strict';
   const CONFIG=ManaConfig;
@@ -609,37 +1006,73 @@
   const canvas=document.getElementById('particleCanvas');
   const ctx=canvas.getContext('2d');
   const animLayerEl=document.getElementById('animLayer');
-  let portal=null,lastParticleTs=null,pagePaused=false;
+  let portal=null,lastParticleTs=null,pagePaused=false,effectPreview=false,effectsDirty=false;
+  let materialPreview=false,materialRenderer=null,materialBackdrop=null,oceanReveal=null,windTornado=null,earthMountain=null,lightAngel=null,darkDemon=null;
+  let windPreviewRank='SS',earthPreviewRank='SS',lightPreviewRank='SS',darkPreviewRank='SS';
+  const lightFeatherPlans=new WeakMap();
+  const elementBackdrop=new ElementRevealBackdrop();
+  let flowPreview=false,flowPortal=null,flow=null,gather=null,flowAtmosphere=null,flowPreviewOrigin=null;
+  let formalReveal=false;
+  const formalReplay=document.getElementById('formalReplay');
+  const materialControls=document.getElementById('materialControls');
+  const materialError=document.getElementById('materialError');
+  const materialStatus=document.getElementById('materialStatus');
+  const revealTitle=document.getElementById('revealTitle');
+  const fireScanReadout=document.getElementById('fireScanReadout');
+  const fireScanValue=document.getElementById('fireScanValue');
+  const fireScanRank=document.getElementById('fireScanRank');
+  const fireScanLabel=document.getElementById('fireScanLabel');
+  let effectStorage;
+  try{effectStorage=window.localStorage;}catch(_){}
+  let effectValues=EffectSettings.load(effectStorage);
 
   function getViewportSize(){
     return window.visualViewport
       ? {w:window.visualViewport.width,h:window.visualViewport.height}
       : {w:window.innerWidth,h:window.innerHeight};
   }
-  function releasePointer(id){
-    if(!portal)return;
-    const active=portal.pointer.id;
-    if(!portal.release(id))return;
+  function flowActive(){return flowPreview||formalReveal;}
+  function inputScene(){return flowActive()?flowPortal:portal;}
+  function releasePointer(id,cancelled=false){
+    const scene=inputScene();if(!scene)return;
+    const active=scene.pointer.id;
+    if(!scene.release(id))return;
+    if(flowActive())flow.up(active,{cancelled});
     if(active!==null){try{animLayerEl.releasePointerCapture(active);}catch(_){}}
+  }
+  function cancelInput(){
+    releasePointer(undefined,true);
+    if(flowActive())flow.cancelPointer();
   }
   function onViewportChange(){
     const {w,h}=getViewportSize();
     if(w<=0||h<=0)return;
     document.documentElement.style.setProperty('--viewport-w',w+'px');
     document.documentElement.style.setProperty('--viewport-h',h+'px');
-    const dpr=Math.min(quality.profile.dpr,Math.max(1,devicePixelRatio||1));
-    canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);
+    // Match the approved preview and ribbon layer. Adaptive downscaling used to
+    // erase fine filaments even when their renderer was otherwise unchanged.
+    const dpr=Math.min(2,2400/Math.max(w,h));
+    canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
     canvas.style.width=w+'px';canvas.style.height=h+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
     if(portal){
-      if(portal.width!==w||portal.height!==h)releasePointer();
-      // Cached gradients also depend on the canvas transform / adaptive DPR.
+      if(portal.width!==w||portal.height!==h)cancelInput();
       portal.resize(w,h);
     }
+    if(flowPortal)flowPortal.resize(w,h);
+    if(gather)gather.resize(w,h);
+    if(materialBackdrop)materialBackdrop.resize(w,h);
+    if(materialRenderer)materialRenderer.lastRender=-Infinity;
+    // Resizing clears Canvas immediately. Restore the current frame even when
+    // the animation is paused or a browser has not delivered its next RAF yet.
+    if(flowActive())drawRevealFlow();
+    else if(materialPreview)drawMaterialPreview();
+    else if(portal)portal.draw(quality.profile);
   }
   onViewportChange();
   const viewport=getViewportSize();
-  portal=new PortalScene(ctx,viewport.w,viewport.h);
+  portal=new PortalScene(ctx,viewport.w,viewport.h,undefined,effectValues);
+  EffectSettings.mount(document,effectStorage,values=>{effectValues=values;effectsDirty=true;});
   addEventListener('resize',onViewportChange);
   addEventListener('orientationchange',onViewportChange);
   if(window.visualViewport){
@@ -653,6 +1086,30 @@
 
   const settingsPage = document.getElementById('settingsPage');
   const btnStart = document.getElementById('btnStart');
+  const settingsTabs=['switches','probabilities','effects'].map(name=>({
+    tab:document.getElementById('tab_'+name),panel:document.getElementById('panel_'+name)
+  }));
+  function selectSettingsTab(index) {
+    document.getElementById('effectActions').hidden=index!==2;
+    settingsTabs.forEach(({tab,panel},i)=>{
+      const selected=i===index;
+      tab.setAttribute('aria-selected',String(selected));
+      tab.tabIndex=selected?0:-1;panel.hidden=!selected;
+    });
+  }
+  settingsTabs.forEach(({tab},index)=>{
+    tab.addEventListener('click',()=>selectSettingsTab(index));
+    tab.addEventListener('keydown',event=>{
+      let next;
+      if(event.key==='ArrowRight')next=(index+1)%settingsTabs.length;
+      else if(event.key==='ArrowLeft')next=(index+settingsTabs.length-1)%settingsTabs.length;
+      else if(event.key==='Home')next=0;
+      else if(event.key==='End')next=settingsTabs.length-1;
+      else return;
+      event.preventDefault();selectSettingsTab(next);settingsTabs[next].tab.focus();
+    });
+  });
+  selectSettingsTab(0);
 
   const toggles = {
     火: document.getElementById('s_fire'),
@@ -680,21 +1137,60 @@
   muggleChance.value = CONFIG.muggleChance * 100;
   const rankOrder=['E','D','C','B','A','S','SS'];
   let rankPercents=Object.fromEntries(Object.entries(CONFIG.normalRanks).map(([k,v])=>[k,Math.round(v*100)]));
+  let rareRankPercents=Object.fromEntries(Object.entries(CONFIG.rareElementRanks).map(([k,v])=>[k,Math.round(v*100)]));
+  function certPreferences(){return {elements:{...elementEnabled},normalRanks:{...rankPercents},rareElementRanks:{...rareRankPercents},
+    muggleEnabled:muggleToggle.checked,mugglePercent:Number(muggleChance.value),soundEnabled:soundToggle.checked,hapticsEnabled:hapticsToggle.checked};}
+  const savedCertPreferences=CertSettings.load(effectStorage,certPreferences());
+  Object.assign(elementEnabled,savedCertPreferences.elements);
+  rankPercents=savedCertPreferences.normalRanks;rareRankPercents=savedCertPreferences.rareElementRanks;
+  muggleToggle.checked=savedCertPreferences.muggleEnabled;muggleChance.value=savedCertPreferences.mugglePercent;
+  soundToggle.checked=savedCertPreferences.soundEnabled;hapticsToggle.checked=savedCertPreferences.hapticsEnabled;
+  audio.setEnabled(soundToggle.checked);
+  const saveCertPreferences=()=>CertSettings.save(effectStorage,certPreferences());
+  for(const id of ['panel_switches','panel_probabilities']){
+    const panel=document.getElementById(id);
+    // Bubble after the control's own handler has redistributed probabilities
+    // or synchronized the master switch and individual element switches.
+    panel.addEventListener('input',event=>{if(event.target.matches('input[type="range"]'))saveCertPreferences();});
+    panel.addEventListener('change',event=>{if(event.target.matches('input[type="checkbox"]'))saveCertPreferences();});
+  }
+  function probabilityAvailability(){return {muggle:muggleToggle.checked,basic:['火','水','風','土'].some(k=>elementEnabled[k]),rare:['光','暗'].some(k=>elementEnabled[k])};}
   function renderProbabilities(){
+    const available=probabilityAvailability();
+    for(const key of ['muggle','basic','rare']){
+      const group=document.getElementById('probability_'+key);
+      group.dataset.disabled=String(!available[key]);group.setAttribute('aria-disabled',String(!available[key]));
+    }
+    document.getElementById('muggleProbabilityHint').textContent=available.muggle?'每次鑑定成為麻瓜的機率。':'麻瓜已關閉，請至「開關」啟用。';
+    document.getElementById('basicProbabilityHint').textContent=available.basic?'火、水、風、土共用；本區合計 100%。':'基礎屬性已全部關閉，請至「開關」啟用。';
+    document.getElementById('rareProbabilityHint').textContent=available.rare?'光、闇共用；最低 A 級，本區合計 100%。':'光、闇已全部關閉，請至「開關」啟用。';
     document.getElementById('percent_muggle').textContent=muggleChance.value+'%';
     muggleChance.disabled=!muggleToggle.checked;
     document.getElementById('v_muggle').textContent=muggleToggle.checked?'開':'關';
     for(const k of rankOrder){
       document.getElementById('chance_'+k).value=rankPercents[k];
+      document.getElementById('chance_'+k).disabled=!available.basic;
       document.getElementById('percent_'+k).textContent=rankPercents[k]+'%';
     }
+    for(const k of ['A','S','SS']){
+      document.getElementById('rareChance_'+k).value=rareRankPercents[k];
+      document.getElementById('rareChance_'+k).disabled=!available.rare;
+      document.getElementById('rarePercent_'+k).textContent=rareRankPercents[k]+'%';
+    }
+    document.getElementById('restoreProbabilities').disabled=!Object.values(available).some(Boolean);
   }
   for(const k of rankOrder)document.getElementById('chance_'+k).addEventListener('input',()=>{
+    if(!probabilityAvailability().basic){renderProbabilities();return;}
     rankPercents=ProbabilitySettings.redistribute(rankPercents,k,Number(document.getElementById('chance_'+k).value));
     renderToggles();
   });
+  for(const k of ['A','S','SS'])document.getElementById('rareChance_'+k).addEventListener('input',()=>{
+    if(!probabilityAvailability().rare){renderProbabilities();return;}
+    rareRankPercents=ProbabilitySettings.redistribute(rareRankPercents,k,Number(document.getElementById('rareChance_'+k).value));
+    renderToggles();
+  });
   function readSettings() {
-    return { elements:elementEnabled, normalRanks:rankPercents, muggleEnabled:muggleToggle.checked,
+    return { elements:elementEnabled, normalRanks:rankPercents, rareElementRanks:rareRankPercents, muggleEnabled:muggleToggle.checked,
       muggleChance:muggleChance.value === '' ? NaN : Number(muggleChance.value) / 100 };
   }
   muggleToggle.addEventListener('change', renderToggles);
@@ -743,76 +1239,145 @@
 
   masterToggle.addEventListener('change',()=>setAllElementsEnabled(masterToggle.checked));
   document.getElementById('restoreProbabilities').addEventListener('click',()=>{
-    muggleChance.value=CONFIG.muggleChance*100;
-    rankPercents=Object.fromEntries(Object.entries(CONFIG.normalRanks).map(([k,v])=>[k,Math.round(v*100)]));
+    const available=probabilityAvailability();
+    if(available.muggle)muggleChance.value=CONFIG.muggleChance*100;
+    if(available.basic)rankPercents=Object.fromEntries(Object.entries(CONFIG.normalRanks).map(([k,v])=>[k,Math.round(v*100)]));
+    if(available.rare)rareRankPercents=Object.fromEntries(Object.entries(CONFIG.rareElementRanks).map(([k,v])=>[k,Math.round(v*100)]));
     renderToggles();
+    saveCertPreferences();
   });
 
-  // Result templates stay hidden while this stage only previews the portal.
+  // The new fire readout is independent of the legacy result card.
   const resultWrap=document.getElementById('resultWrap');
   const resultCard=document.getElementById('resultCard');
   const backBtn=document.getElementById('backToSettingsBtn');
   const resultActionSheet=document.getElementById('resultActionSheet');
+  function closeResultActions(restoreFocus=true){
+    resultActionSheet.classList.remove('show');resultActionSheet.setAttribute('aria-hidden','true');
+    formalReplay.setAttribute('aria-expanded','false');animLayerEl.inert=false;
+    if(restoreFocus&&!formalReplay.hidden)formalReplay.focus({preventScroll:true});
+  }
+  function openResultActions(){
+    if(!formalReveal||formalReplay.hidden)return;
+    resultActionSheet.classList.add('show');resultActionSheet.setAttribute('aria-hidden','false');
+    formalReplay.setAttribute('aria-expanded','true');animLayerEl.inert=true;
+    document.getElementById('btnGoHome').focus({preventScroll:true});
+  }
+  resultActionSheet.addEventListener('click',event=>{if(event.target===resultActionSheet)closeResultActions();});
+  resultActionSheet.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){event.preventDefault();closeResultActions();}
+    if(event.key==='Tab'){
+      const first=document.getElementById('btnGoHome'),last=document.getElementById('btnRetryCert');
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    }
+  });
   function hideResultUI(){
     resultWrap.style.display='none';resultWrap.style.pointerEvents='none';
     resultCard.classList.remove('show');
     backBtn.style.display='none';
-    resultActionSheet.classList.remove('show');
-    resultActionSheet.setAttribute('aria-hidden','true');
+    closeResultActions(false);
   }
   function resetPortal(){
-    releasePointer();portal.reset();
+    cancelInput();
+    oceanReveal?.dispose();oceanReveal=null;
+    windTornado?.dispose();windTornado=null;
+    earthMountain?.dispose();earthMountain=null;
+    lightAngel?.dispose();lightAngel=null;
+    darkDemon?.dispose();darkDemon=null;
+    revealTitle.classList.remove('windRankTitle','earthRankTitle','lightAngelTitle','darkDemonTitle');
+    materialControls.classList.remove('earthPreviewControls','lightPreviewControls','darkPreviewControls');
+    flowPreview=false;formalReveal=false;formalReplay.hidden=true;revealTitle.hidden=true;
+    hideFireScan();
+    if(flow)flow.reset(flow.element);
+    if(flowPortal)flowPortal.reset();
+    materialPreview=false;materialControls.hidden=true;materialError.hidden=true;
+    if(effectsDirty){const {w,h}=getViewportSize();portal=new PortalScene(ctx,w,h,undefined,effectValues);effectsDirty=false;}
+    portal.reset();
     audio.stop();timeline.clear();quality.resetSamples();lastParticleTs=null;
     hideResultUI();
   }
   function showSettingsPage(){
+    effectPreview=false;document.getElementById('effectPreviewBack').hidden=true;
     resetPortal();session.reset();document.body.dataset.state=STATES.SETTINGS;
     settingsPage.style.display='flex';animLayerEl.style.display='none';
   }
   function beginRound(){
     if(!validSettings(readSettings()))return;
-    resetPortal();session.begin(readSettings());
+    effectPreview=false;document.getElementById('effectPreviewBack').hidden=true;
+    resetPortal();
+    const result=session.begin(readSettings());
+    formalReveal=true;
+    const names={火:'fire',水:'water',風:'wind',土:'earth',光:'light',暗:'dark'};
+    prepareFlow(result.type==='muggle'?null:names[result.element],true);
     document.body.dataset.state=STATES.STANDBY;
     settingsPage.style.display='none';animLayerEl.style.display='block';
+    document.getElementById('effectPreviewBack').hidden=false;
     onViewportChange();
-    portal.draw(quality.profile);
+    drawRevealFlow();
   }
   function canTouchMagic(){
-    return !document.hidden&&!pagePaused&&(session.state===STATES.STANDBY||session.state===STATES.INTERACTION);
+    if(document.hidden||pagePaused||materialPreview||resultActionSheet.classList.contains('show'))return false;
+    if(flowActive())return !flow.paused&&(flow.state==='DRAWING'||flow.state==='WAITING');
+    return effectPreview||session.state===STATES.STANDBY||session.state===STATES.INTERACTION;
   }
   function onMagicStart(e){
     if(!canTouchMagic()||(e.pointerType==='mouse'&&e.button!==0))return;
     e.preventDefault();
-    if(!portal.down(e.pointerId,e.clientX,e.clientY,timeline.now()))return;
+    audio.unlock();
+    const scene=inputScene();
+    if(flowActive()&&!flow.down(e.pointerId,e.clientX,e.clientY))return;
+    if(!scene.down(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now()))return;
     try{animLayerEl.setPointerCapture(e.pointerId);}catch(_){}
-    if(session.state===STATES.STANDBY){
+    if(!effectPreview&&!flowPreview&&session.state===STATES.STANDBY){
       session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
     }
   }
   function onMagicMove(e){
-    if(!canTouchMagic()||e.pointerId!==portal.pointer.id)return;
-    e.preventDefault();portal.move(e.pointerId,e.clientX,e.clientY,timeline.now());
+    const scene=inputScene();
+    if(!canTouchMagic()||e.pointerId!==scene.pointer.id)return;
+    e.preventDefault();
+    const samples=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[];
+    for(const sample of samples.slice(-256)){
+      scene.move(e.pointerId,sample.clientX,sample.clientY,sample.timeStamp??e.timeStamp??timeline.now());
+      if(flowActive())flow.move(e.pointerId,sample.clientX,sample.clientY);
+    }
+    scene.move(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
+    if(flowActive())flow.move(e.pointerId,e.clientX,e.clientY);
   }
-  function onMagicEnd(e){releasePointer(e.pointerId);}
+  function onMagicEnd(e){
+    if(e.type==='pointerup'&&canTouchMagic()&&e.pointerId===inputScene().pointer.id){
+      inputScene().move(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
+      if(flowActive())flow.move(e.pointerId,e.clientX,e.clientY);
+    }
+    releasePointer(e.pointerId,e.type!=='pointerup');
+  }
   animLayerEl.addEventListener('pointerdown',onMagicStart,{passive:false});
   window.addEventListener('pointermove',onMagicMove,{passive:false});
   window.addEventListener('pointerup',onMagicEnd,{passive:true});
   window.addEventListener('pointercancel',onMagicEnd,{passive:true});
   animLayerEl.addEventListener('lostpointercapture',onMagicEnd,{passive:true});
-  window.addEventListener('blur',()=>releasePointer());
+  window.addEventListener('blur',cancelInput);
 
   function drawParticles(){
     const ts=timeline.now();
     const dt=lastParticleTs===null?0:Math.max(0,(ts-lastParticleTs)/1000);
     lastParticleTs=ts;
-    if(canTouchMagic()){
-      if(dt>0&&quality.observe(dt*1000))onViewportChange();
+    if(flowActive()&&!document.hidden&&!pagePaused){
+      stepRevealFlow(dt);drawRevealFlow();
+    }else if(canTouchMagic()){
       portal.step(dt);portal.draw(quality.profile);
+    }else if(materialPreview&&!document.hidden&&!pagePaused){
+      if(!previewMaterialBlocked()){
+        materialRenderer.step(dt);
+        if(!materialRenderer.paused)materialBackdrop.step(dt);
+      }
+      drawMaterialPreview();
     }
     RAF.particle=requestAnimationFrame(drawParticles);
   }
   function pausePage(){
-    pagePaused=true;timeline.pause();audio.stop();releasePointer();lastParticleTs=null;quality.resetSamples();
+    pagePaused=true;timeline.pause();audio.stop();cancelInput();lastParticleTs=null;quality.resetSamples();
   }
   function resumePage(){
     if(document.hidden)return;
@@ -822,7 +1387,418 @@
   window.addEventListener('pagehide',pausePage);
   window.addEventListener('pageshow',resumePage);
   document.getElementById('btnRetryCert').addEventListener('click',beginRound,{passive:true});
-  document.getElementById('btnGoHome').addEventListener('click',showSettingsPage,{passive:true});
+  formalReplay.addEventListener('click',openResultActions);
+  document.getElementById('btnGoHome').addEventListener('click',()=>{showSettingsPage();btnStart.focus({preventScroll:true});},{passive:true});
+  document.getElementById('effectPreview').addEventListener('click',()=>{
+    resetPortal();effectPreview=true;document.body.dataset.state='EFFECT_PREVIEW';
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    document.getElementById('effectPreviewBack').hidden=false;onViewportChange();portal.draw(quality.profile);
+  });
+  function updateMaterialControls(){
+    for(const key of Object.keys(ElementMaterialRenderer.names))document.getElementById('material_'+key).setAttribute('aria-pressed',String(key===materialRenderer.element));
+    const pause=document.getElementById('materialPause');
+    const paused=flowPreview?flow.paused:materialRenderer.paused;
+    pause.textContent=paused?'繼續播放':'暫停';
+    pause.setAttribute('aria-pressed',String(paused));
+    const wind=usesWindMaterial()&&!formalReveal,earth=usesEarthPreview();
+    document.getElementById('materialWindRanks').hidden=!wind;
+    document.getElementById('materialEarthRanks').hidden=!earth;
+    document.getElementById('materialLightRanks').hidden=!usesLightPreview();
+    document.getElementById('materialDarkRanks').hidden=!usesDarkPreview();
+    materialControls.classList.toggle('earthPreviewControls',earth);
+    materialControls.classList.toggle('lightPreviewControls',usesLightPreview());
+    materialControls.classList.toggle('darkPreviewControls',usesDarkPreview());
+    revealTitle.classList.toggle('windRankTitle',wind);
+    revealTitle.classList.toggle('earthRankTitle',earth);
+    revealTitle.classList.toggle('lightAngelTitle',usesLightPreview());
+    revealTitle.classList.toggle('darkDemonTitle',usesDarkPreview());
+    for(const rank of rankOrder)document.getElementById('windRank_'+rank).setAttribute('aria-pressed',String(rank===windPreviewRank));
+    for(const rank of rankOrder)document.getElementById('earthRank_'+rank).setAttribute('aria-pressed',String(rank===earthPreviewRank));
+    for(const rank of ['A','S','SS'])document.getElementById('lightRank_'+rank).setAttribute('aria-pressed',String(rank===lightPreviewRank));
+    for(const rank of ['A','S','SS'])document.getElementById('darkRank_'+rank).setAttribute('aria-pressed',String(rank===darkPreviewRank));
+    document.getElementById('materialHeadingTitle').textContent=usesDarkPreview()?'闇屬性 · '+darkPreviewRank+' · 魔王羽翼':usesLightPreview()?'光屬性 · '+lightPreviewRank+' · 聖光羽翼':earth?'土屬性 · '+earthPreviewRank+' · 地脈之心':wind?'風屬性 · '+windPreviewRank+' · 1.5×基準':flowPreview?'收筆流程預覽':'屬性材質樣板';
+    document.getElementById('materialReplay').textContent=flowPreview?'重新畫一次':'重新播放';
+  }
+  function usesOceanPreview(){
+    return (materialPreview||flowPreview||formalReveal)&&materialRenderer?.element==='water';
+  }
+  function usesWindMaterial(){
+    return (materialPreview||flowPreview||formalReveal)&&materialRenderer?.element==='wind';
+  }
+  function usesEarthPreview(){
+    return !formalReveal&&(materialPreview||flowPreview)&&materialRenderer?.element==='earth';
+  }
+  function usesEarthMaterial(){
+    return (materialPreview||flowPreview||formalReveal)&&materialRenderer?.element==='earth';
+  }
+  function usesLightPreview(){
+    return !formalReveal&&(materialPreview||flowPreview)&&materialRenderer?.element==='light';
+  }
+  function usesLightMaterial(){
+    return (materialPreview||flowPreview||formalReveal)&&materialRenderer?.element==='light';
+  }
+  function usesDarkPreview(){
+    return !formalReveal&&(materialPreview||flowPreview)&&materialRenderer?.element==='dark';
+  }
+  function usesDarkMaterial(){
+    return (materialPreview||flowPreview||formalReveal)&&materialRenderer?.element==='dark';
+  }
+  function lightPreviewBox(w,h){
+    const width=Math.min(w-16,900),height=Math.max(100,Math.min(h-312,h*.62));
+    const box=h<=500&&w>h?{x:12,y:28,width:w*.56-24,height:h-52}:{x:(w-width)/2,y:52,width,height};
+    return {...box,gatherY:activeMaterialRenderer().layout(w,h,box).cy};
+  }
+  function activeMaterialRenderer(){
+    if(usesLightMaterial())return lightAngel??=new LightAngelLayeredGrowthRenderer();
+    if(usesDarkMaterial())return darkDemon??=new DarkDemonWingGrowthRenderer();
+    if(usesEarthMaterial())return earthMountain??=new EarthMountainRenderer();
+    if(usesWindMaterial())return windTornado??=new WindTornadoRenderer();
+    return usesOceanPreview()?(oceanReveal??=new WaterOceanReveal()):materialRenderer;
+  }
+  function previewMaterialBlocked(){
+    const active=activeMaterialRenderer();
+    return active.lost||active.error||((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded)
+      ||(usesLightMaterial()&&(!LightFeathers.loaded||LightFeathers.error));
+  }
+  function drawPreviewMaterial(w,h,frame=null){
+    const active=activeMaterialRenderer();
+    if(usesDarkMaterial())return active.draw(ctx,w,h,{
+      time:frame?.time??materialRenderer.time,opacity:frame?.opacity??1,
+      box:formalReveal?frame?.box:lightPreviewBox(w,h),
+      rank:formalReveal?frame?.darkEffects?.rank:darkPreviewRank,
+      growth:frame?.darkEffects?.growth,motionTime:frame?.darkEffects?.time,starMana:frame?.darkEffects?.starMana,
+      growthTransition:frame?.darkEffects?.transition,growthExposure:frame?.darkEffects?.exposure
+    });
+    if(usesLightMaterial())return active.draw(ctx,w,h,{
+      time:frame?.time??materialRenderer.time,opacity:frame?.opacity??1,
+      box:formalReveal?frame?.box:lightPreviewBox(w,h),
+      rank:formalReveal?frame?.lightEffects?.rank:lightPreviewRank,
+      growth:frame?.lightEffects?.growth,motionTime:frame?.lightEffects?.time,starMana:frame?.lightEffects?.starMana,
+      growthTransition:frame?.lightEffects?.transition,growthExposure:frame?.lightEffects?.exposure
+    });
+    if(usesEarthMaterial())return active.draw(ctx,canvas,w,h,{
+      ...(frame||{time:materialRenderer.time,opacity:1,formation:1}),
+      box:frame?.box||active.layout(w,h),
+      rank:formalReveal?frame?.earthEffects?.profile.rank:earthPreviewRank
+    });
+    if(usesWindMaterial())return active.draw(ctx,canvas,w,h,{
+      ...(frame||{time:materialRenderer.time,opacity:1,formation:1}),
+      box:frame?.box||active.layout(w,h,WindRankEffects.forRank(windPreviewRank)),
+      rank:formalReveal?frame?.windEffects?.profile.rank:windPreviewRank,playbackRate:1.5
+    });
+    if(usesOceanPreview())return active.draw(ctx,canvas,w,h,frame||{
+      box:materialRenderer.layout(w,h),time:materialRenderer.time,opacity:materialRenderer.opacity
+    });
+    return active.draw(ctx,canvas,w,h,frame);
+  }
+  function updateMaterialError(){
+    const active=activeMaterialRenderer(),featherError=usesLightMaterial()?LightFeathers.error:'',
+      loading=((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded&&!active.error)||(usesLightMaterial()&&!LightFeathers.loaded&&!featherError);
+    const restoring=(usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())&&active.lost;
+    materialError.hidden=!(active.error||featherError||loading||restoring);
+    if(!materialError.hidden)materialError.textContent=active.error||featherError||(restoring?'特效暫時中斷，正在等待恢復。':usesDarkMaterial()?'正在載入魔王羽翼…':usesLightMaterial()?'正在載入聖光羽翼…':'正在載入海面材質…');
+  }
+  function lightFeatherPlan(w,h,{formal=false,direct=false}={}){
+    const active=activeMaterialRenderer(),result=formal?session.currentResult:null;
+    const key=[w,h,direct?'material':formal?'formal':'flow',lightPreviewRank,
+      result?.rank,result?.mana,direct?0:flow.awakeningDuration,direct?0:flow.formationDuration].join(':');
+    const cached=lightFeatherPlans.get(active);
+    if(cached?.key===key)return cached.bursts;
+    let bursts;
+    if(direct){
+      const rank=lightPreviewRank,speed=LightAngelMotion.profile(rank).speed,at=.05/speed;
+      bursts=[LightFeathers.wingBurst({kind:rank,rank,from:rank,at,duration:.5/speed,evolving:false,
+        image:active.images[rank],layoutAt:()=>active.layout(w,h,lightPreviewBox(w,h)),
+        poseAt:delay=>({time:(at+delay)*speed,progress:1})})];
+    }else{
+      const formation=flow.formationDuration,base=flow.awakeningDuration+formation;
+      const rank=formal?'A':lightPreviewRank,speed=LightAngelMotion.profile(rank).speed;
+      const firstStart=Math.max(.18,.12/speed),firstEnd=Math.max(formation,.55/speed);
+      const initialLayout=materialTime=>{
+        const shift=formal&&materialTime>formation?LightRankGrowth.scan(materialTime-formation,result).shift:0;
+        return active.layout(w,h,formal?LightRankGrowth.layout(w,h,shift).box:lightPreviewBox(w,h));
+      };
+      bursts=[LightFeathers.wingBurst({kind:rank,rank,from:rank,
+        at:flow.awakeningDuration+firstStart,duration:firstEnd-firstStart,evolving:false,image:active.images[rank],
+        layoutAt:delay=>initialLayout(firstStart+delay),
+        poseAt:delay=>{
+          const materialTime=firstStart+delay;
+          const time=formal?(materialTime>formation
+            ?LightRankGrowth.sample(materialTime-formation,result,formation).time
+            :LightRankGrowth.initial(materialTime).time):materialTime*speed;
+          return {time,progress:1};
+        }})];
+      if(flow.awakeningEnabled){
+        const root=initialLayout(0);
+        bursts.unshift({at:1.14,kind:'awakening',x:root.cx,y:root.cy});
+      }
+      if(formal){
+        for(const event of LightRankGrowth.timeline(result)){
+          bursts.push(LightFeathers.wingBurst({kind:event.to,rank:event.to,from:event.from,
+            at:base+event.at,duration:event.duration,evolving:true,image:active.images[event.to],
+            layoutAt:delay=>active.layout(w,h,LightRankGrowth.layout(w,h,LightRankGrowth.scan(event.at+delay,result).shift).box),
+            poseAt:delay=>{
+              const pose=LightRankGrowth.sample(event.at+delay,result,formation);
+              return {time:pose.time,progress:pose.transition.progress};
+            }}));
+        }
+      }
+    }
+    // Each feather detaches at its own birth pose. Repaints use that frozen
+    // birthplace while its flight continues independently of moving wings.
+    lightFeatherPlans.set(active,{key,bursts});return bursts;
+  }
+  function drawMaterialPreview(){
+    const {w,h}=getViewportSize();
+    materialBackdrop.drawBackground();
+    elementBackdrop.draw(ctx,w,h,{element:materialRenderer.element,time:materialRenderer.time,
+      opacity:materialRenderer.opacity,focus:materialRenderer.layout(w,h)});
+    drawPreviewMaterial(w,h);
+    if(usesLightMaterial()&&!previewMaterialBlocked()){
+      LightFeathers.draw(ctx,{width:w,height:h,time:materialRenderer.time,bursts:lightFeatherPlan(w,h,{direct:true})});
+    }
+    updateMaterialError();
+    const phase=materialRenderer.phase;
+    const label=materialRenderer.paused?'已暫停':usesDarkPreview()?darkPreviewRank+' · 魔翼甦醒':usesLightPreview()?lightPreviewRank+' · 聖光流動':usesEarthPreview()?earthPreviewRank+' · 岩層展開':usesWindMaterial()?windPreviewRank+' · 風勢展開':phase<.18?'形成':phase>.84?'消散':'展開';
+    if(materialStatus.textContent!==label)materialStatus.textContent=label;
+  }
+  function prepareFlow(element,formal=false){
+    const {w,h}=getViewportSize();
+    materialRenderer??=new ElementMaterialRenderer();
+    flow??=new RevealFlow();
+    gather??=new RevealGather();flowAtmosphere??=new RevealAtmosphere();
+    // Preview forces visible ink; the formal round honors the user's switch.
+    flowPortal=new PortalScene(ctx,w,h,undefined,{...effectValues,
+      trailEnabled:formal?effectValues.trailEnabled:true,trailHold:Math.max(1.3,effectValues.trailHold)});
+    restartRevealFlow(element);
+  }
+  function restartRevealFlow(element=flow.element){
+    audio.stop();
+    flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'))});
+    cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();
+    gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
+    // A muggle has no element. Do not substitute the renderer's last selection.
+    if(element!==null){
+      materialRenderer.select(element);
+      if(usesOceanPreview()||usesWindMaterial()||usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())activeMaterialRenderer();
+      else if(materialRenderer.init())materialRenderer.compile(element);
+    }
+    revealTitle.hidden=true;formalReplay.hidden=true;lastParticleTs=null;
+    hideFireScan();
+    if(flowPreview)updateMaterialControls();
+  }
+  function stepRevealFlow(dt){
+    if(flow.paused||(flow.element!==null&&previewMaterialBlocked()))return;
+    const before=flow.state;
+    flowPortal.step(dt*(before==='DRAWING'||before==='WAITING'?1:.35),{
+      freezeTrails:before!=='DRAWING'&&before!=='WAITING',holdTrails:before==='WAITING'
+    });
+    // If all earlier ink has faded, a later stationary tap is still only a tap.
+    if(before==='DRAWING'&&flow.pointerId===null&&flow.distance>0&&
+      flowPortal.settings.trailEnabled&&!flowPortal.trails.strokes.some(s=>flowPortal.trails.opacity(s)>.03))flow.reset(flow.element);
+    flow.step(dt);
+    flowAtmosphere.step(dt,flow);
+    if(before!=='GATHER'&&flow.state==='GATHER'){
+      gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
+      if(formalReveal){
+        session.transition(STATES.RESONANCE_COMPLETE);session.transition(STATES.GATHER);
+        document.body.dataset.state=STATES.GATHER;
+      }
+    }
+    if(before!=='AWAKEN'&&flow.state==='AWAKEN')audio.play('lightAwaken');
+    if(formalReveal&&(before==='GATHER'||before==='AWAKEN')&&flow.state==='FORM'){
+      session.transition(STATES.ELEMENT_REVEAL);document.body.dataset.state=STATES.ELEMENT_REVEAL;
+    }
+    if(formalReveal&&['fire','water','wind','earth','light','dark'].includes(flow.element)&&flow.state==='REVEAL'&&session.state===STATES.ELEMENT_REVEAL&&
+      (flow.element==='light'?LightRankGrowth.scan(flow.elapsed,session.currentResult):flow.element==='dark'?DarkRankGrowth.scan(flow.elapsed,session.currentResult):FireScanTransition.sample(flow.elapsed,session.currentResult)).scanStarted){
+      session.transition(STATES.MANA_SCAN);document.body.dataset.state=STATES.MANA_SCAN;
+    }
+  }
+  function hideFireScan(){
+    fireScanReadout.hidden=true;fireScanValue.textContent='000';RankLettering.apply(fireScanRank,'—');
+    revealTitle.classList.remove('fireScanTitle');revealTitle.style.left='';revealTitle.style.top='';
+  }
+  function drawFireScan(sample,layout){
+    const n=layout.numbers;
+    // Use the label's former space for a compact title / number / letter
+    // stack. Equal numeric/letter sizes must still clear the bottom controls.
+    const {h}=getViewportSize(),bottom=flowPreview?h-166:h-106;
+    const valueY=Math.min(n.y-12,bottom-n.fontSize*1.18-12);
+    const rankY=valueY+n.fontSize+12;
+    fireScanReadout.setAttribute('data-element',flow.element);
+    fireScanReadout.setAttribute('aria-label',ElementMaterialRenderer.names[flow.element]+'屬性魔力鑑定');
+    revealTitle.setAttribute('data-element',flow.element);
+    fireScanReadout.hidden=sample.opacity<=0;fireScanReadout.style.opacity=String(sample.opacity);
+    fireScanReadout.style.setProperty('--scan-x',n.x+'px');
+    fireScanReadout.style.setProperty('--scan-y',valueY+'px');
+    fireScanReadout.style.setProperty('--scan-ignition',String(sample.ignition));
+    fireScanValue.style.top=valueY+'px';fireScanValue.style.fontSize=n.fontSize+'px';
+    fireScanRank.style.top=rankY+'px';fireScanRank.style.fontSize=n.fontSize+'px';
+    fireScanLabel.style.top=n.labelY+'px';fireScanLabel.style.fontSize=n.labelFontSize+'px';
+    const value=String(sample.value).padStart(3,'0');
+    if(fireScanValue.textContent!==value)fireScanValue.textContent=value;
+    RankLettering.apply(fireScanRank,sample.rank);
+    fireScanLabel.textContent='';
+    revealTitle.classList.add('fireScanTitle');
+    revealTitle.style.left=n.x+'px';revealTitle.style.top=(valueY-n.fontSize*.82-16)+'px';
+  }
+  function drawRevealFlow(){
+    const {w,h}=getViewportSize(),state=flow.state;
+    const drawing=state==='DRAWING'||state==='WAITING';
+    const formalWind=formalReveal&&flow.element==='wind';
+    const formalEarth=formalReveal&&flow.element==='earth';
+    const formalLight=formalReveal&&flow.element==='light';
+    const formalDark=formalReveal&&flow.element==='dark';
+    const scan=(flow.element==='fire'||flow.element==='water'||formalWind||formalEarth||formalLight||formalDark)&&state==='REVEAL'
+      ?(formalDark?DarkRankGrowth.scan(flow.elapsed,session.currentResult):formalLight?LightRankGrowth.scan(flow.elapsed,session.currentResult):FireScanTransition.sample(flow.elapsed,formalReveal?session.currentResult:FireScanTransition.previewForElement(flow.element))):null;
+    // The committed result supplies only the destination. Appearance follows
+    // the currently displayed value and an integrated, continuous material clock.
+    const windEffects=formalWind?(scan?WindRankEffects.sample(flow.elapsed,session.currentResult,flow.formationDuration)
+      :{value:0,profile:WindRankEffects.profileForValue(0),time:(flow.materialFrame?.time||0)*WindRankEffects.profileForValue(0).speed}):undefined;
+    const windProfile=windEffects?.profile||WindRankEffects.forRank(windPreviewRank);
+    const earthEffects=formalEarth?(scan?EarthRankEffects.sample(flow.elapsed,session.currentResult,flow.formationDuration)
+      :{value:0,profile:EarthRankEffects.profileForValue(0),time:(flow.materialFrame?.time||0)*.32,actionTime:.3,level:0}):undefined;
+    const lightEffects=formalLight?(scan?LightRankGrowth.sample(flow.elapsed,session.currentResult,flow.formationDuration)
+      :LightRankGrowth.initial(flow.materialFrame?.time||0)):undefined;
+    const darkEffects=formalDark?(scan?DarkRankGrowth.sample(flow.elapsed,session.currentResult,flow.formationDuration)
+      :DarkRankGrowth.initial(flow.materialFrame?.time||0)):undefined;
+    const scanLayout=scan?(formalDark?DarkRankGrowth.layout(w,h,scan.shift):formalLight?LightRankGrowth.layout(w,h,scan.shift)
+      :formalEarth?activeMaterialRenderer().scanLayout(w,h,earthEffects.profile,scan.shift)
+      :formalWind?activeMaterialRenderer().scanLayout(w,h,windProfile,scan.shift)
+      :FireScanTransition.layout(w,h,materialRenderer.layout(w,h),scan.shift,{preview:flowPreview})):null;
+    const box=scanLayout?.box||(formalDark?DarkRankGrowth.layout(w,h,0).box:formalLight?LightRankGrowth.layout(w,h,0).box:(usesLightPreview()||usesDarkPreview())?lightPreviewBox(w,h):usesEarthMaterial()?activeMaterialRenderer().layout(w,h):usesWindMaterial()?activeMaterialRenderer().layout(w,h,windProfile):materialRenderer.layout(w,h));
+    const firePower=flow.element==='fire'?(scan?.power||0):undefined;
+    const waterPower=flow.element==='water'?(scan?.power||0):undefined;
+    // Zooming the wind's framing must not move the existing gathering point.
+    const target={x:box.x+box.width/2,y:box.gatherY??((formalLight||formalDark)?activeMaterialRenderer().layout(w,h,box).cy:box.y+box.height/2+(flow.element==='fire'||flow.element==='water'?box.width*.33:0))};
+    const transform=(q,kind)=>flowAtmosphere.point(q,kind,w,h,target);
+    if(drawing)flowPortal.draw(quality.profile,{transform});
+    else{
+      const dim=state==='GATHER'?.16*flow.progress:.16;
+      flowPortal.draw(quality.profile,{transform,trails:false,dim});
+      if(flow.awakeningEnabled&&state==='FORM'){
+        // Keep a full gold backing under the fading-in material. Two opposing
+        // opacity fades over the dark portal would cause a muddy brightness dip.
+        LightAwakening.draw(ctx,{width:w,height:h,target,elapsed:flow.awakeningDuration+flow.elapsed,layer:'background'});
+      }
+      const frame=flow.materialFrame;
+      const waterEffects=frame&&flow.element==='water'
+        ?(scan?WaterRankEffects.sample(flow.elapsed,formalReveal?session.currentResult:FireScanTransition.previewForElement('water'),flow.formationDuration)
+          :{value:0,profile:WaterRankEffects.profileForValue(0),time:frame.time*.3}):undefined;
+      if(frame)elementBackdrop.draw(ctx,w,h,{element:flow.element,time:waterEffects?.time??frame.time,opacity:frame.opacity,focus:box,firePower,waterPower});
+      if(state==='GATHER'||state==='FORM'){
+        gather.draw(ctx,{progress:state==='GATHER'?flow.progress:1,formation:state==='FORM'?flow.progress:0,
+          width:w,height:h,element:flow.element,time:state==='GATHER'?flow.elapsed:flow.gatherDuration+frame.time,
+          target});
+      }
+      if(frame&&flow.element!==null)drawPreviewMaterial(w,h,{...frame,box,firePower,waterPower,waterEffects,windEffects,earthEffects,lightEffects,darkEffects,
+        readout:formalWind||formalEarth?scanLayout?.readout:undefined,
+        fireTime:flow.element==='fire'?(scan?flow.formationDuration*.7+scan.fireTime:frame.time*.7):undefined,
+        heat:(scan?.heat||0)*(.15+.85*(scan?.power||0)),formation:state==='FORM'?flow.progress:1});
+      if(frame&&scan&&!formalWind&&!formalEarth&&!formalLight&&!formalDark){
+        if(flow.element==='fire')FireRankEmbers.draw(ctx,w,h,{time:frame.time,mana:scan.value,box});
+        FireRankSparkles.draw(ctx,w,h,{time:frame.time,mana:scan.value,box,element:flow.element});
+      }
+    }
+    RevealShockwaves.draw(ctx,{state,elapsed:flow.elapsed,width:w,height:h});
+    if(flow.awakeningEnabled&&(state==='AWAKEN'||state==='FORM')){
+      LightAwakening.draw(ctx,{width:w,height:h,target,elapsed:state==='AWAKEN'?flow.elapsed:flow.awakeningDuration+flow.elapsed,layer:state==='FORM'?'foreground':'all'});
+    }
+    if(flow.element==='light'&&['AWAKEN','FORM','REVEAL'].includes(state)&&!previewMaterialBlocked()){
+      const base=flow.awakeningDuration+flow.formationDuration;
+      const time=state==='AWAKEN'?flow.elapsed:state==='FORM'?flow.awakeningDuration+flow.elapsed:base+flow.elapsed;
+      // Foreground feathers share the host clock and are emitted once per
+      // wing unfolding, independent of the repeating wing idle cycle.
+      LightFeathers.draw(ctx,{width:w,height:h,time,bursts:lightFeatherPlan(w,h,{formal:formalLight})});
+    }
+    if(flow.element===null)materialError.hidden=true;else updateMaterialError();
+    const labels={DRAWING:'畫完後放開',WAITING:'可接著畫',GATHER:'魔力收束',AWAKEN:LightAwakening.sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
+    const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.elapsed>=1.2?'魔力蓄勢':labels[state];
+    if(materialStatus.textContent!==label)materialStatus.textContent=label;
+    const titleOpacity=scan?scan.opacity:state==='REVEAL'?Math.max(0,Math.min(1,(flow.elapsed-.7)/.8)):
+      state==='SETTLE'||state==='DONE'?1:0;
+    revealTitle.hidden=titleOpacity===0;revealTitle.style.opacity=String(titleOpacity);
+    if(revealTitle.dataset.titleElement!==String(flow.element)){
+      revealTitle.dataset.titleElement=String(flow.element);
+      if(flow.element===null)revealTitle.textContent='未顯現屬性';
+      else{const name=document.createElement('span');name.className='elementName';name.textContent=ElementMaterialRenderer.names[flow.element];revealTitle.replaceChildren(name,document.createTextNode('屬性'));}
+    }
+    if(scan)drawFireScan(scan,scanLayout);else hideFireScan();
+    formalReplay.hidden=!formalReveal||(scan?(!scan.complete||(formalLight&&!lightEffects.complete)||(formalDark&&!darkEffects.complete)):state!=='REVEAL'||titleOpacity<1);
+    if(formalReveal)document.getElementById('effectPreviewBack').hidden=!formalReplay.hidden;
+  }
+  function openFlowPreview(event){
+    flowPreviewOrigin=event?.currentTarget||document.getElementById('flowPreviewOpen');
+    resetPortal();effectPreview=false;flowPreview=true;
+    prepareFlow(flow?.element||'fire');
+    document.body.dataset.state='FLOW_PREVIEW';
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    materialControls.hidden=false;document.getElementById('effectPreviewBack').hidden=false;
+    onViewportChange();drawRevealFlow();
+  }
+  document.getElementById('flowPreviewOpen').addEventListener('click',openFlowPreview);
+  document.querySelectorAll('[data-flow-preview]').forEach(button=>button.addEventListener('click',openFlowPreview));
+  document.getElementById('materialPreviewOpen').addEventListener('click',()=>{
+    resetPortal();effectPreview=false;materialPreview=true;
+    const {w,h}=getViewportSize();
+    materialRenderer??=new ElementMaterialRenderer();
+    materialBackdrop??=new PortalScene(ctx,w,h,undefined,EffectSettings.defaults);
+    materialBackdrop.reset();materialRenderer.restart();
+    document.body.dataset.state='ELEMENT_PREVIEW';
+    settingsPage.style.display='none';animLayerEl.style.display='block';
+    materialControls.hidden=false;document.getElementById('effectPreviewBack').hidden=false;
+    updateMaterialControls();onViewportChange();drawMaterialPreview();
+  });
+  for(const key of Object.keys(ElementMaterialRenderer.names))document.getElementById('material_'+key).addEventListener('click',()=>{
+    if(flowPreview){restartRevealFlow(key);drawRevealFlow();return;}
+    if(!materialPreview)return;
+    if(!materialPreview)return;
+    materialRenderer.select(key);materialBackdrop.reset();updateMaterialControls();drawMaterialPreview();
+  });
+  for(const rank of rankOrder)document.getElementById('windRank_'+rank).addEventListener('click',()=>{
+    if(formalReveal||!usesWindMaterial()||windPreviewRank===rank)return;
+    windPreviewRank=rank;
+    if(flowPreview){restartRevealFlow('wind');drawRevealFlow();return;}
+    materialRenderer.restart();materialBackdrop.reset();lastParticleTs=null;
+    updateMaterialControls();drawMaterialPreview();
+  });
+  for(const rank of rankOrder)document.getElementById('earthRank_'+rank).addEventListener('click',()=>{
+    if(!usesEarthPreview()||earthPreviewRank===rank)return;
+    earthPreviewRank=rank;
+    if(flowPreview){restartRevealFlow('earth');drawRevealFlow();return;}
+    materialRenderer.restart();materialBackdrop.reset();lastParticleTs=null;
+    updateMaterialControls();drawMaterialPreview();
+  });
+  for(const rank of ['A','S','SS'])document.getElementById('lightRank_'+rank).addEventListener('click',()=>{
+    if(!usesLightPreview()||lightPreviewRank===rank)return;
+    lightPreviewRank=rank;
+    if(flowPreview){restartRevealFlow('light');drawRevealFlow();return;}
+    materialRenderer.restart();materialBackdrop.reset();lastParticleTs=null;
+    updateMaterialControls();drawMaterialPreview();
+  });
+  for(const rank of ['A','S','SS'])document.getElementById('darkRank_'+rank).addEventListener('click',()=>{
+    if(!usesDarkPreview()||darkPreviewRank===rank)return;
+    darkPreviewRank=rank;
+    if(flowPreview){restartRevealFlow('dark');drawRevealFlow();return;}
+    materialRenderer.restart();materialBackdrop.reset();lastParticleTs=null;
+    updateMaterialControls();drawMaterialPreview();
+  });
+  document.getElementById('materialPause').addEventListener('click',()=>{
+    if(flowPreview){
+      if(!flow.paused)releasePointer(undefined,true);
+      flow.paused=!flow.paused;if(flow.paused)audio.stop();updateMaterialControls();drawRevealFlow();return;
+    }
+    if(!materialPreview)return;materialRenderer.paused=!materialRenderer.paused;updateMaterialControls();drawMaterialPreview();
+  });
+  document.getElementById('materialReplay').addEventListener('click',()=>{
+    if(flowPreview){restartRevealFlow();drawRevealFlow();return;}
+    if(!materialPreview)return;materialRenderer.restart();materialBackdrop.reset();updateMaterialControls();drawMaterialPreview();
+  });
+  document.getElementById('effectPreviewBack').addEventListener('click',()=>{
+    if(formalReveal){showSettingsPage();selectSettingsTab(0);btnStart.focus({preventScroll:true});return;}
+    const returnButton=flowPreview?flowPreviewOrigin:document.getElementById(materialPreview?'materialPreviewOpen':'effectPreview');
+    showSettingsPage();selectSettingsTab(2);returnButton?.focus({preventScroll:true});
+  });
   btnStart.addEventListener('click',()=>{
     readTogglesToEnabled();renderToggles();beginRound();
   },{passive:true});
