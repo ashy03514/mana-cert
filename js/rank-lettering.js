@@ -34,7 +34,7 @@
    const p=profiles[rank],stars=[];
    if(p){
     host.style.setProperty('--rank-glow',String(p.glow));
-    host.style.setProperty('--rank-glow-radius',p.spread+'px');
+    host.style.setProperty('--rank-glow-radius',p.spread*2+'px');
     for(let i=0;i<p.count;i++){
      const star=document.createElementNS('http://www.w3.org/2000/svg','svg');
      star.classList.add('rankSpark');star.setAttribute('viewBox','0 0 40 40');star.setAttribute('focusable','false');

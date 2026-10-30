@@ -31,12 +31,12 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
    await page.evaluate(()=>{testFlow.state='REVEAL';testFlow.elapsed=20;tick();});
    await page.locator('#fireScanRank .rankText').waitFor({state:'visible'});
    const shown=await page.evaluate(()=>({rank:fireScanRank.textContent,art:fireScanRank.dataset.rank,value:Number(fireScanValue.textContent),frozen:Object.isFrozen(testSession.currentResult),result:testSession.currentResult,aria:document.querySelector('#fireScanRank .rankSparkles').getAttribute('aria-hidden'),color:getComputedStyle(document.querySelector('#fireScanRank .rankText')).color,stars:document.querySelectorAll('#fireScanRank .rankSpark').length,ratio:parseFloat(getComputedStyle(fireScanRank).fontSize)/parseFloat(getComputedStyle(fireScanValue).fontSize)}));
-   assert.equal(shown.rank,result.rank);assert.equal(shown.art,result.rank);assert.equal(shown.value,result.mana);assert.equal(shown.aria,'true');assert.equal(shown.color,'rgb(255, 255, 255)');assert.ok(Math.abs(shown.ratio-1.2)<.001);assert.equal(shown.stars,[1,2,3,4,6,9,13][['E','D','C','B','A','S','SS'].indexOf(result.rank)]);assert.equal(shown.frozen,true);assert.deepEqual(shown.result,result);
+   assert.equal(shown.rank,result.rank);assert.equal(shown.art,result.rank);assert.equal(shown.value,result.mana);assert.equal(shown.aria,'true');assert.equal(shown.color,'rgb(255, 255, 255)');assert.ok(Math.abs(shown.ratio-2.4)<.001);assert.equal(shown.stars,[1,2,3,4,6,9,13][['E','D','C','B','A','S','SS'].indexOf(result.rank)]);assert.equal(shown.frozen,true);assert.deepEqual(shown.result,result);
    const box=await page.locator('#fireScanRank .rankText').boundingBox();assert.ok(box.width>15&&box.height>20&&box.x>=0&&box.x+box.width<=390);
    const name=result.element==='火'?'fire':result.element==='光'?'light':'dark';
    await page.screenshot({path:path.resolve(`artifacts/rank-lettering-${name}-${result.rank}.png`)});
    await page.locator('#formalReplay').click({force:true});await page.locator('#btnGoHome').click({force:true});
   }
-  assert.deepEqual(errors,[]);console.log('PASS formal E/D/C/B/A/S/SS white text, 1.2x size and graduated stars, live count-up, 998 S / 999 SS, light/dark backgrounds, immutable results, accessible rank text and file opening.');
+  assert.deepEqual(errors,[]);console.log('PASS formal E/D/C/B/A/S/SS white text, 2.4x size and graduated stars, live count-up, 998 S / 999 SS, light/dark backgrounds, immutable results, accessible rank text and file opening.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

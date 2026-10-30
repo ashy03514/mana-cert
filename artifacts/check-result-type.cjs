@@ -12,17 +12,36 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
   await page.evaluate(e=>target=e,element);await page.locator('#btnStart').click();
   await page.waitForTimeout(300);
   await page.evaluate(()=>{flowCheck.state='REVEAL';flowCheck.elapsed=20;tick();});
-  for(const [width,height]of [[390,844],[320,568],[844,390]]){
+  for(const [width,height,safe=0]of [[390,844],[320,568],[844,390],[390,844,34]]){
+   await page.locator('#formalReplay').evaluate((el,safe)=>{el.style.bottom=(28+safe)+'px';},safe);
    await page.setViewportSize({width,height});await page.evaluate(()=>{dispatchEvent(new Event('resize'));tick();});
    assert.equal(await page.locator('#fireScanLabel').isVisible(),false);
    const style=await page.evaluate(()=>({value:getComputedStyle(fireScanValue).fontSize,rank:getComputedStyle(fireScanRank).fontSize,before:getComputedStyle(fireScanRank,'::before').content,
     main:parseFloat(getComputedStyle(document.querySelector('.elementName')).fontSize),title:parseFloat(getComputedStyle(revealTitle).fontSize)}));
-   assert.ok(Math.abs(parseFloat(style.rank)/parseFloat(style.value)-1.2)<.001);assert.equal(style.before,'none');assert.ok(Math.abs(style.main/style.title-1.3)<.001);
+   assert.ok(Math.abs(parseFloat(style.rank)/parseFloat(style.value)-2.4)<.001);assert.equal(style.before,'none');assert.ok(Math.abs(style.main/style.title-1.3)<.001);
    const boxes=[];for(const id of ['revealTitle','fireScanValue','fireScanRank','formalReplay']){const b=await page.locator('#'+id).boundingBox();assert.ok(b&&b.x>=0&&b.y>=0&&b.x+b.width<=width+1&&b.y+b.height<=height+1,element+' '+id+' fits');boxes.push(b);}
    for(let i=0;i<3;i++)assert.ok(boxes[i].y+boxes[i].height<boxes[i+1].y,element+' text rows do not overlap');
-   if(element==='風')await page.screenshot({path:path.resolve(`artifacts/result-type-wind-${width}x${height}.png`)});
+   // Inspect full animated star bounds, not just the rank text rectangle.
+   const decorative=await page.evaluate(()=>{
+    const host=fireScanRank,number=fireScanValue.getBoundingClientRect(),button=formalReplay.getBoundingClientRect();
+    const violations=[];
+    for(let time=20;time<=24;time+=.25){
+     RankLettering.apply(host,host.dataset.rank,time);
+     for(const star of host.querySelectorAll('.rankSpark')){
+      if(Number(star.style.opacity)<.04)continue;
+      const box=star.getBoundingClientRect();
+      if(box.bottom+6>button.top-16||box.top-6<number.bottom+2||box.left<0||box.right>innerWidth)violations.push({time,x:box.x,y:box.y,bottom:box.bottom,numberBottom:number.bottom,buttonTop:button.top});
+     }
+    }
+    RankLettering.apply(host,host.dataset.rank,20);
+    const hit=document.elementFromPoint(button.x+button.width/2,button.y+button.height/2);
+    return {violations,buttonClickable:!!hit?.closest('#formalReplay')};
+   });
+   assert.deepEqual(decorative.violations,[],element+' star envelope clears numbers and action button');
+   assert.equal(decorative.buttonClickable,true);
+   if(element==='風'&&!safe)await page.screenshot({path:path.resolve(`artifacts/result-type-wind-${width}x${height}.png`)});
   }
   await page.locator('#formalReplay').click();await page.locator('#btnGoHome').click();
  }
- assert.deepEqual(errors,[]);console.log('PASS six elements, removed labels, 130% main character, 120% rank font size, three viewport layouts and result actions.');
+ assert.deepEqual(errors,[]);console.log('PASS six elements, removed labels, 130% main character, 240% rank font size, three viewport layouts, simulated 34px safe area, star envelope and result actions.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

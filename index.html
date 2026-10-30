@@ -146,11 +146,11 @@
   #fireScanRank { color:#fff; font-family:Georgia,"Times New Roman",serif; font-weight:500; letter-spacing:.025em; }
   #fireScanRank::before { content:none; }
   .rankText { position:relative; display:block; z-index:1; color:#fff;
-    text-shadow:0 1px 2px #161622b0,0 0 4px rgb(255 255 255 / var(--rank-glow,.12)),0 0 var(--rank-glow-radius,5px) rgb(255 255 255 / var(--rank-glow,.12)),0 0 calc(var(--rank-glow-radius,5px) * 1.8) rgb(207 226 255 / calc(var(--rank-glow,.12) * .45)); }
+    text-shadow:0 1px 2px #161622b0,0 0 8px rgb(255 255 255 / var(--rank-glow,.12)),0 0 var(--rank-glow-radius,5px) rgb(255 255 255 / var(--rank-glow,.12)),0 0 calc(var(--rank-glow-radius,5px) * 1.8) rgb(207 226 255 / calc(var(--rank-glow,.12) * .45)); }
   .rankSparkles { position:absolute; inset:0; z-index:2; pointer-events:none; color:#fff; }
-  .rankSpark { position:absolute; display:block; overflow:visible; fill:currentColor; filter:drop-shadow(0 0 3px #ffffffb0); transform-origin:center; }
-  #fireScanReadout[data-element="light"] .rankText { -webkit-text-stroke:.45px #80652d80; text-shadow:0 1px 3px #70501d99,0 0 4px rgb(255 255 255 / var(--rank-glow,.12)),0 0 var(--rank-glow-radius,5px) rgb(255 255 255 / var(--rank-glow,.12)),0 0 calc(var(--rank-glow-radius,5px) * 1.8) rgb(255 250 214 / var(--rank-glow,.12)); }
-  #fireScanReadout[data-element="light"] .rankSpark { filter:drop-shadow(0 1px 1px #80652d80) drop-shadow(0 0 3px #fff); }
+  .rankSpark { position:absolute; display:block; overflow:visible; fill:currentColor; filter:drop-shadow(0 0 6px #ffffffb0); transform-origin:center; }
+  #fireScanReadout[data-element="light"] .rankText { -webkit-text-stroke:.45px #80652d80; text-shadow:0 1px 3px #70501d99,0 0 8px rgb(255 255 255 / var(--rank-glow,.12)),0 0 var(--rank-glow-radius,5px) rgb(255 255 255 / var(--rank-glow,.12)),0 0 calc(var(--rank-glow-radius,5px) * 1.8) rgb(255 250 214 / var(--rank-glow,.12)); }
+  #fireScanReadout[data-element="light"] .rankSpark { filter:drop-shadow(0 1px 1px #80652d80) drop-shadow(0 0 6px #fff); }
   @media (prefers-reduced-motion:reduce) { .rankSparkles { display:none; } }
   #revealTitle.fireScanTitle[data-element="water"], #fireScanReadout[data-element="water"] #fireScanLabel { color:#94cee4; }
   #fireScanReadout[data-element="water"] #fireScanValue { color:#e4faff; text-shadow:0 2px 9px #030d19,0 0 24px #61d8ff38; }
@@ -827,7 +827,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="129" title="目前載入頁面的版本">目前版本 v129</span>
+        <span id="appVersion" data-version="130" title="目前載入頁面的版本">目前版本 v130</span>
       </div>
     </div>
     </div>
@@ -1042,9 +1042,13 @@
     releasePointer(undefined,true);
     if(flowActive())flow.cancelPointer();
   }
+  let resultButtonTop=0;
   function onViewportChange(){
     const {w,h}=getViewportSize();
     if(w<=0||h<=0)return;
+    // Computed bottom includes the device safe-area even while the button is hidden.
+    const replayStyle=getComputedStyle(formalReplay);
+    resultButtonTop=h-parseFloat(replayStyle.bottom)-parseFloat(replayStyle.height);
     document.documentElement.style.setProperty('--viewport-w',w+'px');
     document.documentElement.style.setProperty('--viewport-h',h+'px');
     // Match the approved preview and ribbon layer. Adaptive downscaling used to
@@ -1617,11 +1621,14 @@
   }
   function drawFireScan(sample,layout){
     const n=layout.numbers;
-    // Reserve space for the larger rank and its star halo above the controls.
-    const {h}=getViewportSize(),bottom=flowPreview?h-166:h-106;
-    const rankSize=n.fontSize*1.2;
-    const valueY=Math.min(n.y-12,bottom-n.fontSize*.18-20-rankSize-16);
-    const rankY=valueY+n.fontSize*.18+20+rankSize*.82;
+    // Double the approved rank and fill the lower result area. Leave a dedicated
+    // gap for the bottom action star, including its device safe-area inset.
+    const {h}=getViewportSize(),effectBottom=flowPreview?h-174:resultButtonTop-24;
+    const rankSize=n.fontSize*2.4,effectPadding=Math.max(24,rankSize*.32);
+    const valueY=Math.min(n.y-12,effectBottom-effectPadding*2-n.fontSize*.18-12-rankSize);
+    const rankTop=valueY+n.fontSize*.18+effectPadding+12;
+    const spare=Math.max(0,effectBottom-effectPadding-rankTop-rankSize);
+    const rankY=rankTop+spare*.5+rankSize*.82;
     fireScanReadout.setAttribute('data-element',flow.element);
     fireScanReadout.setAttribute('aria-label',ElementMaterialRenderer.names[flow.element]+'屬性魔力鑑定');
     revealTitle.setAttribute('data-element',flow.element);
