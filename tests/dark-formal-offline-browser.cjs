@@ -15,7 +15,9 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
   const outcomes=await page.evaluate(async()=>{
    const r=new DarkDemonWingGrowthRenderer();if(!await r.ready)throw Error(r.error||'assets not ready');
    const c=document.createElement('canvas');c.width=390;c.height=844;const ctx=c.getContext('2d'),out=[];
-   DarkAwakening.draw(ctx,{width:390,height:844,elapsed:1.55});
+   DarkAwakening.draw(ctx,{width:390,height:844,elapsed:2.35});
+   if(DarkAwakening.error)throw Error(DarkAwakening.error);
+   DarkAwakening.dispose();
    if(!ctx.getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3&&v>0))throw Error('Offline awakening is empty');
    for(const [rank,mana]of [['A',750],['S',900],['SS',999]]){
     const sample=DarkRankGrowth.sample(10,{element:'暗',rank,mana}),layout=DarkRankGrowth.layout(390,844,1);

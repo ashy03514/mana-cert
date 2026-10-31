@@ -827,7 +827,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="133" title="目前載入頁面的版本">目前版本 v133</span>
+        <span id="appVersion" data-version="134" title="目前載入頁面的版本">目前版本 v134</span>
       </div>
     </div>
     </div>
@@ -1288,7 +1288,7 @@
     windTornado?.dispose();windTornado=null;
     earthMountain?.dispose();earthMountain=null;
     lightAngel?.dispose();lightAngel=null;
-    darkDemon?.dispose();darkDemon=null;
+    darkDemon?.dispose();darkDemon=null;DarkAwakening.dispose();
     revealTitle.classList.remove('windRankTitle','earthRankTitle','lightAngelTitle','darkDemonTitle');
     materialControls.classList.remove('earthPreviewControls','lightPreviewControls','darkPreviewControls');
     flowPreview=false;formalReveal=false;formalReplay.hidden=true;revealTitle.hidden=true;
@@ -1460,7 +1460,7 @@
   }
   function previewMaterialBlocked(){
     const active=activeMaterialRenderer();
-    return active.lost||active.error||((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded)
+    return active.lost||active.error||(usesDarkMaterial()&&flow?.awakeningEnabled&&(DarkAwakening.lost||DarkAwakening.error))||((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded)
       ||(usesLightMaterial()&&(!LightFeathers.loaded||LightFeathers.error));
   }
   function drawPreviewMaterial(w,h,frame=null){
@@ -1495,7 +1495,7 @@
     return active.draw(ctx,canvas,w,h,frame);
   }
   function updateMaterialError(){
-    const active=activeMaterialRenderer(),featherError=usesLightMaterial()?LightFeathers.error:'',
+    const active=activeMaterialRenderer(),featherError=usesLightMaterial()?LightFeathers.error:usesDarkMaterial()&&flow?.awakeningEnabled?DarkAwakening.error:'',
       loading=((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded&&!active.error)||(usesLightMaterial()&&!LightFeathers.loaded&&!featherError);
     const restoring=(usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())&&active.lost;
     materialError.hidden=!(active.error||featherError||loading||restoring);
@@ -1582,6 +1582,7 @@
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
     if(element!==null){
+      if(element==='dark'&&flow.awakeningEnabled)DarkAwakening.prepare();
       materialRenderer.select(element);
       if(usesOceanPreview()||usesWindMaterial()||usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())activeMaterialRenderer();
       else if(materialRenderer.init())materialRenderer.compile(element);
