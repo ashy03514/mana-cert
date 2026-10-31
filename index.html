@@ -827,7 +827,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="134" title="目前載入頁面的版本">目前版本 v134</span>
+        <span id="appVersion" data-version="136" title="目前載入頁面的版本">目前版本 v136</span>
       </div>
     </div>
     </div>
@@ -1460,7 +1460,7 @@
   }
   function previewMaterialBlocked(){
     const active=activeMaterialRenderer();
-    return active.lost||active.error||(usesDarkMaterial()&&flow?.awakeningEnabled&&(DarkAwakening.lost||DarkAwakening.error))||((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded)
+    return active.lost||active.error||(usesDarkMaterial()&&(DarkAwakening.lost||DarkAwakening.error))||((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded)
       ||(usesLightMaterial()&&(!LightFeathers.loaded||LightFeathers.error));
   }
   function drawPreviewMaterial(w,h,frame=null){
@@ -1495,7 +1495,7 @@
     return active.draw(ctx,canvas,w,h,frame);
   }
   function updateMaterialError(){
-    const active=activeMaterialRenderer(),featherError=usesLightMaterial()?LightFeathers.error:usesDarkMaterial()&&flow?.awakeningEnabled?DarkAwakening.error:'',
+    const active=activeMaterialRenderer(),featherError=usesLightMaterial()?LightFeathers.error:usesDarkMaterial()?DarkAwakening.error:'',
       loading=((usesOceanPreview()||usesLightMaterial()||usesDarkMaterial())&&!active.loaded&&!active.error)||(usesLightMaterial()&&!LightFeathers.loaded&&!featherError);
     const restoring=(usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())&&active.lost;
     materialError.hidden=!(active.error||featherError||loading||restoring);
@@ -1556,7 +1556,16 @@
     materialBackdrop.drawBackground();
     elementBackdrop.draw(ctx,w,h,{element:materialRenderer.element,time:materialRenderer.time,
       opacity:materialRenderer.opacity,focus:materialRenderer.layout(w,h)});
-    drawPreviewMaterial(w,h);
+    const darkBirthPreview=usesDarkPreview()&&darkPreviewRank==='A';
+    const time=materialRenderer.time;
+    const darkEffects=darkBirthPreview?(time<.8?DarkRankGrowth.initial(time,.8)
+      :DarkRankGrowth.sample(time-.8,{type:'magic',element:'暗',rank:'A',mana:750},.8)):undefined;
+    drawPreviewMaterial(w,h,darkBirthPreview?{time,opacity:1,darkEffects}:null);
+    if(usesDarkMaterial()&&!previewMaterialBlocked()){
+      const art=activeMaterialRenderer().layout(w,h,lightPreviewBox(w,h));
+      DarkAwakening.drawFlame(ctx,{width:w,height:h,elapsed:4+materialRenderer.time,
+        target:{x:art.cx,y:art.cy},art,growth:{A:0,S:1,SS:2}[darkPreviewRank]});
+    }
     if(usesLightMaterial()&&!previewMaterialBlocked()){
       LightFeathers.draw(ctx,{width:w,height:h,time:materialRenderer.time,bursts:lightFeatherPlan(w,h,{direct:true})});
     }
@@ -1677,8 +1686,10 @@
       :{value:0,profile:EarthRankEffects.profileForValue(0),time:(flow.materialFrame?.time||0)*.32,actionTime:.3,level:0}):undefined;
     const lightEffects=formalLight?(scan?LightRankGrowth.sample(flow.elapsed,session.currentResult,flow.formationDuration)
       :LightRankGrowth.initial(flow.materialFrame?.time||0)):undefined;
-    const darkEffects=formalDark?(scan?DarkRankGrowth.sample(flow.elapsed,session.currentResult,flow.formationDuration)
-      :DarkRankGrowth.initial(flow.materialFrame?.time||0)):undefined;
+    const darkBirthPreview=flowPreview&&flow.element==='dark'&&darkPreviewRank==='A';
+    const darkEffects=formalDark||darkBirthPreview?(state==='REVEAL'
+      ?DarkRankGrowth.sample(flow.elapsed,formalDark?session.currentResult:{type:'magic',element:'暗',rank:'A',mana:750},flow.formationDuration)
+      :DarkRankGrowth.initial(flow.materialFrame?.time||0,flow.formationDuration)):undefined;
     const presentation=(formalReveal&&flow.element!==null)||(flowPreview&&['fire','water'].includes(flow.element))
       ?formalMaterialLayout(w,h,scan?.shift||0,windProfile,earthEffects?.profile):null;
     const scanLayout=scan?presentation:null;
@@ -1718,7 +1729,16 @@
     }
     RevealShockwaves.draw(ctx,{state,elapsed:flow.elapsed,width:w,height:h});
     if(flow.awakeningEnabled&&(state==='AWAKEN'||state==='FORM')){
-      awakeningRenderer().draw(ctx,{width:w,height:h,target,elapsed:state==='AWAKEN'?flow.elapsed:flow.awakeningDuration+flow.elapsed,layer:state==='FORM'?'foreground':'all'});
+      awakeningRenderer().draw(ctx,{width:w,height:h,target,elapsed:state==='AWAKEN'?flow.elapsed:flow.awakeningDuration+flow.elapsed,layer:state==='FORM'?'foreground':'all',includeFlame:flow.element!=='dark'});
+    }
+    if(flow.element==='dark'&&['AWAKEN','FORM','REVEAL'].includes(state)&&!previewMaterialBlocked()){
+      // One flame owns the entire bridge. Its active clock never resets at
+      // FORM/REVEAL; after contraction it follows the actual moving wing root.
+      const time=state==='AWAKEN'?flow.elapsed:state==='FORM'?flow.awakeningDuration+flow.elapsed:
+        flow.awakeningDuration+flow.formationDuration+flow.elapsed;
+      const art=activeMaterialRenderer().layout(w,h,box);
+      DarkAwakening.drawFlame(ctx,{width:w,height:h,elapsed:time,target,art,
+        growth:formalDark?(darkEffects?.growth||0):{A:0,S:1,SS:2}[darkPreviewRank]});
     }
     if(flow.element==='light'&&['AWAKEN','FORM','REVEAL'].includes(state)&&!previewMaterialBlocked()){
       const base=flow.awakeningDuration+flow.formationDuration;

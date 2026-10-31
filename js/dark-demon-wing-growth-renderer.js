@@ -1,5 +1,5 @@
-/* Registered membrane growth: fixed texture coordinates, a root-out luminous
- * reveal, then exposure settling. No contour stretching between rank images. */
+/* Registered membrane growth: fixed texture coordinates, a root-out violet
+ * flame veil, then material settling. No contour stretching between rank images. */
 (function(root){
  'use strict';
  const clamp=v=>Math.max(0,Math.min(1,v)),smooth=v=>{v=clamp(v);return v*v*(3-2*v);};
@@ -7,28 +7,40 @@
  const vertex=`attribute vec2 aPosition,aUv;uniform vec2 uResolution;varying vec2 vUv;
  void main(){vUv=aUv;gl_Position=vec4(aPosition.x/uResolution.x*2.-1.,1.-aPosition.y/uResolution.y*2.,0.,1.);}`;
  const fragment=`precision highp float;varying vec2 vUv;
- uniform sampler2D uYoung,uMature;uniform float uProgress,uYoungOffset,uMatureOffset,uExposure,uLight,uClock,uGlow,uRadius,uOpacity;
+ uniform sampler2D uYoung,uMature;uniform float uProgress,uBirth,uYoungOffset,uMatureOffset,uExposure,uLight,uClock,uGlow,uRadius,uOpacity;
  vec4 safe(sampler2D image,vec2 p){if(p.x<0.||p.x>1.||p.y<0.||p.y>1.)return vec4(0.);return texture2D(image,p);}
+ // Advected light/soot changes the veil, never the registered image UVs.
+ float grain(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+ float haze(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(grain(i),grain(i+vec2(1.,0.)),f.x),mix(grain(i+vec2(0.,1.)),grain(i+vec2(1.)),f.x),f.y);}
+ float flow(vec2 p){return .68*haze(p*vec2(38.,27.)+vec2(uClock*.19,-uClock*1.65))
+  +.32*haze(p*vec2(79.,56.)+vec2(-uClock*.31,-uClock*2.8));}
  float reach(vec2 p){return clamp(length(vec2(p.x-.5,(p.y-.43)*.6667))/.55,0.,1.);}
  float phase(vec2 p){float front=.10+reach(p)*.75;return smoothstep(front-.075,front+.075,uProgress);}
  float retire(vec2 p){float front=.72+reach(p)*.20;return smoothstep(front-.06,front+.06,uProgress);}
  vec4 read(vec2 uv){
-  float f=phase(uv);vec4 young=safe(uYoung,uv-vec2(0.,uYoungOffset));
+  float f=phase(uv);vec4 young=safe(uYoung,uv-vec2(0.,uYoungOffset))*(1.-uBirth);
   vec4 mature=safe(uMature,uv-vec2(0.,uMatureOffset))*f;
-  mature.rgb=mix(mature.rgb,vec3(.84,.84,1.)*mature.a,uExposure*.94);
+  vec3 native=mature.rgb/max(mature.a,.001);float luminance=dot(native,vec3(.2126,.7152,.0722));
+  vec3 violet=mix(vec3(.025,.006,.055),vec3(.38,.085,.62),smoothstep(.035,.62,luminance));
+  // Retain bones, highlights and membrane shadows under the dark magic.
+  // Exposure is the existing transition envelope, now a purple flame wash.
+  mature.rgb=mix(mature.rgb,(native*.34+violet*.80)*mature.a,uExposure*.86);
   vec4 color=mature+young*(1.-mature.a)*(1.-retire(uv));
-  float seam=4.*f*(1.-f),glint=.86+.14*sin(uClock*5.1+uv.y*39.+uv.x*23.);
-  color.rgb=mix(color.rgb,vec3(.83,.80,1.)*color.a,seam*glint);
+  float seam=4.*f*(1.-f),flame=flow(uv),glint=.32+.68*smoothstep(.24,.76,flame);
+  vec3 seamColor=mix(vec3(.035,.006,.065),vec3(.43,.075,.72),glint);
+  color.rgb=mix(color.rgb,color.rgb*.35+seamColor*color.a,seam*.82);
   return vec4(color.rgb*uLight,color.a);
  }
  float halo(vec2 uv){float f=phase(uv),a=safe(uMature,uv-vec2(0.,uMatureOffset)).a;
-  return uGlow>1.5?a*f*uExposure:max(a,safe(uYoung,uv-vec2(0.,uYoungOffset)).a)*4.*f*(1.-f);}
+  return uGlow>1.5?a*f*uExposure:max(a,safe(uYoung,uv-vec2(0.,uYoungOffset)).a*(1.-uBirth))*4.*f*(1.-f);}
  void main(){
   if(uGlow<.5){gl_FragColor=read(vUv)*uOpacity;return;}
   vec2 d=vec2(uRadius,uRadius*1.5);float a=halo(vUv)*.2;
   a+=(halo(vUv+vec2(d.x,0.))+halo(vUv-vec2(d.x,0.))+halo(vUv+vec2(0.,d.y))+halo(vUv-vec2(0.,d.y)))*.12;
   a+=(halo(vUv+d)+halo(vUv-d)+halo(vUv+vec2(d.x,-d.y))+halo(vUv+vec2(-d.x,d.y)))*.08;
-  a*=uOpacity;gl_FragColor=vec4(vec3(.65,.62,1.)*a,a);
+  float flicker=flow(vUv);a*=uOpacity*(.56+.44*flicker);
+  gl_FragColor=vec4(mix(vec3(.19,.025,.36),vec3(.42,.075,.71),flicker)*a,a);
  }`;
  // Attachment landmarks are authored for each image, translated to the same
  // root as the artwork. The chain never scales with a bitmap's bounding box.
@@ -57,7 +69,7 @@
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);}
      this.growthProgram=this.makeProgram(vertex,fragment);this.gu={};
-     for(const key of ['uResolution','uYoung','uMature','uProgress','uYoungOffset','uMatureOffset','uExposure','uLight','uClock','uGlow','uRadius','uOpacity'])this.gu[key]=gl.getUniformLocation(this.growthProgram,key);
+     for(const key of ['uResolution','uYoung','uMature','uProgress','uBirth','uYoungOffset','uMatureOffset','uExposure','uLight','uClock','uGlow','uRadius','uOpacity'])this.gu[key]=gl.getUniformLocation(this.growthProgram,key);
      this.ga={position:gl.getAttribLocation(this.growthProgram,'aPosition'),uv:gl.getAttribLocation(this.growthProgram,'aUv')};
      this.chains.forEach((m,i)=>{m.rankCurves={SS:m.curve};for(const rank of ['A','S']){
       const points=rankChains[rank][i%4].map(([x,y])=>[m.side<0?x:1-x,y]);m.rankCurves[rank]=m.curve.map((_,j)=>this.bezier(points,j/m.steps));}});
@@ -75,9 +87,9 @@
    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.rankTextures[pair.from]);gl.uniform1i(u.uYoung,0);
    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.rankTextures[pair.to]);gl.uniform1i(u.uMature,1);
    gl.uniform1f(u.uYoungOffset,offsets[pair.from]);gl.uniform1f(u.uMatureOffset,offsets[pair.to]);gl.uniform1f(u.uProgress,pair.progress);
-   gl.uniform1f(u.uExposure,exposure);gl.uniform1f(u.uLight,1+s.release*.15+Math.sin(time*.75)*.025);gl.uniform1f(u.uClock,time);
-   const passes=[];if(exposure>0)passes.push([.024,2,.50]);passes.push([0,0,1]);
-   if(pair.progress>0&&pair.progress<1)passes.push([.018,1,.65]);if(exposure>0)passes.push([.006,2,.17]);
+   gl.uniform1f(u.uBirth,pair.birth?1:0);gl.uniform1f(u.uExposure,exposure);gl.uniform1f(u.uLight,1+s.release*.15+Math.sin(time*.75)*.025);gl.uniform1f(u.uClock,time);
+   const passes=[];if(exposure>0)passes.push([.026,2,.38]);passes.push([0,0,1]);
+   if(pair.progress>0&&pair.progress<1)passes.push([.019,1,.58]);if(exposure>0)passes.push([.006,2,.13]);
    for(const [radius,glow,opacity]of passes){
     gl.blendFunc(gl.ONE,glow?gl.ONE_MINUS_SRC_COLOR:gl.ONE_MINUS_SRC_ALPHA);gl.uniform1f(u.uRadius,radius);gl.uniform1f(u.uGlow,glow);gl.uniform1f(u.uOpacity,opacity);
     for(const m of this.meshes){gl.bindBuffer(gl.ARRAY_BUFFER,m.buffer);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.indices);
@@ -91,6 +103,14 @@
    gl.uniform1f(gl.getUniformLocation(this.program,'uOpacity'),alpha);
    for(const m of this.chains)if(!!m.spec.behind===behind)this.drawMesh(m);
   }
+  core(ctx,a,s){
+   // The persistent black fire owns the center. Reflected violet light stays
+   // subdued underneath, instead of recreating a white angel-style flare.
+   const x=a.x+a.w*.5,y=a.y+a.h*.43,pulse=.78+Math.sin(s.time*2.1)*.08+Math.sin(s.time*3.7+.6)*.05;
+   ctx.save();ctx.globalCompositeOperation='screen';
+   this.glow(ctx,x,y,a.w*(.070+s.charge*.018+s.burst*.065),[[0,'#6d2e9f72'],[.20,'#51228042'],[.55,'#35174d19'],[1,'#24103000']],pulse);
+   this.glow(ctx,x,y,a.w*(.011+s.charge*.006+s.burst*.012),[[0,'#8f4bd7b0'],[.25,'#612b9d78'],[1,'#3d176700']],.58+s.burst*.22);ctx.restore();
+  }
   draw(ctx,w,h,options={}){
    if(!this.init())return false;
    const pair=this.pair(options),exposure=Number.isFinite(options.growthExposure)?clamp(options.growthExposure):0;
@@ -101,9 +121,11 @@
    const pw=Math.round(w*dpr),ph=Math.round(h*dpr);if(this.canvas.width!==pw||this.canvas.height!==ph){this.canvas.width=pw;this.canvas.height=ph;}
    this.paintWings(a,time,s);
    const transition=pair.from!==pair.to,chainRank=transition&&pair.progress<.5?pair.from:pair.to;
+   // First wings emerge from an empty root: only the arriving membrane is
+   // revealed by the same flame front, and chains wait for their attachment.
    // The old attachments dissolve before the new bones reach them; new chain
    // ornaments arrive after the wing silhouette forms instead of sliding.
-   const chainFade=transition?(1-smooth(pair.progress/.26))+smooth((pair.progress-.82)/.18):1;
+   const chainFade=pair.birth?smooth((pair.progress-.76)/.24):transition?(1-smooth(pair.progress/.26))+smooth((pair.progress-.82)/.18):1;
    for(const m of this.chains)m.curve=m.rankCurves[chainRank];
    if(options.chains!==false)this.paintChains(a,time,s);
    gl.viewport(0,0,pw,ph);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);

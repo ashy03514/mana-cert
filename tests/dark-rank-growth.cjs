@@ -13,7 +13,19 @@ try{
   const result=Object.freeze({type:'magic',element:'暗',rank,mana}),events=G.timeline(result);
   assert.equal(events.length,final);assert.ok(Object.isFrozen(events));
   assert.deepEqual(events.map(e=>[e.from,e.to]),[['A','S'],['S','SS']].slice(0,final));
-  assert.deepEqual(G.initial(.8),LightRankGrowth.initial(.8),'dark shares the accepted initial formation schedule');
+  const birth=G.initial(0),formedBirth=G.initial(.8),baseInitial=LightRankGrowth.initial(.8);
+  assert.deepEqual(birth.transition,{from:'A',to:'A',progress:0,birth:true},'initial A starts without an old wing beneath its reveal');
+  assert.deepEqual(formedBirth,{...baseInitial,transition:{from:'A',to:'A',progress:1,birth:true}},'only the root-out birth transition changes the accepted initial schedule');
+  let lastBirth=0;
+  for(const at of [0,.1,.2,.4,.6,.8,1]){
+   const pose=G.initial(at);assert.ok(pose.transition.progress>=lastBirth&&pose.transition.progress<=1,'initial front advances once from root to tips');
+   assert.equal(pose.exposure,1,'birth keeps the violet veil until the silhouette finishes');
+   assert.equal(pose.rank,'A');assert.equal(pose.growth,0);assert.equal(pose.time,LightRankGrowth.initial(at).time);
+   lastBirth=pose.transition.progress;
+  }
+  assert.equal(G.initial(.4).transition.progress,.5);assert.equal(G.initial(.6,1.2).transition.progress,.5,'formation duration drives the reveal without independent timers');
+  const handoff=G.sample(0,result,.8);assert.equal(formedBirth.time,handoff.time);assert.equal(formedBirth.exposure,handoff.exposure);assert.equal(handoff.transition.progress,1);
+  assert.equal(G.initial(-1).transition.progress,0);assert.equal(G.initial(10).transition.progress,1);
   assert.equal(G.scan(.1,result).label,'闇能凝聚');
   let previous=G.sample(0,result,.8);
   for(let frame=1;frame<=600;frame++){

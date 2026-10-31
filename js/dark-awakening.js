@@ -10,9 +10,9 @@
   const time=Math.max(0,Number.isFinite(elapsed)?elapsed:0);
   const charge=smooth(time/.32),absorb=smooth((time-.30)/1.50);
   const illumination=charge*(1-smooth((time-.50)/1.30));
-  const flame=smooth((time-1.90)/.38),handoff=smooth((time-2.7)/.8);
+  const flame=smooth((time-1.90)/.38),handoff=smooth((time-3.2)/.8);
   return {time,charge,absorb,illumination,flame,opening:flame,handoff,live:1-handoff,
-   phase:time<.32?'光霧浮現':time<1.90?'黑洞吞光':time<2.7?'黑焰迸發':'魔翼顯現'};
+   phase:time<.32?'光霧浮現':time<1.90?'黑洞吞光':time<2.5?'黑焰迸發':time<3.2?'黑焰凝核':'魔翼顯現'};
  }
  function prepare(){
   if(flameRenderer)return !flameRenderer.error;
@@ -45,7 +45,30 @@
    alpha:smooth(time/.24)*(1-smooth((q-.88)/.12)),q,depth,
    size:cloud?unit*(.13+depth*.19):(.75+depth*2.5)*Math.max(.7,unit/390)};
  }
- function draw(ctx,{width,height,elapsed=0,target,layer='all'}={}){
+ function flamePose({width,height,elapsed=0,target,art,growth=0}={}){
+  const s=sample(elapsed),unit=Math.min(width,height),g=Number.isFinite(growth)?Math.max(0,Math.min(2,growth)):0;
+  const center=target||{x:width*.5,y:height*.4};
+  const a=art||{w:unit*.72,cx:center.x,cy:center.y};
+  const compact=a.w*(.24+g*.07),contract=smooth((s.time-2.5)/.7);
+  const size=unit*1.22+(compact-unit*1.22)*contract;
+  const x=center.x+(a.cx-center.x)*contract;
+  const y=center.y+(a.cy+compact*.20-center.y)*contract;
+  return {x,y,size,time:Math.max(0,s.time-1.9),formation:s.flame,contract,
+   opacity:smooth((s.time-1.9)/.10),growth:g,
+   box:{x:x-size/2,y:y-size*1.23/2-size*.33,width:size,height:size*1.23}};
+ }
+ function drawFlame(ctx,args={}){
+  const pose=flamePose(args);if(!ctx||pose.opacity<=0||!prepare())return pose;
+  const {width,height}=args;
+  ctx.save();ctx.globalCompositeOperation='screen';
+  glow(ctx,pose.x,pose.y-pose.size*.20,pose.size*.52,
+   [[0,'#71358b50'],[.4,'#50216a24'],[1,'#29133e00']],pose.opacity*(.7+pose.growth*.15));
+  ctx.restore();
+  flameRenderer.draw(ctx,ctx.canvas,width,height,{box:pose.box,time:pose.time,
+   formation:pose.formation,phase:.5,opacity:pose.opacity});
+  return pose;
+ }
+ function draw(ctx,{width,height,elapsed=0,target,layer='all',includeFlame=true,art,growth=0}={}){
   if(!ctx||!(width>0&&height>0))return;
   const s=sample(elapsed);if(s.live<=0)return;
   const unit=Math.min(width,height),cx=target?.x??width*.5,cy=target?.y??height*.4;
@@ -95,13 +118,7 @@
    ctx.globalCompositeOperation='source-over';
    glow(ctx,cx,cy,radius*1.18,[[0,'#010108ff'],[.74,'#010108ff'],[.89,'#02020cf5'],[1,'#03030b00']],hole);
   }
-  if(s.flame>0&&prepare()){
-   // Fuel ignites at the former black-hole center. The flame's native
-   // formation grows gas from this fixed root rather than zooming a bitmap.
-   const w=unit*1.22,h=w*1.23,box={x:cx-w/2,y:cy-h/2-w*.33,width:w,height:h};
-   flameRenderer.draw(ctx,ctx.canvas,width,height,{box,time:s.time-1.9,
-    formation:s.flame,phase:.5,opacity:s.live});
-  }
+  if(includeFlame)drawFlame(ctx,{width,height,elapsed,target,art,growth});
   // Cooling fragments peel off after ignition, with independent rising speed.
   ctx.globalCompositeOperation='screen';
   for(let i=0;i<30;i++){
@@ -113,6 +130,6 @@
   }
   ctx.restore();
  }
- root.DarkAwakening=Object.freeze({sample,draw,infall,prepare,dispose,duration:2.7,totalDuration:3.5,
+ root.DarkAwakening=Object.freeze({sample,draw,drawFlame,flamePose,infall,prepare,dispose,duration:3.2,totalDuration:4.0,
   get error(){return flameRenderer?.error||'';},get lost(){return flameRenderer?.lost||false;}});
 })(globalThis);

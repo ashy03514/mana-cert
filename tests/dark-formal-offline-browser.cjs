@@ -22,11 +22,15 @@ const {chromium}=require('C:/Users/ashy0/.cache/codex-runtimes/codex-primary-run
    for(const [rank,mana]of [['A',750],['S',900],['SS',999]]){
     const sample=DarkRankGrowth.sample(10,{element:'暗',rank,mana}),layout=DarkRankGrowth.layout(390,844,1);
     const ok=r.draw(ctx,390,844,{time:10,box:layout.box,rank,growth:sample.growth,motionTime:sample.time,growthTransition:sample.transition,growthExposure:sample.exposure});
-    out.push({rank,ok,error:r.error,layer:r.layerState,gl:r.gl?.getError()});
+    const art=r.layout(390,844,layout.box);
+    const fire=DarkAwakening.drawFlame(ctx,{width:390,height:844,elapsed:14,art,target:{x:art.cx,y:art.cy},growth:sample.growth});
+    if(DarkAwakening.error)throw Error(DarkAwakening.error);
+    out.push({rank,ok,error:r.error,layer:r.layerState,gl:r.gl?.getError(),fire});
    }
-   const assets=Object.entries(r.images).map(([rank,image])=>({rank,width:image.naturalWidth,embedded:image.src.startsWith('data:')}));r.dispose();return {out,assets};
+   const assets=Object.entries(r.images).map(([rank,image])=>({rank,width:image.naturalWidth,embedded:image.src.startsWith('data:')}));r.dispose();DarkAwakening.dispose();return {out,assets};
   });
-  for(const r of outcomes.out){assert.equal(r.ok,true);assert.equal(r.error,'');assert.equal(r.gl,0);assert.equal(r.layer.to,r.rank);assert.equal(r.layer.exposure,0);}
+  for(const r of outcomes.out){assert.equal(r.ok,true);assert.equal(r.error,'');assert.equal(r.gl,0);assert.equal(r.layer.to,r.rank);assert.equal(r.layer.exposure,0);assert.equal(r.fire.opacity,1);assert.equal(r.fire.contract,1);}
+  assert.ok(outcomes.out[0].fire.size<outcomes.out[1].fire.size&&outcomes.out[1].fire.size<outcomes.out[2].fire.size,'offline fire grows with wings');
   assert.deepEqual(outcomes.assets.map(a=>a.rank).sort(),['A','S','SS']);for(const a of outcomes.assets){assert.ok(a.width>500);assert.equal(a.embedded,true);}
   assert.deepEqual(errors,[]);console.log('PASS dark PWA offline: cached awakening/renderer/timing, embedded three wing assets and chains, correct settled A/S/SS images.');
  }finally{await browser.close();}

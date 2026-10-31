@@ -9,7 +9,14 @@
   return {...sampled,label:sampled.label==='聖光凝聚'?'闇能凝聚':sampled.label};
  }
  function sample(elapsed,result,formationDuration=.8){return source().sample(elapsed,result,formationDuration);}
- function initial(materialTime=0){return source().initial(materialTime);}
+ function initial(materialTime=0,formationDuration=.8){
+  const pose=source().initial(materialTime);
+  const duration=Number.isFinite(formationDuration)&&formationDuration>0?formationDuration:.8;
+  const t=Math.max(0,Math.min(1,(Number.isFinite(materialTime)?materialTime:0)/duration));
+  // Birth uses the same registered root-out veil as later evolutions, but
+  // has no previous wing underneath it. The fire remains owned by the host.
+  return {...pose,transition:{from:'A',to:'A',progress:t*t*(3-2*t),birth:true}};
+ }
  function timeline(result){return source().timeline(result);}
  function layout(width,height,shift=0,options={}){
   const result=source().layout(width,height,shift,options);

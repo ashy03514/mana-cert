@@ -27,7 +27,7 @@
     get ready(){return this.distance>=24;}
     get gatherDuration(){return this._gatherDuration;}
     get awakeningEnabled(){return (this.lightAwakening&&this.element==='light')||(this.darkAwakening&&this.element==='dark');}
-    get awakeningDuration(){return this.awakeningEnabled?(this.element==='dark'?2.7:DURATIONS.AWAKEN):0;}
+    get awakeningDuration(){return this.awakeningEnabled?(this.element==='dark'?3.2:DURATIONS.AWAKEN):0;}
     get formationDuration(){return this.awakeningEnabled&&this.element==='light' ? .6 : this.element==='fire'||this.element==='water'?1.2:DURATIONS.FORM;}
     get duration(){if(this.state==='AWAKEN')return this.awakeningDuration;return this.state==='GATHER'?this.gatherDuration:this.state==='FORM'?this.formationDuration:DURATIONS[this.state];}
     get progress(){
