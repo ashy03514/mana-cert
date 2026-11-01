@@ -45,24 +45,27 @@
    alpha:smooth(time/.24)*(1-smooth((q-.88)/.12)),q,depth,
    size:cloud?unit*(.13+depth*.19):(.75+depth*2.5)*Math.max(.7,unit/390)};
  }
- function flamePose({width,height,elapsed=0,target,art,growth=0}={}){
+ function flamePose({width,height,elapsed=0,target,art,growth=0,evolutionAction}={}){
   const s=sample(elapsed),unit=Math.min(width,height),g=Number.isFinite(growth)?Math.max(0,Math.min(2,growth)):0;
   const center=target||{x:width*.5,y:height*.4};
   const a=art||{w:unit*.72,cx:center.x,cy:center.y};
   const compact=a.w*(.24+g*.07),contract=smooth((s.time-2.5)/.7);
-  const size=unit*1.22+(compact-unit*1.22)*contract;
+  const baseSize=unit*1.22+(compact-unit*1.22)*contract;
+  const burst=clamp(Number.isFinite(evolutionAction?.burst)?evolutionAction.burst:0)*clamp(Number.isFinite(evolutionAction?.weight)?evolutionAction.weight:0)*contract;
+  const size=baseSize*(1+burst*.18);
   const x=center.x+(a.cx-center.x)*contract;
-  const y=center.y+(a.cy+compact*.20-center.y)*contract;
+  // Keep the fuel bed at the wing root as the violet tongues surge outward.
+  const y=center.y+(a.cy+compact*.20-center.y)*contract+(size-baseSize)*.20;
   return {x,y,size,time:Math.max(0,s.time-1.9),formation:s.flame,contract,
-   opacity:smooth((s.time-1.9)/.10),growth:g,
+   opacity:smooth((s.time-1.9)/.10),growth:g,burst,
    box:{x:x-size/2,y:y-size*1.23/2-size*.33,width:size,height:size*1.23}};
  }
  function drawFlame(ctx,args={}){
   const pose=flamePose(args);if(!ctx||pose.opacity<=0||!prepare())return pose;
   const {width,height}=args;
   ctx.save();ctx.globalCompositeOperation='screen';
-  glow(ctx,pose.x,pose.y-pose.size*.20,pose.size*.52,
-   [[0,'#71358b50'],[.4,'#50216a24'],[1,'#29133e00']],pose.opacity*(.7+pose.growth*.15));
+  glow(ctx,pose.x,pose.y-pose.size*.20,pose.size*(.52+pose.burst*.16),
+   [[0,'#71358b50'],[.4,'#50216a24'],[1,'#29133e00']],Math.min(1,pose.opacity*(.7+pose.growth*.15+pose.burst*.22)));
   ctx.restore();
   flameRenderer.draw(ctx,ctx.canvas,width,height,{box:pose.box,time:pose.time,
    formation:pose.formation,phase:.5,opacity:pose.opacity});

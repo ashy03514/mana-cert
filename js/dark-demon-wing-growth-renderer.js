@@ -125,7 +125,7 @@
    if(!this.init())return false;
    const pair=this.pair(options),exposure=Number.isFinite(options.growthExposure)?clamp(options.growthExposure):0;
    const time=Number.isFinite(options.motionTime)?Math.max(0,options.motionTime):Math.max(0,options.time||0)*root.DarkDemonWingMotion.profile(pair.to).speed;
-   const from=root.DarkDemonWingMotion.sample(time,pair.from),to=root.DarkDemonWingMotion.sample(time,pair.to),s={...to};
+   const from=root.DarkDemonWingMotion.sample(time,pair.from,options.evolutionAction),to=root.DarkDemonWingMotion.sample(time,pair.to,options.evolutionAction),s={...to};
    for(const key of ['charge','release','burst','idleStrength','chainStrength','chainOpacity','core','rays'])s[key]=from[key]+(to[key]-from[key])*pair.progress;
    const a=this.layout(w,h,options.box),gl=this.gl,dpr=Math.min(1.5,Math.max(1,ctx.getTransform().a));
    const pw=Math.round(w*dpr),ph=Math.round(h*dpr);if(this.canvas.width!==pw||this.canvas.height!==ph){this.canvas.width=pw;this.canvas.height=ph;}
@@ -155,7 +155,7 @@
    this.stage??=document.createElement('canvas');if(this.stage.width!==pw||this.stage.height!==ph){this.stage.width=pw;this.stage.height=ph;}
    const layer=this.stage.getContext('2d');layer.setTransform(dpr,0,0,dpr,0,0);layer.clearRect(0,0,w,h);
    this.background(layer,w,h,a,s);layer.globalAlpha=s.visible;layer.drawImage(this.canvas,0,0,w,h);layer.globalAlpha=1;this.core(layer,a,s);
-   this.particles(layer,a,time,pair.progress<.65?pair.from:pair.to);
+   this.particles(layer,a,time,pair.progress<.65?pair.from:pair.to,options.evolutionAction);
    ctx.save();ctx.globalAlpha=clamp(options.opacity??1);ctx.drawImage(this.stage,0,0,w,h);ctx.restore();
    this.layerState={...pair,exposure,mode:'registered-membrane-reveal'};this.lastArt=a;this.lastSample=s;this.drawCount++;return true;
   }

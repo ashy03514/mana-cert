@@ -139,14 +139,20 @@
     const angle=seed(i+160)*Math.PI*2,r=a.w*(.3+seed(i+220)*.65),depth=seed(i+300);
     ctx.globalAlpha=(.15+depth*.25)*s.visible;ctx.fillStyle=i%3?'#b79ac9':'#a9bad7';ctx.beginPath();ctx.arc(x+Math.cos(angle)*r+Math.sin(t*.17+i)*a.w*.012,y+Math.sin(angle)*r*.8+Math.cos(t*.23+i)*a.w*.018,.5+depth,0,Math.PI*2);ctx.fill();
    }ctx.globalAlpha=1;
-   const wave=(s.phase-2.20)/1.15;
-   if(wave>0&&wave<1){const r=a.w*(.06+wave*.95),band=a.w*(.06+.05*wave),g=ctx.createRadialGradient(x,y,Math.max(0,r-band),x,y,r+band);
-    g.addColorStop(0,'#937ee700');g.addColorStop(.48,'#b5a9ff30');g.addColorStop(1,'#937ee700');ctx.globalAlpha=Math.sin(wave*Math.PI)*.65;ctx.fillStyle=g;ctx.fillRect(x-r-band,y-r-band,2*(r+band),2*(r+band));ctx.globalAlpha=1;
+   const wave=(progress,alpha)=>{
+    if(progress<=0||progress>=1||alpha<=0)return;
+    const r=a.w*(.06+progress*.95),band=a.w*(.06+.05*progress),g=ctx.createRadialGradient(x,y,Math.max(0,r-band),x,y,r+band);
+    g.addColorStop(0,'#937ee700');g.addColorStop(.48,'#b5a9ff30');g.addColorStop(1,'#937ee700');ctx.globalAlpha=Math.sin(progress*Math.PI)*.65*alpha;ctx.fillStyle=g;ctx.fillRect(x-r-band,y-r-band,2*(r+band),2*(r+band));ctx.globalAlpha=1;
+   };
+   const action=s.evolutionAction,weight=Math.max(0,Math.min(1,Number.isFinite(action?.weight)?action.weight:0));
+   wave((s.phase-2.20)/1.15,1-weight);
+   for(const pulse of Array.isArray(action?.pulses)?action.pulses:[]){
+    if(Number.isFinite(pulse.age))wave((pulse.age-.30)/1.15,root.DarkDemonWingMotion.profile(pulse.rank).burst);
    }
   }
-  particles(ctx,a,time,rank='SS'){
+  particles(ctx,a,time,rank='SS',evolutionAction){
    const colors=['#c5ceff','#bc97f5','#9ba6e3'];
-   for(const p of root.DarkDemonWingMotion.particles(time,rank)){
+   for(const p of root.DarkDemonWingMotion.particles(time,rank,evolutionAction)){
     if(p.alpha<=.005)continue;const x=a.x+p.x*a.w,y=a.y+p.y*a.h,r=Math.max(.45,p.size*a.w);
     ctx.save();ctx.globalAlpha=p.alpha;ctx.fillStyle=colors[p.tint%3]||colors[0];ctx.translate(x,y);ctx.rotate(p.rotation||0);
     if(p.star){ctx.beginPath();ctx.moveTo(0,-r);ctx.quadraticCurveTo(r*.12,-r*.12,r,0);ctx.quadraticCurveTo(r*.12,r*.12,0,r);ctx.quadraticCurveTo(-r*.12,r*.12,-r,0);ctx.quadraticCurveTo(-r*.12,-r*.12,0,-r);ctx.fill();}
@@ -161,7 +167,7 @@
   }
   draw(ctx,w,h,options={}){
    if(!this.init())return false;
-   const gl=this.gl,time=Number.isFinite(options.time)?Math.max(0,options.time):0,s=root.DarkDemonWingMotion.sample(time),a=this.layout(w,h,options.box),dpr=Math.min(1.5,Math.max(1,ctx.getTransform().a));
+   const gl=this.gl,time=Number.isFinite(options.time)?Math.max(0,options.time):0,s=root.DarkDemonWingMotion.sample(time,'SS',options.evolutionAction),a=this.layout(w,h,options.box),dpr=Math.min(1.5,Math.max(1,ctx.getTransform().a));
    const pw=Math.round(w*dpr),ph=Math.round(h*dpr);if(this.canvas.width!==pw||this.canvas.height!==ph){this.canvas.width=pw;this.canvas.height=ph;}
    this.paintWings(a,time,s);if(options.chains!==false)this.paintChains(a,time,s);
    gl.viewport(0,0,pw,ph);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(this.program);gl.uniform2f(this.resolution,w,h);gl.uniform1i(this.sampler,0);gl.activeTexture(gl.TEXTURE0);
@@ -171,7 +177,7 @@
    gl.bindTexture(gl.TEXTURE_2D,this.textures[0]);gl.uniform1f(this.light,1+s.release*.15+Math.sin(time*.75)*.025);for(const m of this.meshes)this.drawMesh(m);
    gl.bindTexture(gl.TEXTURE_2D,this.textures[1]);gl.uniform1f(this.light,1+s.release*.20);
    if(options.chains!==false)for(const m of this.chains)if(!m.spec.behind)this.drawMesh(m);
-   ctx.save();this.background(ctx,w,h,a,s);ctx.globalAlpha=s.visible;ctx.drawImage(this.canvas,0,0,w,h);ctx.globalAlpha=1;this.core(ctx,a,s);this.particles(ctx,a,time);ctx.restore();
+   ctx.save();this.background(ctx,w,h,a,s);ctx.globalAlpha=s.visible;ctx.drawImage(this.canvas,0,0,w,h);ctx.globalAlpha=1;this.core(ctx,a,s);this.particles(ctx,a,time,'SS',options.evolutionAction);ctx.restore();
    this.lastArt=a;this.lastSample=s;this.drawCount++;return true;
   }
   release(){const gl=this.gl;if(gl&&!this.lost){for(const m of [...this.meshes,...this.chains]){gl.deleteBuffer(m.buffer);gl.deleteBuffer(m.indices);}this.textures.forEach(t=>gl.deleteTexture(t));if(this.program)gl.deleteProgram(this.program);}this.program=null;this.meshes=[];this.chains=[];this.textures=[];}

@@ -24,13 +24,16 @@
   const AMBIENT_MIN_SIZE=.0017,AMBIENT_MAX_SIZE=(.0017+.014)*.70;
   const seed=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
   const noise=n=>{const i=Math.floor(n);return seed(i)+(seed(i+1)-seed(i))*smooth(n-i);};
-  function sample(value,rank='SS'){
+  function sample(value,rank='SS',action){
     const t=time(value),phase=t%PERIOD,p=profile(rank);
     // A deliberate intake, quick release and long recovery. The fully spread
     // silhouette remains readable even at maximum concentration.
-    const charge=smooth((phase-.25)/1.45)*(1-smooth((phase-1.82)/.42))*p.charge;
-    const expansion=smooth((phase-1.82)/.52)*(1-smooth((phase-2.55)/1.55))*p.expansion;
-    const burst=smooth((phase-1.97)/.15)*(1-smooth((phase-2.17)/.75))*p.burst;
+    // Evolution owns one short release without resetting the living clock.
+    const weight=Number.isFinite(action?.weight)?clamp(action.weight):0;
+    const cue=key=>Number.isFinite(action?.[key])?clamp(action[key]):0;
+    const charge=(smooth((phase-.25)/1.45)*(1-smooth((phase-1.82)/.42))*(1-weight)+cue('charge')*weight)*p.charge;
+    const expansion=(smooth((phase-1.82)/.52)*(1-smooth((phase-2.55)/1.55))*(1-weight)+cue('release')*weight)*p.expansion;
+    const burst=(smooth((phase-1.97)/.15)*(1-smooth((phase-2.17)/.75))*(1-weight)+cue('burst')*weight)*p.burst;
     return {time:t,phase,rank:p.rank,cycle:Math.floor(t/PERIOD),charge,expansion,burst,
       visible:smooth((t-.05)/.5),core:smooth(t/.5)*p.core,crown:smooth(t/1.25)*p.crown,
       scale:1-charge*.09+expansion*.065,
@@ -39,8 +42,11 @@
       coreGlare:.70+noise(t*1.05+5)*.45+noise(t*3.2+11)*.22,
       rays:smooth((t-.12)/.8)*(1-charge*.17+burst*.38)*p.rays};
   }
-  function point(u,v,value,sideOverride,rank='SS'){
-    const s=sample(value,rank),rankProfile=profile(rank),side=sideOverride===-1||sideOverride===1?sideOverride:(u<.5?-1:1),reach=Math.abs(u-.5)*2;
+  function point(u,v,value,sideOverride,rank='SS',action){
+    return pointAtPose(u,v,sample(value,rank,action),sideOverride);
+  }
+  function pointAtPose(u,v,s,sideOverride){
+    const rankProfile=profile(s.rank),side=sideOverride===-1||sideOverride===1?sideOverride:(u<.5?-1:1),reach=Math.abs(u-.5)*2;
     let p={x:Math.abs(u-.5),y:(v-.72)/1.5};
     const follow=smooth((reach-.28)/.58);
     // A continuous, slow shoulder stroke also runs between ceremonial bursts.
@@ -64,8 +70,8 @@
     p.x*=s.scale;p.y*=s.scale;
     return {x:p.x*side,y:p.y};
   }
-  function particles(value,rank='SS'){
-    const s=sample(value,rank),p=profile(rank),out=[];
+  function particles(value,rank='SS',action){
+    const s=sample(value,rank,action),p=profile(rank),out=[];
     if(s.charge>0){
       for(let i=0;i<Math.round(18*p.charge);i++){
         const age=(s.phase*.67+seed(i+50))%1,angle=seed(i+80)*Math.PI*2;
@@ -74,8 +80,20 @@
           size:.0023+seed(i+90)*.0018,alpha:Math.sin(age*Math.PI)*s.charge*.55,rotation:0,star:false,tint:0});
       }
     }
+    const weight=Number.isFinite(action?.weight)?clamp(action.weight):0;
+    out.push(...burstParticles(s.phase,rank).map(p=>({...p,alpha:p.alpha*(1-weight)})));
+    for(const pulse of action?.pulses||[]){
+      if(!Number.isFinite(pulse.age)||!['S','SS'].includes(pulse.rank))continue;
+      // Each completed silhouette emits once. Age also retains particles from
+      // the preceding rank while the next feather bank is forming.
+      out.push(...burstParticles(2.01+pulse.age-.30,pulse.rank).map(p=>({...p,evolution:true})));
+    }
+    return out;
+  }
+  function burstParticles(phase,rank){
+    const p=profile(rank),out=[];
     for(let i=0;i<p.burstCount;i++){
-      const age=s.phase-2.01-seed(i+9)*.23,life=1.10+seed(i+70)*1.15;
+      const age=phase-2.01-seed(i+9)*.23,life=1.10+seed(i+70)*1.15;
       if(age<0||age>life)continue;
       const progress=age/life,angle=i*2.39996323+seed(i+39)*.17;
       const reach=.24+seed(i+109)*.45,travel=1-Math.pow(1-progress,2.4);
@@ -104,5 +122,5 @@
     }
     return out;
   }
-  root.LightAngelMotion=Object.freeze({sample,point,particles,ambientParticles,profile,noise,wingScale,registeredWingUV,PERIOD});
+  root.LightAngelMotion=Object.freeze({sample,point,pointAtPose,particles,ambientParticles,profile,noise,wingScale,registeredWingUV,PERIOD});
 })(globalThis);

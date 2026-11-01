@@ -50,6 +50,29 @@
     pointer-events:none;
   }
 
+  .waitingPromptCopy {
+    margin:0; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere;
+    font-size:var(--prompt-size,22px); font-weight:500; line-height:var(--prompt-leading,1.5);
+    letter-spacing:var(--prompt-tracking,2px); color:var(--prompt-color,#fff);
+    text-shadow:0 1px 5px #080919cc,0 0 15px #b7bdff55;
+  }
+  #waitingPrompt {
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + clamp(36px,10vh,92px));
+    left:max(18px,env(safe-area-inset-left)); right:max(18px,env(safe-area-inset-right));
+    max-width:42rem; margin-inline:auto; pointer-events:none;
+  }
+  body:not([data-state="STANDBY"]) #waitingPrompt, #waitingPrompt:empty { display:none; }
+  #waitingPromptSettings textarea {
+    display:block; width:100%; margin:6px 0; padding:10px 12px; resize:vertical;
+    border:1px solid #ad906566; border-radius:9px; background:#ffffffb3; color:#503f2a;
+    font:inherit; font-size:16px; line-height:1.5; user-select:text; -webkit-user-select:text;
+  }
+  .waitingPromptSample { margin:10px 0 0; padding:14px; border-radius:10px;
+    background:radial-gradient(ellipse at center,#101126,#24223f); }
+  .waitingPromptSample figcaption { margin-bottom:8px; color:#bfbcd2; font-size:12px; }
+  #waitingPromptPreview { max-height:14rem; overflow:auto; }
+  .waitingPromptSwatch { display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; }
+
   /* ===== 設定頁 ===== */
   #settingsPage{
     position:fixed; inset:0; z-index:50;
@@ -694,6 +717,30 @@
       <label><input id="soundEnabled" type="checkbox" checked> 音效</label>
       <label style="margin-left:20px"><input id="hapticsEnabled" type="checkbox" checked> 震動（支援裝置）</label>
     </div>
+    <details id="waitingPromptSettings" class="effectGroup">
+      <summary>等待鑑定提示文字</summary>
+      <label for="waitingPromptText">提示文案</label>
+      <textarea id="waitingPromptText" data-prompt-field="text" rows="3" aria-describedby="waitingPromptHint"></textarea>
+      <p id="waitingPromptHint" class="effectHint">可按 Enter 換行，留白即可隱藏提示。首次觸碰後，文字會收起。</p>
+      <div class="effectControl">
+        <label for="waitingPromptSize">文字大小</label><output id="waitingPromptSizeValue" for="waitingPromptSize"></output>
+        <input id="waitingPromptSize" data-prompt-field="size" type="range" min="12" max="48" step="1">
+      </div>
+      <div class="effectControl">
+        <label for="waitingPromptLetterSpacing">字距</label><output id="waitingPromptLetterSpacingValue" for="waitingPromptLetterSpacing"></output>
+        <input id="waitingPromptLetterSpacing" data-prompt-field="letterSpacing" type="range" min="0" max="12" step="1">
+      </div>
+      <div class="effectControl">
+        <label for="waitingPromptLineHeight">行距</label><output id="waitingPromptLineHeightValue" for="waitingPromptLineHeight"></output>
+        <input id="waitingPromptLineHeight" data-prompt-field="lineHeight" type="range" min="0.9" max="2.4" step="0.1">
+      </div>
+      <div class="effectColor"><label for="waitingPromptColor">文字顏色</label>
+        <span class="waitingPromptSwatch"><output id="waitingPromptColorValue" for="waitingPromptColor"></output>
+        <input id="waitingPromptColor" data-prompt-field="color" type="color"></span>
+      </div>
+      <figure class="waitingPromptSample"><figcaption>文字預覽</figcaption><p id="waitingPromptPreview" class="waitingPromptCopy"></p></figure>
+      <p id="waitingPromptSaveError" class="effectHint" role="status" hidden>已套用至本次鑑定，此裝置目前無法儲存設定。</p>
+    </details>
     </section>
     <section id="panel_probabilities" class="settingsPanel probabilitySection" role="tabpanel" aria-labelledby="tab_probabilities" hidden>
       <div class="probabilityHeading"><h2>機率設定</h2><button id="restoreProbabilities" class="btn btnGhost" type="button">回復預設值</button></div>
@@ -827,7 +874,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="138" title="目前載入頁面的版本">目前版本 v138</span>
+        <span id="appVersion" data-version="140" title="目前載入頁面的版本">目前版本 v140</span>
       </div>
     </div>
     </div>
@@ -846,6 +893,7 @@
 
 <div id="animLayer" aria-label="傳送門：按住加速旋轉，放開恢復慢速">
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
+  <p id="waitingPrompt" class="waitingPromptCopy"></p>
 </div>
 <button id="effectPreviewBack" type="button" hidden>返回設定</button>
 <div id="materialControls" role="region" aria-label="屬性樣板控制" hidden>
@@ -936,6 +984,7 @@
 <script src="./js/effect-settings.js"></script>
 <script src="./js/probability-settings.js"></script>
 <script src="./js/cert-settings.js"></script>
+<script src="./js/waiting-prompt.js"></script>
 <script src="./js/rank-lettering.js"></script>
 <script src="./js/result-layout.js"></script>
 <script src="./js/result-system.js"></script>
@@ -1025,6 +1074,7 @@
   let effectStorage;
   try{effectStorage=window.localStorage;}catch(_){}
   let effectValues=EffectSettings.load(effectStorage);
+  WaitingPromptSettings.mount(document,effectStorage);
 
   function getViewportSize(){
     return window.visualViewport
@@ -1155,7 +1205,7 @@
     const panel=document.getElementById(id);
     // Bubble after the control's own handler has redistributed probabilities
     // or synchronized the master switch and individual element switches.
-    panel.addEventListener('input',event=>{if(event.target.matches('input[type="range"]'))saveCertPreferences();});
+    panel.addEventListener('input',event=>{if(event.target.matches('.probabilityRow input[type="range"]'))saveCertPreferences();});
     panel.addEventListener('change',event=>{if(event.target.matches('input[type="checkbox"]'))saveCertPreferences();});
   }
   function probabilityAvailability(){return {muggle:muggleToggle.checked,basic:['火','水','風','土'].some(k=>elementEnabled[k]),rare:['光','暗'].some(k=>elementEnabled[k])};}
@@ -1470,14 +1520,16 @@
       box:formalReveal?frame?.box:lightPreviewBox(w,h),
       rank:formalReveal?frame?.darkEffects?.rank:darkPreviewRank,
       growth:frame?.darkEffects?.growth,motionTime:frame?.darkEffects?.time,starMana:frame?.darkEffects?.starMana,
-      growthTransition:frame?.darkEffects?.transition,growthExposure:frame?.darkEffects?.exposure
+      growthTransition:frame?.darkEffects?.transition,growthExposure:frame?.darkEffects?.exposure,
+      evolutionAction:frame?.darkEffects?.evolutionAction
     });
     if(usesLightMaterial())return active.draw(ctx,w,h,{
       time:frame?.time??materialRenderer.time,opacity:frame?.opacity??1,
       box:formalReveal?frame?.box:lightPreviewBox(w,h),
       rank:formalReveal?frame?.lightEffects?.rank:lightPreviewRank,
       growth:frame?.lightEffects?.growth,motionTime:frame?.lightEffects?.time,starMana:frame?.lightEffects?.starMana,
-      growthTransition:frame?.lightEffects?.transition,growthExposure:frame?.lightEffects?.exposure
+      growthTransition:frame?.lightEffects?.transition,growthExposure:frame?.lightEffects?.exposure,
+      evolutionAction:frame?.lightEffects?.evolutionAction
     });
     if(usesEarthMaterial())return active.draw(ctx,canvas,w,h,{
       ...(frame||{time:materialRenderer.time,opacity:1,formation:1}),
@@ -1542,7 +1594,7 @@
             layoutAt:delay=>active.layout(w,h,fitResultLayout(w,h,LightRankGrowth.layout(w,h,LightRankGrowth.scan(event.at+delay,result).shift),'light').box),
             poseAt:delay=>{
               const pose=LightRankGrowth.sample(event.at+delay,result,formation);
-              return {time:pose.time,progress:pose.transition.progress};
+              return {time:pose.time,progress:pose.transition.progress,evolutionAction:pose.evolutionAction};
             }}));
         }
       }
@@ -1738,7 +1790,8 @@
         flow.awakeningDuration+flow.formationDuration+flow.elapsed;
       const art=activeMaterialRenderer().layout(w,h,box);
       DarkAwakening.drawFlame(ctx,{width:w,height:h,elapsed:time,target,art,
-        growth:formalDark?(darkEffects?.growth||0):{A:0,S:1,SS:2}[darkPreviewRank]});
+        growth:formalDark?(darkEffects?.growth||0):{A:0,S:1,SS:2}[darkPreviewRank],
+        evolutionAction:darkEffects?.evolutionAction});
     }
     if(flow.element==='light'&&['AWAKEN','FORM','REVEAL'].includes(state)&&!previewMaterialBlocked()){
       const base=flow.awakeningDuration+flow.formationDuration;

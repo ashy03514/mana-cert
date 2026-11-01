@@ -15,12 +15,16 @@
  const seed=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
  const noise=n=>{const i=Math.floor(n);return seed(i)+(seed(i+1)-seed(i))*smooth(n-i);};
  const rotate=(p,x,y,a,w)=>{const dx=p.x-x,dy=p.y-y,c=Math.cos(a),s=Math.sin(a);return {x:p.x+(dx*c-dy*s-dx)*w,y:p.y+(dx*s+dy*c-dy)*w};};
- function sample(value,rank='SS'){
+ function sample(value,rank='SS',evolutionAction){
   const time=safeTime(value),phase=time%PERIOD,p=profile(rank);
-  const charge=smooth((phase-.42)/1.40)*(1-smooth((phase-2.02)/.40))*p.charge;
-  const release=smooth((phase-2.02)/.48)*(1-smooth((phase-2.78)/1.25))*p.release;
-  const burst=smooth((phase-2.14)/.16)*(1-smooth((phase-2.40)/.70))*p.burst;
+  // An evolution overrides only the ceremony, never the continuous idle clock.
+  const weight=clamp(Number.isFinite(evolutionAction?.weight)?evolutionAction.weight:0);
+  const action=(key,periodic)=>periodic*(1-weight)+clamp(Number.isFinite(evolutionAction?.[key])?evolutionAction[key]:0)*weight;
+  const charge=action('charge',smooth((phase-.42)/1.40)*(1-smooth((phase-2.02)/.40)))*p.charge;
+  const release=action('release',smooth((phase-2.02)/.48)*(1-smooth((phase-2.78)/1.25)))*p.release;
+  const burst=action('burst',smooth((phase-2.14)/.16)*(1-smooth((phase-2.40)/.70)))*p.burst;
   return {time,phase,rank:p.rank,cycle:Math.floor(time/PERIOD),charge,release,burst,
+   ...(evolutionAction?{evolutionAction}:{}),
    idleStrength:p.idle,chainStrength:p.chainMotion,chainOpacity:p.chainOpacity,
    visible:smooth(time/.48),
    phaseName:phase<.42?'魔力甦醒':phase<2.14?'凝聚魔力':phase<3.10?'展翼爆發':phase<4.10?'餘波回盪':'魔翼呼吸',
@@ -61,13 +65,18 @@
   // across the moving bone. Only the middle of the hanging chain lags.
   if(f===0||f===1)return p;
   const middle=Math.sin(Math.PI*f)*(s.chainStrength??profile(s.rank).chainMotion),age=Math.max(0,s.phase-2.13);
-  const ring=age>0?Math.sin(age*8.8)*Math.exp(-age*2.05)*smooth(age/.14)*(1-smooth((age-2.6)/.7)):0;
+  const impulse=age=>age>0?Math.sin(age*8.8)*Math.exp(-age*2.05)*smooth(age/.14)*(1-smooth((age-2.6)/.7)):0;
+  const action=s.evolutionAction,weight=clamp(Number.isFinite(action?.weight)?action.weight:0);
+  // The chain recoil follows the actual release, including its settling tail.
+  const recoil=(Array.isArray(action?.pulses)?action.pulses:[]).reduce((sum,pulse)=>sum+(Number.isFinite(pulse.age)?impulse(pulse.age-.23):0),0);
+  const ring=impulse(age)*(1-weight)+recoil;
   p.x+=side*middle*(Math.sin(s.time*.95-1.1)*.0058+ring*.025-s.charge*.004);
   p.y+=middle*(Math.sin(s.time*.95-1.65)*.005+ring*.012+s.charge*.004);
   return p;
  }
- function particles(value,rank='SS'){
-  const s=sample(value,rank),p=profile(rank),out=[];
+ function particles(value,rank='SS',evolutionAction){
+  const s=sample(value,rank,evolutionAction),p=profile(rank),out=[];
+  const weight=clamp(Number.isFinite(evolutionAction?.weight)?evolutionAction.weight:0);
   // Long-lived dust lanes have their own clock, independent of the ceremony.
   for(let i=0;i<p.idleCount;i++){
    const life=4.8+seed(i+71)*3.4,clock=s.time+seed(i+110)*life;
@@ -87,16 +96,25 @@
      rotation:0,star:false,tint:i%2});
    }
   }
-  for(let i=0;i<p.burstCount;i++){
-   const age=s.phase-2.20-seed(i+923)*.18,life=1.1+seed(i+70)*.95;
-   if(age<0||age>life)continue;
-   const progress=age/life,angle=i*2.39996323+seed(i+19)*.19,curve=(seed(i+149)-.5)*progress*.30;
-   const radius=.025+(.22+seed(i+109)*.42)*(1-Math.pow(1-progress,2.4));
-   const star=i<p.starCount,envelope=smooth(age/.07)*(1-smooth((progress-.2)/.8));
-   out.push({id:'burst-'+i,x:ROOT_X+Math.cos(angle+curve)*radius,y:ROOT_Y+Math.sin(angle+curve)*radius*1.25-progress*progress*.045,
-    size:(star?.0042+Math.pow(seed(i+79),2)*.0088:.0013+seed(i+29)*.002)*p.particleSize,
-    alpha:envelope*(.65+seed(i+219)*.30)*s.visible*p.burst,
-    rotation:seed(i+179)*Math.PI+age*(seed(i+199)-.5)*2.0,star,tint:i%3});
+  const addBurst=(phase,p,opacity,prefix)=>{
+   if(opacity<=0)return;
+   for(let i=0;i<p.burstCount;i++){
+    const age=phase-2.20-seed(i+923)*.18,life=1.1+seed(i+70)*.95;
+    if(age<0||age>life)continue;
+    const progress=age/life,angle=i*2.39996323+seed(i+19)*.19,curve=(seed(i+149)-.5)*progress*.30;
+    const radius=.025+(.22+seed(i+109)*.42)*(1-Math.pow(1-progress,2.4));
+    const star=i<p.starCount,envelope=smooth(age/.07)*(1-smooth((progress-.2)/.8));
+    out.push({id:prefix+i,x:ROOT_X+Math.cos(angle+curve)*radius,y:ROOT_Y+Math.sin(angle+curve)*radius*1.25-progress*progress*.045,
+     size:(star?.0042+Math.pow(seed(i+79),2)*.0088:.0013+seed(i+29)*.002)*p.particleSize,
+     alpha:envelope*(.65+seed(i+219)*.30)*s.visible*p.burst*opacity,
+     rotation:seed(i+179)*Math.PI+age*(seed(i+199)-.5)*2.0,star,tint:i%3});
+   }
+  };
+  addBurst(s.phase,p,1-weight,'burst-');
+  // Each event retains its own birth time and rank until the last spark dies.
+  for(const pulse of Array.isArray(evolutionAction?.pulses)?evolutionAction.pulses:[]){
+   if(!['S','SS'].includes(pulse.rank)||!Number.isFinite(pulse.age))continue;
+   addBurst(2.20+pulse.age-.30,profile(pulse.rank),1,'evolution-'+pulse.rank+'-');
   }
   return out;
  }

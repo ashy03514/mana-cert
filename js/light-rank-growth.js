@@ -41,6 +41,24 @@
     }
     return schedules.get(key);
   }
+  // A completed silhouette leads one compact intake/release. This event clock
+  // is separate from the continuous flutter/noise clock, so pause and replay
+  // cannot skip a burst or jerk the wings back to the start of their idle loop.
+  function evolutionAction(elapsed,result){
+    const time=Math.max(0,finite(elapsed)),events=schedule(result);
+    if(!events.length)return {weight:0,charge:0,release:0,burst:0,pulses:[]};
+    const first=events[0],last=events.at(-1);
+    const weight=smooth((time-first.at+.20)/.20)*(1-smooth((time-last.formedAt-1.10)/.25));
+    let charge=0,release=0,burst=0;const pulses=[];
+    for(const event of events){
+      const age=time-event.formedAt;
+      charge=Math.max(charge,smooth(age/.20)*(1-smooth((age-.22)/.16)));
+      release=Math.max(release,smooth((age-.22)/.22)*(1-smooth((age-.50)/.45)));
+      burst=Math.max(burst,smooth((age-.30)/.08)*(1-smooth((age-.42)/.40)));
+      if(age>=0&&age<3.2)pulses.push({rank:event.to,age});
+    }
+    return {weight,charge,release,burst,pulses};
+  }
   // Only the numeric climb below A is accelerated. The wing formation clock
   // remains independent, preserving complete silhouettes and exposure settles.
   function scanElapsed(elapsed,result){
@@ -86,7 +104,7 @@
     const rank=growth>=2?'SS':growth>=1?'S':'A';
     const starMana=growth<=1?growth*950:950+(growth-1)*49;
     const completeAt=Math.max(root.FireScanTransition.timing.complete,events.at(-1)?.completeAt||TIMING.initialSettle);
-    return {value:sampled.value,rank,growth,time,starMana,transition,exposure,phase,completeAt,complete:elapsedTime>=completeAt};
+    return {value:sampled.value,rank,growth,time,starMana,transition,exposure,phase,evolutionAction:evolutionAction(elapsedTime,result),completeAt,complete:elapsedTime>=completeAt};
   }
   function initial(materialTime=0){return {value:0,rank:'A',growth:0,time:Math.max(0,finite(materialTime))*.70,starMana:0,
     transition:{from:'A',to:'A',progress:1},exposure:1,phase:'forming',complete:false};}
@@ -115,5 +133,5 @@
     return {box,sideBySide,numbers:{x,y,fontSize,rankFontSize,labelFontSize,
       labelY:y-fontSize-labelFontSize*.35,rankY:y+rankFontSize+14}};
   }
-  root.LightRankGrowth=Object.freeze({scan,sample,initial,layout,timing:TIMING,timeline:schedule});
+  root.LightRankGrowth=Object.freeze({scan,sample,initial,layout,timing:TIMING,timeline:schedule,evolutionAction});
 })(globalThis);

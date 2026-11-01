@@ -18,6 +18,7 @@
   return {...pose,transition:{from:'A',to:'A',progress:t*t*(3-2*t),birth:true}};
  }
  function timeline(result){return source().timeline(result);}
+ function evolutionAction(elapsed,result){return source().evolutionAction(elapsed,result);}
  function layout(width,height,shift=0,options={}){
   const result=source().layout(width,height,shift,options);
   const rest=source().layout(width,height,0,options).box;
@@ -26,5 +27,5 @@
   // subsequent upward framing shift or assume the angel asset's .72 pivot.
   return {...result,box:{...result.box,gatherY:rest.y+(rest.height-artHeight)*.5+artHeight*.43}};
  }
- root.DarkRankGrowth=Object.freeze({scan,sample,initial,layout,timeline,get timing(){return source().timing;}});
+ root.DarkRankGrowth=Object.freeze({scan,sample,initial,layout,timeline,evolutionAction,get timing(){return source().timing;}});
 })(globalThis);

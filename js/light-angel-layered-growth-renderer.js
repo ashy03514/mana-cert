@@ -120,16 +120,20 @@
       this.layerState={...pair,progress,exposure,mode:'registered-feather-banks',banks:4};
       // A fixed rectangular UV grid and gentle common articulation. Rank
       // transitions never remap a column to another image's outer silhouette.
+      // All vertices and both wings see the same action at this instant.
+      const motion=root.LightAngelMotion;
+      const rank=this.layerPair?(progress===1?pair.to:pair.from):'A';
+      const pose=motion.sample(s.time,rank,s.evolutionAction);
+      const nextPose=this.layerPair&&progress>0&&progress<1&&pair.from!==pair.to
+        ?motion.sample(s.time,pair.to,s.evolutionAction):null;
       for(const mesh of this.meshes){
         for(let i=0;i<mesh.vertices.length;i+=4){
-          const uv=mesh.vertices.subarray(i+2,i+4),point=root.LightAngelMotion.point(uv[0],uv[1],s.time,mesh.side,'A');
-          // Formal ranks keep their authored breathing/release strength with
-          // continuous pose interpolation, independent of color/exposure. The
-          // standalone study retains its approved gentle common articulation.
-          if(this.layerPair){
-            const from=pair.from==='A'?point:root.LightAngelMotion.point(uv[0],uv[1],s.time,mesh.side,pair.from);
-            const to=pair.to==='A'?point:root.LightAngelMotion.point(uv[0],uv[1],s.time,mesh.side,pair.to);
-            point.x=from.x+(to.x-from.x)*progress;point.y=from.y+(to.y-from.y)*progress;
+          const u=mesh.vertices[i+2],v=mesh.vertices[i+3];
+          const point=motion.pointAtPose(u,v,pose,mesh.side);
+          if(nextPose){
+            const next=motion.pointAtPose(u,v,nextPose,mesh.side);
+            point.x+=(next.x-point.x)*progress;
+            point.y+=(next.y-point.y)*progress;
           }
           mesh.vertices[i]=art.cx+point.x*wingWidth;mesh.vertices[i+1]=art.cy+point.y*wingWidth;
         }
@@ -141,7 +145,7 @@
       gl.uniform1f(u.uYoungOffset,pair.from==='A'?.10:0);gl.uniform1f(u.uMatureOffset,pair.to==='A'?.10:0);
       gl.uniform2f(u.uRankScale,scale[pair.from]/scale.SS,scale[pair.to]/scale.SS);
       gl.uniform1f(u.uProgress,progress);gl.uniform1f(u.uExposure,exposure);gl.uniform1f(u.uClock,s.time);gl.enable(gl.BLEND);
-      const passes=[[.017,1,s.visible*.30*profile.glow,gl.ONE_MINUS_SRC_COLOR]];
+      const passes=[[.017+s.burst*.006,1,s.visible*(.30+s.burst*.12)*profile.glow,gl.ONE_MINUS_SRC_COLOR]];
       if(exposure>0&&progress>0)passes.push([.033,2,s.visible*.65*exposure,gl.ONE_MINUS_SRC_COLOR]);
       passes.push([0,0,s.visible,gl.ONE_MINUS_SRC_ALPHA],[.003,1,s.visible*.09*profile.glow,gl.ONE_MINUS_SRC_COLOR]);
       if(progress>0&&progress<1)passes.push([.018,3,s.visible*.82,gl.ONE_MINUS_SRC_COLOR]);

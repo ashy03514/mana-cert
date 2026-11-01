@@ -62,7 +62,7 @@
         px=ox+c*(x-ox)-s*(y-oy)+dx*amount;py=oy+s*(x-ox)+c*(y-oy)+dy*amount;
       }
       const u=.5+side*px,v=py;
-      const point=r=>root.LightAngelMotion?root.LightAngelMotion.point(u,v,pose.time,side,r):{x:side*px,y:(py-.72)/1.5};
+      const point=r=>root.LightAngelMotion?root.LightAngelMotion.point(u,v,pose.time,side,r,pose.evolutionAction):{x:side*px,y:(py-.72)/1.5};
       const a=point(from),z=point(rank),mix=evolving?p:1;
       const wingWidth=art.width*(root.LightAngelMotion?.wingScale.SS??1);
       births.push({delay,x:art.cx+(a.x+(z.x-a.x)*mix)*wingWidth,y:art.cy+(a.y+(z.y-a.y)*mix)*wingWidth,

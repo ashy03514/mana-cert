@@ -114,12 +114,12 @@
       return {cx:b.x+b.width*.5,cy:b.y+(b.height-artHeight)*.5+artHeight*.72,width:artWidth,height:artHeight,
         unit:Math.max(1,Math.min(b.width*.385,b.height*.38,320)),bottom:b.y+b.height*.98};
     }
-    paintMesh(mesh,art,time,rank='SS'){
+    paintMesh(mesh,art,time,rank='SS',action){
       const gl=this.gl;
       const motion=root.LightAngelMotion,wingWidth=art.width*motion.wingScale.SS;
       for(let i=0;i<mesh.vertices.length;i+=4){
         const uv=motion.registeredWingUV(mesh.vertices[i+2],mesh.vertices[i+3],this.activeAssetRank);
-        const p=motion.point(uv.u,uv.v,time,mesh.side,rank);
+        const p=motion.point(uv.u,uv.v,time,mesh.side,rank,action);
         mesh.vertices[i]=art.cx+p.x*wingWidth;mesh.vertices[i+1]=art.cy+p.y*wingWidth;
       }
       gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,mesh.vertices);
@@ -183,7 +183,7 @@
           const motion=root.LightAngelMotion,wingWidth=art.width*motion.wingScale.SS;
           const start=motion.registeredWingUV(one.u,one.v,state.from),end=motion.registeredWingUV(two.u,two.v,state.to);
           const u=mix(start.u,end.u,state.mix),v=mix(start.v,end.v,state.mix);
-          const p=motion.point(u,v,s.time,mesh.side,state.from),q=motion.point(u,v,s.time,mesh.side,state.to);
+          const p=motion.point(u,v,s.time,mesh.side,state.from,s.evolutionAction),q=motion.point(u,v,s.time,mesh.side,state.to,s.evolutionAction);
           mesh.vertices.set([art.cx+mix(p.x,q.x,state.mix)*wingWidth,art.cy+mix(p.y,q.y,state.mix)*wingWidth,one.u,one.v,two.u,two.v],i);
         }
         gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);gl.bufferData(gl.ARRAY_BUFFER,mesh.vertices,gl.DYNAMIC_DRAW);
@@ -242,13 +242,17 @@
     paintParticles(ctx,art,s){
       const colors=['#fffdf1','#d5f3ff','#fff0bd'];
       ctx.save();
-      const b=s.rankBlend,particles=b?[
-        ...root.LightAngelMotion.particles(s.time,b.from).map(p=>({...p,alpha:p.alpha*(1-b.mix)})),
-        ...root.LightAngelMotion.particles(s.time,b.to).map(p=>({...p,alpha:p.alpha*b.mix}))
-      ]:root.LightAngelMotion.particles(s.time,s.rank);
+      const b=s.rankBlend,action=s.evolutionAction;
+      let particles;
+      if(b&&b.mix>0&&b.mix<1){
+        const from=root.LightAngelMotion.particles(s.time,b.from,action),to=root.LightAngelMotion.particles(s.time,b.to,action);
+        particles=[...from.filter(p=>!p.evolution).map(p=>({...p,alpha:p.alpha*(1-b.mix)})),
+          ...to.filter(p=>!p.evolution).map(p=>({...p,alpha:p.alpha*b.mix})),...from.filter(p=>p.evolution)];
+      }else particles=root.LightAngelMotion.particles(s.time,s.rank,action);
       for(const p of particles){
         const size=art.width*p.size,y=art.cy+p.y*art.width;
         const alpha=p.alpha*Math.max(0,Math.min(1,(art.bottom+art.unit*.12-y)/(art.unit*.25)));
+        if(alpha<=0)continue;
         ctx.save();ctx.translate(art.cx+p.x*art.width,y);ctx.rotate(p.rotation);
         // Soft radiant surround with a crisp pearl centre; no hard white dots
         // lining a circle, and no equal-speed ring of confetti.
@@ -285,10 +289,10 @@
     paintForegroundStars(ctx,w,h,art,s){
       root.FireRankSparkles.drawFrames(ctx,this.sparkleFrames(w,h,art,s),s.visible);
     }
-    draw(ctx,w,h,{time=0,box,opacity=1,rank='SS',growth,motionTime,starMana}={}){
+    draw(ctx,w,h,{time=0,box,opacity=1,rank='SS',growth,motionTime,starMana,evolutionAction}={}){
       if(this.disposed||this.lost||!this.loaded||w<=0||h<=0||!Number.isFinite(w+h)||!this.init())return false;
       let profile=root.LightAngelMotion.profile(rank);
-      let s={...root.LightAngelMotion.sample(time*profile.speed,profile.rank),starTime:time};
+      let s={...root.LightAngelMotion.sample(time*profile.speed,profile.rank,evolutionAction),starTime:time};
       this.growthState=null;
       if(Number.isFinite(growth)){
         const g=Math.max(0,Math.min(2,growth)),i=g<1?0:1,b={growth:g,from:RANKS[i],to:RANKS[i+1],mix:g-i};
@@ -297,11 +301,13 @@
         profile={...from};for(const key of Object.keys(from))if(typeof from[key]==='number')profile[key]=mix(from[key],to[key],b.mix);
         profile.rank=b.mix===1?b.to:b.from;
         const clock=Number.isFinite(motionTime)?motionTime:time*.7;
-        const one=root.LightAngelMotion.sample(clock,b.from),two=root.LightAngelMotion.sample(clock,b.to);
+        const one=root.LightAngelMotion.sample(clock,b.from,evolutionAction),two=root.LightAngelMotion.sample(clock,b.to,evolutionAction);
         s={...one};for(const key of Object.keys(one))if(typeof one[key]==='number')s[key]=mix(one[key],two[key],b.mix);
         s.rank=profile.rank;
         s.rankBlend=b;s.starTime=time;s.starMana=starMana??(g<=1?950*g:950+49*(g-1));
       }
+      s.evolutionAction=evolutionAction;
+      const actionKey=JSON.stringify(evolutionAction||null);
       this.activeAssetRank=this.textures[profile.rank]?profile.rank:'SS';
       this.texture=this.textures[this.activeAssetRank];
       const art=this.layout(w,h,box),scale=Math.min(root.devicePixelRatio||1,1.25,Math.sqrt(560000/(w*h)));
@@ -309,7 +315,7 @@
       const pw=Math.max(1,Math.round(w*scale)),ph=Math.max(1,Math.round(h*scale)),key=[profile.rank,Number.isFinite(growth),w,h,art.cx,art.cy,art.width,art.height,art.bottom,pw,ph].join(':');
       // A continuously changing growth value must not bypass the frame cap.
       // Paused inspection still redraws a changed pose at the same time.
-      if(this.lastTime===-Infinity||s.time<this.lastTime||s.time-this.lastTime>=1/30-1e-6||key!==this.lastKey||(s.time===this.lastTime&&growth!==this.lastGrowth)){
+      if(this.lastTime===-Infinity||s.time<this.lastTime||s.time-this.lastTime>=1/30-1e-6||key!==this.lastKey||(s.time===this.lastTime&&(growth!==this.lastGrowth||actionKey!==this.lastActionKey))){
         const gl=this.gl,u=this.bgUniforms;
         for(let i=0;i<this.maxAttributes;i++)gl.disableVertexAttribArray(i);
         if(this.canvas.width!==pw||this.canvas.height!==ph){this.canvas.width=this.patch.width=pw;this.canvas.height=this.patch.height=ph;}
@@ -326,7 +332,7 @@
           catch(error){this.error='目前無法顯示羽翼生長，請重新整理。';this.diagnostic=String(error);this.release();return false;}
         }
         else{
-        for(const mesh of this.meshes)this.paintMesh(mesh,art,s.time,profile.rank);
+        for(const mesh of this.meshes)this.paintMesh(mesh,art,s.time,profile.rank,evolutionAction);
         gl.useProgram(this.meshProgram);gl.uniform2f(this.meshUniforms.uResolution,w,h);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);gl.uniform1i(this.meshUniforms.uImage,0);gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_COLOR);for(const mesh of this.meshes)this.drawMesh(mesh,.020+s.burst*.006,1,s.visible*(.35+s.burst*.12)*profile.glow);
         gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);for(const mesh of this.meshes)this.drawMesh(mesh,0,0,s.visible);
@@ -334,7 +340,7 @@
         }
         gl.disable(gl.BLEND);
         this.patchCtx.clearRect(0,0,pw,ph);this.patchCtx.drawImage(this.canvas,0,0);this.patchCtx.save();this.patchCtx.scale(pw/w,ph/h);this.paintParticles(this.patchCtx,art,s);this.paintCore(this.patchCtx,art,s);this.paintForegroundStars(this.patchCtx,w,h,art,s);this.patchCtx.restore();
-        this.lastTime=s.time;this.lastKey=key;this.lastGrowth=growth;this.art=art;this.frame=s;this.drawCount++;
+        this.lastTime=s.time;this.lastKey=key;this.lastGrowth=growth;this.lastActionKey=actionKey;this.art=art;this.frame=s;this.drawCount++;
       }
       ctx.save();ctx.globalAlpha*=Math.max(0,Math.min(1,opacity));ctx.drawImage(this.patch,0,0,w,h);ctx.restore();return true;
     }

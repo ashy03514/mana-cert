@@ -19,7 +19,7 @@ async function pageAt(url){const p=await context.newPage();p.on('pageerror',e=>e
 const snapshot=p=>p.evaluate(()=>Object.fromEntries([...document.querySelectorAll('#panel_switches input,#panel_probabilities input')].map(e=>[e.id,{value:e.type==='checkbox'?e.checked:e.value,disabled:e.disabled}])));
 const slide=(p,id,v)=>p.locator('#'+id).evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},v);
 (async()=>{try{
- await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));url='http://127.0.0.1:'+server.address().port+prefix+'index.html?v=123';
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));url='http://127.0.0.1:'+server.address().port+prefix+'index.html';
  context=await chromium.launchPersistentContext(profile,options);let page=await pageAt(url);
  await page.locator('#tab_probabilities').click();await slide(page,'chance_S',67);await slide(page,'rareChance_SS',100);await slide(page,'muggleChance',23);
  await page.locator('#tab_switches').click();for(const id of ['s_fire','s_light','s_dark','s_muggle','soundEnabled','hapticsEnabled'])await page.locator('#'+id).uncheck({force:true});
@@ -29,7 +29,13 @@ const slide=(p,id,v)=>p.locator('#'+id).evaluate((e,v)=>{e.value=v;e.dispatchEve
  await page.close();page=await pageAt(url);assert.deepEqual(await snapshot(page),expected,'closing/reopening page preserves values');
  await context.close();context=await chromium.launchPersistentContext(profile,options);page=await pageAt(url);assert.deepEqual(await snapshot(page),expected,'full browser restart retains saved preferences');
  await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
- assert.equal(await page.evaluate(async()=>!!await (await caches.open('mana-pwa-v3-portal-123')).match('./js/cert-settings.js')),true,'new storage module cached within project subdirectory');
+ const cachedSettings = await page.evaluate(async () => {
+   const cacheName = 'mana-pwa-v3-portal-' + document.getElementById('appVersion').dataset.version;
+   if (!await caches.has(cacheName)) return [];
+   const cache = await caches.open(cacheName);
+   return Promise.all(['cert-settings', 'waiting-prompt'].map(async name => !!await cache.match('./js/' + name + '.js')));
+ });
+ assert.deepEqual(cachedSettings,[true,true],'both settings modules cached within the project subdirectory for the loaded version');
  await context.setOffline(true);await page.reload();assert.deepEqual(await snapshot(page),expected,'offline PWA reload retains settings');await context.setOffline(false);
  await page.locator('#s_master').check({force:true});await page.locator('#s_master').uncheck({force:true});await page.reload();assert.equal(await page.locator('#s_master').isChecked(),false);assert.equal(await page.locator('#btnStart').isDisabled(),true);
  await page.locator('#s_master').check({force:true});await page.locator('#tab_probabilities').click();assert.equal(await page.locator('#rareChance_SS').inputValue(),'100','disabled probabilities were retained');
