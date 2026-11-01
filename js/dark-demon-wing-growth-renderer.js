@@ -3,12 +3,18 @@
 (function(root){
  'use strict';
  const clamp=v=>Math.max(0,Math.min(1,v)),smooth=v=>{v=clamp(v);return v*v*(3-2*v);};
- const offsets={A:-.09,S:-.05,SS:0};
- const vertex=`attribute vec2 aPosition,aUv;uniform vec2 uResolution;varying vec2 vUv;
- void main(){vUv=aUv;gl_Position=vec4(aPosition.x/uResolution.x*2.-1.,1.-aPosition.y/uResolution.y*2.,0.,1.);}`;
+ // The source images contain 967, 1228 and 1483 visible pixels across.
+ // Register the three membranes to 88%, 96% and 100% of the SS wingspan.
+ const artwork={A:{offset:-.09,scale:1.35},S:{offset:-.05,scale:1.16},SS:{offset:0,scale:1}};
+ const wingScale=1.12;
  const fragment=`precision highp float;varying vec2 vUv;
- uniform sampler2D uYoung,uMature;uniform float uProgress,uBirth,uYoungOffset,uMatureOffset,uExposure,uLight,uClock,uGlow,uRadius,uOpacity;
+ uniform sampler2D uYoung,uMature;uniform vec2 uYoungRegistration,uMatureRegistration;
+ uniform float uProgress,uBirth,uExposure,uLight,uClock,uGlow,uRadius,uOpacity;
  vec4 safe(sampler2D image,vec2 p){if(p.x<0.||p.x>1.||p.y<0.||p.y>1.)return vec4(0.);return texture2D(image,p);}
+ vec4 membrane(sampler2D image,vec2 uv,vec2 registration){
+  vec2 root=vec2(.5,.43);
+  return safe(image,root+(uv-root)/registration.y-vec2(0.,registration.x));
+ }
  // Advected light/soot changes the veil, never the registered image UVs.
  float grain(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
  float haze(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
@@ -19,8 +25,8 @@
  float phase(vec2 p){float front=.10+reach(p)*.75;return smoothstep(front-.075,front+.075,uProgress);}
  float retire(vec2 p){float front=.72+reach(p)*.20;return smoothstep(front-.06,front+.06,uProgress);}
  vec4 read(vec2 uv){
-  float f=phase(uv);vec4 young=safe(uYoung,uv-vec2(0.,uYoungOffset))*(1.-uBirth);
-  vec4 mature=safe(uMature,uv-vec2(0.,uMatureOffset))*f;
+  float f=phase(uv);vec4 young=membrane(uYoung,uv,uYoungRegistration)*(1.-uBirth);
+  vec4 mature=membrane(uMature,uv,uMatureRegistration)*f;
   vec3 native=mature.rgb/max(mature.a,.001);float luminance=dot(native,vec3(.2126,.7152,.0722));
   vec3 violet=mix(vec3(.025,.006,.055),vec3(.38,.085,.62),smoothstep(.035,.62,luminance));
   // Retain bones, highlights and membrane shadows under the dark magic.
@@ -32,8 +38,8 @@
   color.rgb=mix(color.rgb,color.rgb*.35+seamColor*color.a,seam*.82);
   return vec4(color.rgb*uLight,color.a);
  }
- float halo(vec2 uv){float f=phase(uv),a=safe(uMature,uv-vec2(0.,uMatureOffset)).a;
-  return uGlow>1.5?a*f*uExposure:max(a,safe(uYoung,uv-vec2(0.,uYoungOffset)).a*(1.-uBirth))*4.*f*(1.-f);}
+ float halo(vec2 uv){float f=phase(uv),a=membrane(uMature,uv,uMatureRegistration).a;
+  return uGlow>1.5?a*f*uExposure:max(a,membrane(uYoung,uv,uYoungRegistration).a*(1.-uBirth))*4.*f*(1.-f);}
  void main(){
   if(uGlow<.5){gl_FragColor=read(vUv)*uOpacity;return;}
   vec2 d=vec2(uRadius,uRadius*1.5);float a=halo(vUv)*.2;
@@ -68,11 +74,13 @@
       gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,this.images[rank]);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);}
-     this.growthProgram=this.makeProgram(vertex,fragment);this.gu={};
-     for(const key of ['uResolution','uYoung','uMature','uProgress','uBirth','uYoungOffset','uMatureOffset','uExposure','uLight','uClock','uGlow','uRadius','uOpacity'])this.gu[key]=gl.getUniformLocation(this.growthProgram,key);
+     this.growthProgram=this.makeProgram(undefined,fragment);this.gu={};
+     for(const key of ['uResolution','uYoung','uMature','uProgress','uBirth','uYoungRegistration','uMatureRegistration','uExposure','uLight','uClock','uGlow','uRadius','uOpacity'])this.gu[key]=gl.getUniformLocation(this.growthProgram,key);
      this.ga={position:gl.getAttribLocation(this.growthProgram,'aPosition'),uv:gl.getAttribLocation(this.growthProgram,'aUv')};
      this.chains.forEach((m,i)=>{m.rankCurves={SS:m.curve};for(const rank of ['A','S']){
-      const points=rankChains[rank][i%4].map(([x,y])=>[m.side<0?x:1-x,y]);m.rankCurves[rank]=m.curve.map((_,j)=>this.bezier(points,j/m.steps));}});
+      const scale=artwork[rank].scale;
+      const points=rankChains[rank][i%4].map(([x,y])=>[.5+(m.side<0?x-.5:.5-x)*scale,.43+(y-.43)*scale]);
+      m.rankCurves[rank]=m.curve.map((_,j)=>this.bezier(points,j/m.steps));}});
     }catch(e){this.fail(e);this.release();return false;}
    }return true;
   }
@@ -86,7 +94,9 @@
    const gl=this.gl,u=this.gu;gl.useProgram(this.growthProgram);gl.uniform2f(u.uResolution,w,h);
    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.rankTextures[pair.from]);gl.uniform1i(u.uYoung,0);
    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.rankTextures[pair.to]);gl.uniform1i(u.uMature,1);
-   gl.uniform1f(u.uYoungOffset,offsets[pair.from]);gl.uniform1f(u.uMatureOffset,offsets[pair.to]);gl.uniform1f(u.uProgress,pair.progress);
+   const young=artwork[pair.from],mature=artwork[pair.to];
+   gl.uniform2f(u.uYoungRegistration,young.offset,young.scale);
+   gl.uniform2f(u.uMatureRegistration,mature.offset,mature.scale);gl.uniform1f(u.uProgress,pair.progress);
    gl.uniform1f(u.uBirth,pair.birth?1:0);gl.uniform1f(u.uExposure,exposure);gl.uniform1f(u.uLight,1+s.release*.15+Math.sin(time*.75)*.025);gl.uniform1f(u.uClock,time);
    const passes=[];if(exposure>0)passes.push([.026,2,.38]);passes.push([0,0,1]);
    if(pair.progress>0&&pair.progress<1)passes.push([.019,1,.58]);if(exposure>0)passes.push([.006,2,.13]);
@@ -119,7 +129,11 @@
    for(const key of ['charge','release','burst','idleStrength','chainStrength','chainOpacity','core','rays'])s[key]=from[key]+(to[key]-from[key])*pair.progress;
    const a=this.layout(w,h,options.box),gl=this.gl,dpr=Math.min(1.5,Math.max(1,ctx.getTransform().a));
    const pw=Math.round(w*dpr),ph=Math.round(h*dpr);if(this.canvas.width!==pw||this.canvas.height!==ph){this.canvas.width=pw;this.canvas.height=ph;}
-   this.paintWings(a,time,s);
+   // Enlarge the mesh around the registered root; the flame and its host
+   // layout continue to use that same point throughout the reveal.
+   const wingWidth=a.w*wingScale,wingHeight=a.h*wingScale;
+   const wingArt={x:a.cx-wingWidth*.5,y:a.cy-wingHeight*.43,w:wingWidth,h:wingHeight};
+   this.paintWings(wingArt,time,s);
    const transition=pair.from!==pair.to,chainRank=transition&&pair.progress<.5?pair.from:pair.to;
    // First wings emerge from an empty root: only the arriving membrane is
    // revealed by the same flame front, and chains wait for their attachment.
@@ -127,7 +141,7 @@
    // ornaments arrive after the wing silhouette forms instead of sliding.
    const chainFade=pair.birth?smooth((pair.progress-.76)/.24):transition?(1-smooth(pair.progress/.26))+smooth((pair.progress-.82)/.18):1;
    for(const m of this.chains)m.curve=m.rankCurves[chainRank];
-   if(options.chains!==false)this.paintChains(a,time,s);
+   if(options.chains!==false)this.paintChains(wingArt,time,s);
    gl.viewport(0,0,pw,ph);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
    // Exposure belongs to the arriving wing; an old attachment must retain
    // its settled brightness at progress=0 before its own dissolve begins.

@@ -3,7 +3,17 @@
 (function(root){
  'use strict';
  const vertex=`attribute vec2 aPosition;attribute vec2 aUv;uniform vec2 uResolution;varying vec2 vUv;
- void main(){vUv=aUv;gl_Position=vec4(aPosition.x/uResolution.x*2.-1.,1.-aPosition.y/uResolution.y*2.,0.,1.);}`;
+ void main(){
+  vec2 pixel=aPosition;
+  // Ease only the last few pixels of an opening tip back inside the stage.
+  // Both membrane and chain use this projection. Their center stays fixed.
+  float edge=min(pixel.x,uResolution.x-pixel.x);
+  if(edge<13.){
+   float inset=1.+12.*exp((edge-13.)/12.);
+   pixel.x=pixel.x<uResolution.x*.5?inset:uResolution.x-inset;
+  }
+  vUv=aUv;gl_Position=vec4(pixel.x/uResolution.x*2.-1.,1.-pixel.y/uResolution.y*2.,0.,1.);
+ }`;
  const fragment=`precision mediump float;uniform sampler2D uImage;uniform float uLight,uOpacity;varying vec2 vUv;
  void main(){vec4 c=texture2D(uImage,vUv);gl_FragColor=vec4(c.rgb*uLight,c.a)*uOpacity;}`;
  const seed=n=>{const v=Math.sin(n*127.1+43.7)*43758.5453;return v-Math.floor(v);};

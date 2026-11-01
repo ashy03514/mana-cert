@@ -7,7 +7,11 @@
   const fragment=`precision highp float;
     varying vec2 vUv;uniform sampler2D uYoung,uMature;
     uniform float uProgress,uOpacity,uSide,uGlow,uRadius,uExposure,uClock,uYoungOffset,uMatureOffset;
-    vec4 safe(sampler2D image,vec2 p){
+    uniform vec2 uRankScale;
+    vec4 safe(sampler2D image,vec2 p,float offset,float scale){
+      // Invert the same fixed per-image registration used by the preview and
+      // feather birth points. Neither source changes scale during the wipe.
+      p=vec2(.5,.72-offset)+(p-vec2(.5,.72))/scale;
       if(p.x<0.||p.x>1.||p.y<0.||p.y>1.||(p.x-.5)*uSide<0.)return vec4(0.);
       return texture2D(image,p);
     }
@@ -50,16 +54,15 @@
       vec2 b=unfold(p,phase.y,-.048,vec2(.17,.48),vec2(-.018,.016));
       vec2 c=unfold(p,phase.z,-.030,vec2(.14,.55),vec2(-.014,.012));
       vec2 e=unfold(p,phase.w, .040,vec2(.10,.67),vec2(-.008,-.018));
-      vec4 mature=safe(uMature,vec2(.5+uSide*a.x,a.y-uMatureOffset))*weights.x*phase.x
-        +safe(uMature,vec2(.5+uSide*b.x,b.y-uMatureOffset))*weights.y*phase.y
-        +safe(uMature,vec2(.5+uSide*c.x,c.y-uMatureOffset))*weights.z*phase.z
-        +safe(uMature,vec2(.5+uSide*e.x,e.y-uMatureOffset))*weights.w*phase.w;
+      vec4 mature=safe(uMature,vec2(.5+uSide*a.x,a.y),uMatureOffset,uRankScale.y)*weights.x*phase.x
+        +safe(uMature,vec2(.5+uSide*b.x,b.y),uMatureOffset,uRankScale.y)*weights.y*phase.y
+        +safe(uMature,vec2(.5+uSide*c.x,c.y),uMatureOffset,uRankScale.y)*weights.z*phase.z
+        +safe(uMature,vec2(.5+uSide*e.x,e.y),uMatureOffset,uRankScale.y)*weights.w*phase.w;
       // New feathers are born in light. Their normal shadow/color detail only
       // returns after the host has finished forming the complete S silhouette.
       mature.rgb=mix(mature.rgb,vec3(1.,.995,.96)*mature.a,uExposure*.94);
-      // A's pivot is .62 rather than .72. Registration is a translation, never
-      // a rescale; its feathers remain intact while each local bank is replaced.
-      vec4 young=safe(uYoung,uv-vec2(0.,uYoungOffset));
+      // Retain the outgoing feather bed beneath the advancing light.
+      vec4 young=safe(uYoung,uv,uYoungOffset,uRankScale.x);
       // Keep the juvenile feather bed underneath the arriving mature banks.
       // A reveal front must never erase the old tips before the longer ones
       // have reached them, otherwise the silhouette appears to shrink midway.
@@ -75,13 +78,13 @@
     float halo(vec2 d){
       vec2 uv=vUv+d,p=vec2(abs(uv.x-.5),uv.y);float reach=length(vec2(p.x,(p.y-.72)*.78))/.60;
       vec4 weights=banks(p),phase=phases(reach);
-      float target=safe(uMature,uv-vec2(0.,uMatureOffset)).a,a=target*dot(weights,phase);
+      float target=safe(uMature,uv,uMatureOffset,uRankScale.y).a,a=target*dot(weights,phase);
       if(uGlow>2.5){
-        float surface=max(target,safe(uYoung,uv-vec2(0.,uYoungOffset)).a);
+        float surface=max(target,safe(uYoung,uv,uYoungOffset,uRankScale.x).a);
         return surface*dot(weights,phase*(1.-phase))*4.*(.86+.14*sin(uClock*4.1+p.y*23.+p.x*17.)+glints(p)*1.6);
       }
       if(uGlow>1.5)return a;
-      return a+safe(uYoung,uv-vec2(0.,uYoungOffset)).a*(1.-a)*(1.-arriving(.77,.94,reach));
+      return a+safe(uYoung,uv,uYoungOffset,uRankScale.x).a*(1.-a)*(1.-arriving(.77,.94,reach));
     }
     void main(){
       if(uGlow<.5){gl_FragColor=read(vec2(0.))*uOpacity;return;}
@@ -106,13 +109,14 @@
       if(this.growthProgram)return;
       const gl=this.gl;this.growthProgram=this.makeProgram(vertex,fragment);
       this.layerAttributes={position:gl.getAttribLocation(this.growthProgram,'aPosition'),uv:gl.getAttribLocation(this.growthProgram,'aUv')};
-      this.layerUniforms={};for(const key of ['uResolution','uYoung','uMature','uProgress','uOpacity','uSide','uGlow','uRadius','uExposure','uClock','uYoungOffset','uMatureOffset'])this.layerUniforms[key]=gl.getUniformLocation(this.growthProgram,key);
+      this.layerUniforms={};for(const key of ['uResolution','uYoung','uMature','uProgress','uOpacity','uSide','uGlow','uRadius','uExposure','uClock','uYoungOffset','uMatureOffset','uRankScale'])this.layerUniforms[key]=gl.getUniformLocation(this.growthProgram,key);
     }
     paintGrowingWings(art,s,state,profile){
       this.initGrowth();const gl=this.gl,u=this.layerUniforms,a=this.layerAttributes;
       const pair=this.layerPair||(state.growth<=1?{from:'A',to:'S',progress:state.growth}:{from:'S',to:'SS',progress:state.growth-1});
       const progress=Math.max(0,Math.min(1,pair.progress));
       const exposure=this.growthExposure??0;
+      const scale=root.LightAngelMotion.wingScale,wingWidth=art.width*scale.SS;
       this.layerState={...pair,progress,exposure,mode:'registered-feather-banks',banks:4};
       // A fixed rectangular UV grid and gentle common articulation. Rank
       // transitions never remap a column to another image's outer silhouette.
@@ -127,7 +131,7 @@
             const to=pair.to==='A'?point:root.LightAngelMotion.point(uv[0],uv[1],s.time,mesh.side,pair.to);
             point.x=from.x+(to.x-from.x)*progress;point.y=from.y+(to.y-from.y)*progress;
           }
-          mesh.vertices[i]=art.cx+point.x*art.width;mesh.vertices[i+1]=art.cy+point.y*art.width;
+          mesh.vertices[i]=art.cx+point.x*wingWidth;mesh.vertices[i+1]=art.cy+point.y*wingWidth;
         }
         gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,mesh.vertices);
       }
@@ -135,6 +139,7 @@
       gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.textures[pair.from]);gl.uniform1i(u.uYoung,0);
       gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,this.textures[pair.to]);gl.uniform1i(u.uMature,1);
       gl.uniform1f(u.uYoungOffset,pair.from==='A'?.10:0);gl.uniform1f(u.uMatureOffset,pair.to==='A'?.10:0);
+      gl.uniform2f(u.uRankScale,scale[pair.from]/scale.SS,scale[pair.to]/scale.SS);
       gl.uniform1f(u.uProgress,progress);gl.uniform1f(u.uExposure,exposure);gl.uniform1f(u.uClock,s.time);gl.enable(gl.BLEND);
       const passes=[[.017,1,s.visible*.30*profile.glow,gl.ONE_MINUS_SRC_COLOR]];
       if(exposure>0&&progress>0)passes.push([.033,2,s.visible*.65*exposure,gl.ONE_MINUS_SRC_COLOR]);

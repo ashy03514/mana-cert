@@ -6,6 +6,13 @@
   const time=v=>Number.isFinite(v)?Math.max(0,v):0;
   const rotate=(p,x,y,a,w)=>{const dx=p.x-x,dy=p.y-y,c=Math.cos(a),s=Math.sin(a);return {x:p.x+(dx*c-dy*s-dx)*w,y:p.y+(dx*s+dy*c-dy)*w};};
   const PERIOD=9.2;
+  // The three images have different feather margins. At their registered
+  // roots, these fixed scales give roughly 88%, 96% and 100% visible span.
+  const wingScale=Object.freeze({A:1.225,S:1.135,SS:1.12});
+  function registeredWingUV(u,v,rank){
+    const ratio=wingScale[rank]/wingScale.SS;
+    return {u:.5+(u-.5)*ratio,v:.72+(v-(rank==='A'?.62:.72))*ratio};
+  }
   // One camera and one feather asset. Rank changes the energy and articulation,
   // rather than making the same wings look farther from the viewer.
   const profiles=Object.freeze({
@@ -97,5 +104,5 @@
     }
     return out;
   }
-  root.LightAngelMotion=Object.freeze({sample,point,particles,ambientParticles,profile,noise,PERIOD});
+  root.LightAngelMotion=Object.freeze({sample,point,particles,ambientParticles,profile,noise,wingScale,registeredWingUV,PERIOD});
 })(globalThis);

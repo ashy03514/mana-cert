@@ -116,10 +116,12 @@
     }
     paintMesh(mesh,art,time,rank='SS'){
       const gl=this.gl;
-      // The juvenile artwork has shorter wings and a higher root in its image.
-      // Align that root with the same magical core; keep the asset's own size.
-      const pivot=this.activeAssetRank==='A'?.62:.72,offset=.72-pivot;
-      for(let i=0;i<mesh.vertices.length;i+=4){const p=root.LightAngelMotion.point(mesh.vertices[i+2],mesh.vertices[i+3]+offset,time,mesh.side,rank);mesh.vertices[i]=art.cx+p.x*art.width;mesh.vertices[i+1]=art.cy+p.y*art.width;}
+      const motion=root.LightAngelMotion,wingWidth=art.width*motion.wingScale.SS;
+      for(let i=0;i<mesh.vertices.length;i+=4){
+        const uv=motion.registeredWingUV(mesh.vertices[i+2],mesh.vertices[i+3],this.activeAssetRank);
+        const p=motion.point(uv.u,uv.v,time,mesh.side,rank);
+        mesh.vertices[i]=art.cx+p.x*wingWidth;mesh.vertices[i+1]=art.cy+p.y*wingWidth;
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);gl.bufferSubData(gl.ARRAY_BUFFER,0,mesh.vertices);
     }
     drawMesh(mesh,radius,glow,opacity){
@@ -178,9 +180,11 @@
           const i=(y*(mesh.columns+1)+x)*6,one=uv(from,mesh.side,x/mesh.columns,y/mesh.rows),two=uv(to,mesh.side,x/mesh.columns,y/mesh.rows);
           // Both textures share a growing feather grid, instead of fading
           // two differently sized silhouettes over each other.
-          const u= mix(one.u,two.u,state.mix),v=mix(one.v+.72-from.pivot,two.v+.72-to.pivot,state.mix);
-          const p=root.LightAngelMotion.point(u,v,s.time,mesh.side,state.from),q=root.LightAngelMotion.point(u,v,s.time,mesh.side,state.to);
-          mesh.vertices.set([art.cx+mix(p.x,q.x,state.mix)*art.width,art.cy+mix(p.y,q.y,state.mix)*art.width,one.u,one.v,two.u,two.v],i);
+          const motion=root.LightAngelMotion,wingWidth=art.width*motion.wingScale.SS;
+          const start=motion.registeredWingUV(one.u,one.v,state.from),end=motion.registeredWingUV(two.u,two.v,state.to);
+          const u=mix(start.u,end.u,state.mix),v=mix(start.v,end.v,state.mix);
+          const p=motion.point(u,v,s.time,mesh.side,state.from),q=motion.point(u,v,s.time,mesh.side,state.to);
+          mesh.vertices.set([art.cx+mix(p.x,q.x,state.mix)*wingWidth,art.cy+mix(p.y,q.y,state.mix)*wingWidth,one.u,one.v,two.u,two.v],i);
         }
         gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);gl.bufferData(gl.ARRAY_BUFFER,mesh.vertices,gl.DYNAMIC_DRAW);
       }

@@ -39,7 +39,8 @@
         const score=(candidate.u-wanted.u)**2+(candidate.v-wanted.v)**2*.55;
         if(score<best){best=score;anchor=candidate;}
       }
-      const x=Math.abs(anchor.u-.5),y=anchor.v+offset;
+      const registered=root.LightAngelMotion?.registeredWingUV(anchor.u,anchor.v,rank)||{u:anchor.u,v:anchor.v+offset};
+      const x=Math.abs(registered.u-.5),y=registered.v;
       // Same four banks/fronts as light-angel-layered-growth-renderer.js.
       // Release just behind the visible feathering front, not after the entire
       // new silhouette has formed. Incoming feather alpha is about 80% here.
@@ -63,7 +64,8 @@
       const u=.5+side*px,v=py;
       const point=r=>root.LightAngelMotion?root.LightAngelMotion.point(u,v,pose.time,side,r):{x:side*px,y:(py-.72)/1.5};
       const a=point(from),z=point(rank),mix=evolving?p:1;
-      births.push({delay,x:art.cx+(a.x+(z.x-a.x)*mix)*art.width,y:art.cy+(a.y+(z.y-a.y)*mix)*art.width,
+      const wingWidth=art.width*(root.LightAngelMotion?.wingScale.SS??1);
+      births.push({delay,x:art.cx+(a.x+(z.x-a.x)*mix)*wingWidth,y:art.cy+(a.y+(z.y-a.y)*mix)*wingWidth,
         side,rotation:side*(.40+x*.9+(y>.65?.25:0)),sourceU:anchor.u,sourceV:anchor.v,sourceAlpha:anchor.alpha,
         bank,front,progress:p});
     }
