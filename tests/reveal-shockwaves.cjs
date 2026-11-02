@@ -154,8 +154,9 @@ for(const element of ['fire','water','wind','earth','light','dark',null]){
     assert.equal(sample(flow.state,flow.elapsed),null,'the half-second hold starts without a third wave');
     const heldState=JSON.stringify(flow);
     flow.paused=true;advance(flow,5);
-    assert.equal(JSON.stringify({...flow,paused:false}),heldState,'pause also freezes the entire post-wave hold');
-    flow.paused=false;advance(flow,.49);
+    flow.paused=false;
+    assert.equal(JSON.stringify(flow),heldState,'pause also freezes the entire post-wave hold');
+    advance(flow,.49);
     assert.equal(flow.state,'WAITING','a full half-second hold remains before explosion');
     assert.equal(sample(flow.state,flow.elapsed),null,'no shockwave appears during the hold');
     assert.equal(flow.materialFrame,null,'hold does not reveal the element prematurely');

@@ -874,7 +874,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="140" title="目前載入頁面的版本">目前版本 v140</span>
+        <span id="appVersion" data-version="141" title="目前載入頁面的版本">目前版本 v141</span>
       </div>
     </div>
     </div>
@@ -891,7 +891,7 @@
   </div>
 </div>
 
-<div id="animLayer" aria-label="傳送門：按住加速旋轉，放開恢復慢速">
+<div id="animLayer" aria-label="魔力鑑定：滑動畫符，或按住聚能後放開">
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
   <p id="waitingPrompt" class="waitingPromptCopy"></p>
 </div>
@@ -1032,6 +1032,7 @@
 <script src="./js/dark-rank-growth.js"></script>
 <script src="./js/fire-rank-embers.js"></script>
 <script src="./js/reveal-gather.js"></script>
+<script src="./js/hold-magic.js"></script>
 <script src="./js/reveal-atmosphere.js"></script>
 <script src="./js/reveal-shockwaves.js"></script>
 <script src="./js/runtime.js"></script>
@@ -1061,6 +1062,7 @@
   const lightFeatherPlans=new WeakMap();
   const elementBackdrop=new ElementRevealBackdrop();
   let flowPreview=false,flowPortal=null,flow=null,gather=null,flowAtmosphere=null,flowPreviewOrigin=null;
+  const holdMagic=new HoldMagic();
   let formalReveal=false;
   const formalReplay=document.getElementById('formalReplay');
   const materialControls=document.getElementById('materialControls');
@@ -1086,8 +1088,15 @@
   function releasePointer(id,cancelled=false){
     const scene=inputScene();if(!scene)return;
     const active=scene.pointer.id;
+    const lastStroke=scene.trails.active;
     if(!scene.release(id))return;
-    if(flowActive())flow.up(active,{cancelled});
+    if(flowActive()){
+      flow.up(active,{cancelled,nowMs:timeline.now()});
+      if(!cancelled&&flow.state==='RETURN'){
+        holdMagic.release(flow.releasePoint);
+        if(lastStroke&&scene.trails.strokes.at(-1)===lastStroke)scene.trails.strokes.pop();
+      }
+    }
     if(active!==null){try{animLayerEl.releasePointerCapture(active);}catch(_){}}
   }
   function cancelInput(){
@@ -1115,6 +1124,7 @@
     }
     if(flowPortal)flowPortal.resize(w,h);
     if(gather)gather.resize(w,h);
+    holdMagic.resize(w,h);
     if(materialBackdrop)materialBackdrop.resize(w,h);
     if(materialRenderer)materialRenderer.lastRender=-Infinity;
     // Resizing clears Canvas immediately. Restore the current frame even when
@@ -1379,12 +1389,20 @@
     e.preventDefault();
     audio.unlock();
     const scene=inputScene();
-    if(flowActive()&&!flow.down(e.pointerId,e.clientX,e.clientY))return;
+    if(flowActive()&&!flow.down(e.pointerId,e.clientX,e.clientY,timeline.now()))return;
     if(!scene.down(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now()))return;
     try{animLayerEl.setPointerCapture(e.pointerId);}catch(_){}
     if(!effectPreview&&!flowPreview&&session.state===STATES.STANDBY){
       session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
     }
+  }
+  function moveMagicPoint(scene,id,x,y,time){
+    if(flowActive()){
+      flow.move(id,x,y);
+      // Keep the ribbon's first point anchored until the finger actually draws.
+      if(flow.holdFrame)return;
+    }
+    scene.move(id,x,y,time);
   }
   function onMagicMove(e){
     const scene=inputScene();
@@ -1392,16 +1410,13 @@
     e.preventDefault();
     const samples=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[];
     for(const sample of samples.slice(-256)){
-      scene.move(e.pointerId,sample.clientX,sample.clientY,sample.timeStamp??e.timeStamp??timeline.now());
-      if(flowActive())flow.move(e.pointerId,sample.clientX,sample.clientY);
+      moveMagicPoint(scene,e.pointerId,sample.clientX,sample.clientY,sample.timeStamp??e.timeStamp??timeline.now());
     }
-    scene.move(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
-    if(flowActive())flow.move(e.pointerId,e.clientX,e.clientY);
+    moveMagicPoint(scene,e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
   }
   function onMagicEnd(e){
     if(e.type==='pointerup'&&canTouchMagic()&&e.pointerId===inputScene().pointer.id){
-      inputScene().move(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
-      if(flowActive())flow.move(e.pointerId,e.clientX,e.clientY);
+      moveMagicPoint(inputScene(),e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
     }
     releasePointer(e.pointerId,e.type!=='pointerup');
   }
@@ -1639,7 +1654,7 @@
   function restartRevealFlow(element=flow.element){
     audio.stop();
     flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'))});
-    cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();
+    cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
     if(element!==null){
@@ -1661,10 +1676,20 @@
     // If all earlier ink has faded, a later stationary tap is still only a tap.
     if(before==='DRAWING'&&flow.pointerId===null&&flow.distance>0&&
       flowPortal.settings.trailEnabled&&!flowPortal.trails.strokes.some(s=>flowPortal.trails.opacity(s)>.03))flow.reset(flow.element);
-    flow.step(dt);
+    flow.step(dt,timeline.now());
+    const heldRelease=flow.completionSource==='hold';
+    if(flow.state==='DRAWING'||flow.state==='RETURN'||flow.state==='WAITING'){
+      const transfer=heldRelease?(flow.state==='RETURN'?flow.progress:1):null;
+      holdMagic.step(dt,flow.holdFrame,transfer);
+    }
     flowAtmosphere.step(dt,flow);
     if(before!=='GATHER'&&flow.state==='GATHER'){
-      gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
+      const ink=flowPortal.trails;
+      if(heldRelease){
+        const energy=holdMagic.captureTrails(flowPortal.settings);
+        energy.strokes.unshift(...ink.strokes.filter(stroke=>stroke.points.length>1&&ink.opacity(stroke)>.03));
+        gather.capture(energy,flowPortal.width,flowPortal.height);
+      }else gather.capture(ink,flowPortal.width,flowPortal.height);
       if(formalReveal){
         session.transition(STATES.RESONANCE_COMPLETE);session.transition(STATES.GATHER);
         document.body.dataset.state=STATES.GATHER;
@@ -1722,7 +1747,7 @@
   function awakeningRenderer(){return flow.element==='dark'?DarkAwakening:LightAwakening;}
   function drawRevealFlow(){
     const {w,h}=getViewportSize(),state=flow.state;
-    const drawing=state==='DRAWING'||state==='WAITING';
+    const drawing=state==='DRAWING'||state==='RETURN'||state==='WAITING';
     const formalWind=formalReveal&&flow.element==='wind';
     const formalEarth=formalReveal&&flow.element==='earth';
     const formalLight=formalReveal&&flow.element==='light';
@@ -1750,9 +1775,12 @@
     const waterPower=flow.element==='water'?(scan?.power||0):undefined;
     // Zooming the wind's framing must not move the existing gathering point.
     const target={x:box.x+box.width/2,y:box.gatherY??((formalLight||formalDark)?activeMaterialRenderer().layout(w,h,box).cy:box.y+box.height/2+(flow.element==='fire'||flow.element==='water'?box.width*.33:0))};
-    const transform=(q,kind)=>flowAtmosphere.point(q,kind,w,h,target);
-    if(drawing)flowPortal.draw(quality.profile,{transform});
-    else{
+    const transform=(q,kind)=>((state==='DRAWING'||state==='RETURN')?holdMagic.point(q,kind):null)||flowAtmosphere.point(q,kind,w,h,target);
+    if(drawing){
+      flowPortal.draw(quality.profile,{transform,trails:false});
+      holdMagic.draw(ctx);
+      flowPortal.trails.draw(ctx);
+    }else{
       const dim=state==='GATHER'?.16*flow.progress:.16;
       flowPortal.draw(quality.profile,{transform,trails:false,dim});
       if(flow.awakeningEnabled&&state==='FORM'){
@@ -1765,8 +1793,12 @@
         ?(scan?WaterRankEffects.sample(flow.elapsed,formalReveal?session.currentResult:FireScanTransition.previewForElement('water'),flow.formationDuration)
           :{value:0,profile:WaterRankEffects.profileForValue(0),time:frame.time*.3}):undefined;
       if(frame)elementBackdrop.draw(ctx,w,h,{element:flow.element,time:waterEffects?.time??frame.time,opacity:frame.opacity,focus:box,firePower,waterPower});
+      if(state==='GATHER'&&flow.completionSource==='hold'){
+        const blend=Math.max(0,1-flow.progress/.055);
+        holdMagic.draw(ctx,blend);
+      }
       if(state==='GATHER'||state==='FORM'){
-        gather.draw(ctx,{progress:state==='GATHER'?flow.progress:1,formation:state==='FORM'?flow.progress:0,
+        gather.draw(ctx,{showInk:flow.completionSource!=='hold',progress:state==='GATHER'?flow.progress:1,formation:state==='FORM'?flow.progress:0,
           width:w,height:h,element:flow.element,time:state==='GATHER'?flow.elapsed:flow.gatherDuration+frame.time,
           target});
       }
@@ -1801,7 +1833,7 @@
       LightFeathers.draw(ctx,{width:w,height:h,time,bursts:lightFeatherPlan(w,h,{formal:formalLight})});
     }
     if(flow.element===null)materialError.hidden=true;else updateMaterialError();
-    const labels={DRAWING:'畫完後放開',WAITING:'可接著畫',GATHER:'魔力收束',AWAKEN:awakeningRenderer().sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
+    const labels={DRAWING:flow.holdFrame?.ready?'鬆手釋放魔力':flow.holdFrame?.active?'正在聚集魔力':'畫完後放開',RETURN:'魔力匯入中心',WAITING:flow.completionSource==='hold'?'魔力蓄勢':'可接著畫',GATHER:'魔力收束',AWAKEN:awakeningRenderer().sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
     const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.elapsed>=1.2?'魔力蓄勢':labels[state];
     if(materialStatus.textContent!==label)materialStatus.textContent=label;
     const titleOpacity=scan?scan.opacity:state==='REVEAL'?Math.max(0,Math.min(1,(flow.elapsed-.7)/.8)):

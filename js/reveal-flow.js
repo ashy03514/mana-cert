@@ -3,8 +3,8 @@
   'use strict';
   const ELEMENTS=Object.freeze(['fire','water','wind','earth','light','dark']);
   // Two inward waves finish at 1.2 s, then build pressure for another 0.5 s.
-  const DURATIONS=Object.freeze({WAITING:1.7,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
-  const NEXT=Object.freeze({WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});
+  const DURATIONS=Object.freeze({RETURN:.55,WAITING:1.7,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
+  const NEXT=Object.freeze({RETURN:'WAITING',WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});
   const clamp=v=>Math.max(0,Math.min(1,v));
   const smooth=v=>{const x=clamp(v);return x*x*(3-2*x);};
 
@@ -22,9 +22,21 @@
       this.element=element===null?null:(ELEMENTS.includes(element)?element:'fire');
       this.state='DRAWING';this.elapsed=0;this.paused=false;
       this.pointerId=null;this.distance=0;this._point=null;
+      this._origin=null;this._holdAge=0;this._drawing=false;this._lastHoldMs=null;
+      this.completionSource=null;this.releasePoint=null;
       return this;
     }
-    get ready(){return this.distance>=24;}
+    get paused(){return this._paused;}
+    set paused(value){
+      this._paused=value;
+      if(value)this._lastHoldMs=null;
+    }
+    get ready(){return this.distance>=24||this.holdFrame?.ready===true||this.completionSource==='hold';}
+    get holdFrame(){
+      if(this.pointerId===null||this._drawing||!this._origin)return null;
+      return {x:this._origin.x,y:this._origin.y,age:this._holdAge,
+        progress:clamp(this._holdAge/1.2),active:this._holdAge>=.35,ready:this._holdAge+1e-9>=1.2};
+    }
     get gatherDuration(){return this._gatherDuration;}
     get awakeningEnabled(){return (this.lightAwakening&&this.element==='light')||(this.darkAwakening&&this.element==='dark');}
     get awakeningDuration(){return this.awakeningEnabled?(this.element==='dark'?3.2:DURATIONS.AWAKEN):0;}
@@ -50,39 +62,67 @@
       // envelope stops before the late fade/disassembly portion.
       return {time,phase:Math.min(this.holdAtReveal ? .5 : 1,clamp(time/6.4)),opacity};
     }
-    down(id,x,y){
+    down(id,x,y,nowMs){
       if(this.paused||this.pointerId!==null||id===null||id===undefined||
         !Number.isFinite(x)||!Number.isFinite(y)||
-        (this.state!=='DRAWING'&&this.state!=='WAITING'))return false;
+        (this.state!=='DRAWING'&&(this.state!=='WAITING'||this.completionSource==='hold')))return false;
       this.pointerId=id;this._point={x,y};this.state='DRAWING';this.elapsed=0;
+      this._origin={x,y};this._holdAge=0;this._drawing=false;
+      this._lastHoldMs=Number.isFinite(nowMs)?nowMs:null;
+      this.completionSource=null;this.releasePoint=null;
       return true;
     }
     move(id,x,y){
       if(this.paused||this.pointerId===null||id!==this.pointerId||
         !Number.isFinite(x)||!Number.isFinite(y))return false;
+      // Ignore movement inside the original contact area. Repeated hand jitter
+      // must neither manufacture a stroke nor restart the charging animation.
+      if(!this._drawing){
+        if(Math.hypot(x-this._origin.x,y-this._origin.y)<=14)return false;
+        this._drawing=true;this._holdAge=0;
+      }
       const distance=Math.hypot(x-this._point.x,y-this._point.y);
-      // Keep the last meaningful point so tiny back-and-forth input jitter
-      // cannot become a completed drawing after a stationary long press.
       if(distance<2)return false;
       this.distance=Math.min(1e6,this.distance+distance);this._point={x,y};
       return true;
     }
-    up(id,{cancelled=false}={}){
+    advanceHold(dt,nowMs){
+      // Contact duration uses real active time, including the interval between
+      // the last animation frame and pointerup on a low-frame-rate device.
+      if(Number.isFinite(nowMs)){
+        if(this._lastHoldMs!==null&&nowMs<this._lastHoldMs)return;
+        if(this._lastHoldMs!==null)this._holdAge+=(nowMs-this._lastHoldMs)/1000;
+        this._lastHoldMs=nowMs;
+      }else if(dt>0){
+        this._holdAge+=dt;this._lastHoldMs=null;
+      }
+    }
+    up(id,{cancelled=false,nowMs}={}){
       if(this.paused||this.pointerId===null||id!==this.pointerId)return false;
       if(cancelled){this.cancelPointer();return true;}
-      this.pointerId=null;this._point=null;this.elapsed=0;
-      this.state=this.ready?'WAITING':'DRAWING';
+      if(!this._drawing)this.advanceHold(0,nowMs);
+      const hold=this.holdFrame;
+      this.releasePoint=hold?.ready?{x:hold.x,y:hold.y,age:hold.age}:null;
+      this.completionSource=hold?.ready?'hold':this.distance>=24?'draw':null;
+      this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this.elapsed=0;
+      this.state=this.completionSource==='hold'?'RETURN':this.completionSource==='draw'?'WAITING':'DRAWING';
       return true;
     }
     cancelPointer(){
       // Lifecycle cancellation must still release capture while animation is paused.
-      this.pointerId=null;this._point=null;
-      if(this.state==='WAITING'||this.state==='DRAWING'){
-        this.state='DRAWING';this.elapsed=0;
+      this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;
+      if(this.state==='DRAWING'||(this.state==='WAITING'&&this.completionSource!=='hold')){
+        this.state='DRAWING';this.elapsed=0;this._drawing=false;
+        this.completionSource=null;this.releasePoint=null;
       }
     }
-    step(dt){
-      if(this.paused||!Number.isFinite(dt)||dt<=0||!this.duration)return;
+    step(dt,nowMs){
+      if(this.paused||!Number.isFinite(dt)||dt<0)return;
+      if(this.state==='DRAWING'&&this.pointerId!==null&&!this._drawing){
+        this.advanceHold(dt,nowMs);
+        return;
+      }
+      if(!this.duration)return;
       let remaining=Math.min(dt,.05);
       while(remaining>0&&this.duration){
         if(this.holdAtReveal&&this.state==='REVEAL'){

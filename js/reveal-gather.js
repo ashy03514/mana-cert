@@ -372,7 +372,7 @@
       }
       ctx.restore();
     }
-    draw(ctx,{progress=0,formation=0,width=this.width,height=this.height,target,element='fire',time=0}={}){
+    draw(ctx,{showInk=true,progress=0,formation=0,width=this.width,height=this.height,target,element='fire',time=0}={}){
       if(!ctx||!this.routes.length)return;
       this.resize(width,height);width=this.width;height=this.height;
       progress=clamp(finite(progress));formation=clamp(finite(formation));time=finite(time);
@@ -387,7 +387,7 @@
       const original=1-smooth(progress/.055),transfer=smooth(progress/.025)*(1-smooth(formation/.3));
       // Only the unbroken original silhouette is rendered during the first
       // ~115 ms. The next layer is already made of spheres, never line sections.
-      if(original>.001&&this.renderer)for(const route of this.routes){
+      if(showInk&&original>.001&&this.renderer)for(const route of this.routes){
         const points=route.points.map(p=>({x:p.x*width,y:p.y*height,speed:p.speed}));
         let length=0;
         for(let i=0;i<points.length;i++){

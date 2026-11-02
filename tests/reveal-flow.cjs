@@ -19,13 +19,19 @@ assert.equal(f.pointerId,null);assert.equal(f.materialFrame,null);assert.equal(f
 assert.equal(f.down(1,20,40),true);
 for(let n=0;n<500;n++){f.move(1,20+Math.sin(n)*.8,40+Math.cos(n)*.8);f.step(.05);}
 assert.equal(f.distance,0,'stationary input jitter cannot accumulate readiness');
-assert.equal(f.up(1),true);advance(f,20);assert.equal(f.state,'DRAWING','a stationary tap never auto starts');
+assert.equal(f.state,'DRAWING','a fully charged hold stays interactive until release');
+assert.equal(f.holdFrame.ready,true);assert.equal(f.up(1),true);
+assert.equal(f.state,'RETURN','stationary charge returns to the center before the shockwaves');
+assert.equal(f.completionSource,'hold');f.reset();
+f.down(1,20,40);advance(f,.2);f.up(1);advance(f,20);
+assert.equal(f.state,'DRAWING','a short stationary tap never auto starts');
 assert.equal(f.down(1,20,40),true);f.move(1,43,40);f.up(1);
 assert.equal(f.ready,false);assert.equal(f.state,'DRAWING','short sketches wait for additional drawing');
-f.down(1,60,40);f.move(1,62,40);f.up(1);
+f.down(1,60,40);f.move(1,75,40);f.up(1);
 assert.equal(f.ready,true);assert.equal(f.state,'WAITING','valid stroke distance accumulates without counting gaps');
 advance(f,1.1);assert.equal(f.state,'WAITING');close(f.progress,1.1/1.7,'quiet-period progress includes the post-wave hold');
 assert.equal(f.down(2,100,60),true);assert.equal(f.state,'DRAWING');assert.equal(f.elapsed,0);
+f.move(2,124,60);
 advance(f,2);assert.equal(f.state,'DRAWING','continuing to hold keeps the drawing open');
 f.move(2,104,70);f.up(2);advance(f,1.69);
 assert.equal(f.state,'WAITING','continuation receives a fresh quiet period');advance(f,.01);
@@ -48,8 +54,8 @@ assert.equal(f.state,'DRAWING','background cancellation removes a pending countd
 f.reset();sketch(f);advance(f,.5);
 const snapshot=JSON.stringify(f);f.paused=true;
 f.down(2,2,2);f.move(2,100,100);f.up(2);advance(f,5);
-assert.equal(JSON.stringify({...f,paused:false}),snapshot,'pause freezes time and ordinary input');
-f.paused=false;f.step(100);close(f.elapsed,.55,'large frames are clamped');
+f.paused=false;assert.equal(JSON.stringify(f),snapshot,'pause freezes time and ordinary input');
+f.step(100);close(f.elapsed,.55,'large frames are clamped');
 for(const dt of [0,-1,NaN,Infinity])f.step(dt);close(f.elapsed,.55,'invalid frames are ignored');
 f.paused=true;f.cancelPointer();assert.equal(f.state,'DRAWING','lifecycle cleanup works while paused');
 f.reset();f.down(1,0,0);f.paused=true;f.cancelPointer();
@@ -154,4 +160,92 @@ formal.reset('water');sketch(formal);advance(formal,8.4);
 assert.equal(formal.state,'DONE','preview completion is restored after formal mode');
 close(formal.materialFrame.opacity,.45,'preview retains its original final opacity');
 close(formal.materialFrame.phase,3.8/6.4,'preview phase is not capped to formal holding phase');
+
+const hold=new RevealFlow({}, {lightAwakening:true,darkAwakening:true});
+hold.reset('dark');
+hold.down(0,200,300);
+assert.deepEqual(hold.holdFrame,{x:200,y:300,age:0,progress:0,active:false,ready:false});
+advance(hold,.3);assert.equal(hold.holdFrame.active,false);
+advance(hold,.06);assert.equal(hold.holdFrame.active,true,'charge appears after the contact settles');
+for(let n=0;n<14;n++){hold.move(0,200+Math.sin(n)*10,300+Math.cos(n)*10);advance(hold,.05);}
+assert.equal(hold.distance,0,'sub-finger jitter never adds drawing distance');
+assert.equal(hold.holdFrame.ready,false);
+assert.deepEqual([hold.holdFrame.x,hold.holdFrame.y],[200,300],'charge stays anchored during jitter');
+advance(hold,.14);
+assert.equal(hold.holdFrame.ready,true,'charge completes at 1.2 seconds');
+assert.equal(hold.ready,true);
+hold.paused=true;
+const charged=JSON.stringify(hold);
+advance(hold,10);hold.move(0,300,300);hold.up(0);
+assert.equal(JSON.stringify(hold),charged,'pause freezes both charge and pointer input');
+hold.paused=false;
+assert.equal(hold.up(99),false,'a second pointer cannot release the charge');
+assert.equal(hold.up(0),true);
+assert.equal(hold.state,'RETURN');assert.equal(hold.holdFrame,null);
+assert.deepEqual([hold.releasePoint.x,hold.releasePoint.y],[200,300]);
+close(hold.releasePoint.age,1.2,'released charge age');
+assert.equal(hold.ready,true,'completed hold remains ready during its transfer');
+assert.equal(hold.down(1,100,100),false,'release transfer is not an input phase');
+advance(hold,.54);assert.equal(hold.state,'RETURN');
+hold.step(.03);assert.equal(hold.state,'WAITING');close(hold.elapsed,.02,'return carries fractional time into inward waves');
+advance(hold,1.68);assert.equal(hold.state,'GATHER');
+advance(hold,2.1);assert.equal(hold.state,'AWAKEN','hold uses the selected rare-element opening');
+advance(hold,3.2);assert.equal(hold.state,'FORM');
+hold.reset();
+assert.equal(hold.completionSource,null);assert.equal(hold.releasePoint,null);
+assert.equal(hold.holdFrame,null);assert.equal(hold.ready,false,'new rounds begin with no inherited hold');
+
+hold.down(1,200,300);advance(hold,1);
+hold.move(1,214,300);assert.ok(hold.holdFrame,'boundary jitter retains charge');
+hold.move(1,215,300);assert.equal(hold.holdFrame,null,'intentional movement becomes a drawn gesture');
+hold.move(1,200,300);advance(hold,2);
+assert.equal(hold.holdFrame,null,'returning to the origin never changes a drawn gesture into hold');
+hold.up(1);assert.equal(hold.state,'WAITING');assert.equal(hold.completionSource,'draw');
+assert.equal(hold.releasePoint,null);
+
+hold.reset();hold.down(1,10,20);advance(hold,1);
+hold.up(1,{cancelled:true});advance(hold,5);
+assert.equal(hold.state,'DRAWING');assert.equal(hold.ready,false);
+assert.equal(hold.holdFrame,null);assert.equal(hold.releasePoint,null);
+hold.down(1,10,20);advance(hold,.3);hold.up(1);
+assert.equal(hold.state,'DRAWING','cancelled charge cannot carry time to another contact');
+hold.down(1,10,20);advance(hold,1.3);hold.paused=true;hold.cancelPointer();
+assert.equal(hold.pointerId,null);assert.equal(hold.ready,false);
+hold.paused=false;hold.down(1,10,20);
+assert.equal(hold.holdFrame.age,0,'lifecycle cleanup resets even a fully charged paused contact');
+
+// A released hold has already sent energy to the center. A stray tap or blur
+// during its two waves cannot require the customer to charge a second time.
+hold.reset();hold.down(1,50,50);advance(hold,1.2);hold.up(1);advance(hold,.55);
+const committed=hold.releasePoint;
+assert.equal(hold.down(2,80,90),false);assert.equal(hold.up(2),false);hold.cancelPointer();
+assert.equal(hold.completionSource,'hold');assert.equal(hold.releasePoint,committed);
+assert.equal(hold.state,'WAITING');advance(hold,1.7);assert.equal(hold.state,'GATHER');
+// A drawing still allows another stroke or a valid stationary charge during WAITING.
+hold.reset();sketch(hold);assert.equal(hold.down(3,180,220),true);
+advance(hold,1.2);hold.up(3);assert.equal(hold.completionSource,'hold');
+assert.equal(hold.state,'RETURN');assert.ok(hold.distance>=24);
+
+const slow=new RevealFlow();
+slow.down(7,15,20,1000);
+for(let n=1;n<=11;n++) slow.step(.1,1000+n*100);
+assert.equal(slow.holdFrame.ready,false);
+slow.up(7,{nowMs:2200});
+assert.equal(slow.state,'RETURN','pointerup completes the final 100 ms between slow frames');
+close(slow.releasePoint.age,1.2,'release uses wall time after the first contact');
+
+slow.reset();slow.down(8,10,20,1000);slow.up(8,{nowMs:2200});
+assert.equal(slow.state,'RETURN','a complete foreground hold is valid even between two frames');
+slow.reset();slow.down(8,10,20);
+for(let n=0;n<12;n++)slow.step(.1);
+assert.equal(slow.holdFrame.ready,true,'low FPS keeps 1.2 seconds when only dt is available');
+
+slow.reset();slow.down(9,10,20,1000);slow.step(.4,1400);
+slow.paused=true;slow.paused=false;slow.step(5,6400);
+close(slow.holdFrame.age,.4,'resume rebases the clock even without a paused frame');
+slow.step(.5,6900);slow.up(9,{nowMs:7100});
+assert.equal(slow.state,'DRAWING','time spent paused cannot complete the next release');
+slow.reset();slow.down(10,10,20,1000);slow.step(.6,1600);slow.cancelPointer();
+slow.down(11,10,20,9000);slow.up(11,{nowMs:9005});
+assert.equal(slow.state,'DRAWING','cancelled contact time never carries to the next pointer');
 console.log('Reveal flow: input, cancellation, pause, preview timing and animated formal holds for six materials plus no-element passed.');

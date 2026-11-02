@@ -25,14 +25,14 @@
         const anticipation=clamp(waitingTime/1.2);
         this.compression=Math.max(.26*smoother((anticipation-.7)/.3),releasedCompression);
         this.mistCompression=Math.max(.12*smooth((waitingTime-1.2)/.5),releasedMist);
-      }else if(state==='DRAWING'){
+      }else if(state==='DRAWING'||state==='RETURN'){
         // Continuing a drawing gently releases the pressure instead of snapping.
         this.compression=releasedCompression;this.mistCompression=releasedMist;
       }else{this.compression=.26;this.mistCompression=.12;}
     }
     point(q,kind,width,height,target={x:width/2,y:height/2}){
       const cx=width/2,cy=height/2,baseX=q.x-cx,baseY=q.y-cy;
-      if(this.state==='DRAWING'||this.state==='WAITING'){
+      if(this.state==='DRAWING'||this.state==='RETURN'||this.state==='WAITING'){
         const compression=this.compression+(kind==='mist'?this.mistCompression:0);
         return {x:cx+baseX*(1-compression),y:cy+baseY*(1-compression),
           scale:1-compression*.18,alpha:1};
