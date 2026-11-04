@@ -1,259 +1,325 @@
-/* Finger-sized gathering field. The shared reveal flow owns readiness and timing. */
+/* Peripheral currents deliver real grains to an orbit centered on the contact. */
 (function(root) {
   'use strict';
   const TAU = Math.PI * 2;
-  const clamp = value => Math.max(0, Math.min(1, value));
-  const smooth = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
-  const sample = (index, salt) => {
-    const n = Math.sin(index * 127.1 + salt * 311.7) * 43758.5453;
-    return n - Math.floor(n);
+  const DEFAULT_COLORS = ['#83dbff', '#c4bdff', '#ddf6ff'];
+  const SQUASH = .88;
+  const TAIL_LENGTH_MULTIPLIER = 5.2;
+  const ORIGINAL_TAIL_SAMPLES = 8;
+  const TAIL_SAMPLE_STEP = .067 / ORIGINAL_TAIL_SAMPLES;
+  const clamp = n => Math.max(0, Math.min(1, n));
+  const smooth = n => { const t = clamp(n); return t * t * (3 - 2 * t); };
+  const sample = (i, salt) => {
+    const v = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
+    return v - Math.floor(v);
   };
-  const COLORS = ['#8ceaff', '#b9b5ff', '#edfaff'];
 
   class HoldMagic {
-    constructor(createCanvas = () => document.createElement('canvas')) {
+    constructor(createCanvas = () => document.createElement('canvas'), settings = {}) {
       this.createCanvas = createCanvas;
-      this.width = 1;
-      this.height = 1;
-      this.sprites = null;
-      this.motes = Array.from({ length: 42 }, (_, i) => ({
-        angle: sample(i, 1) * TAU,
-        speed: .38 + sample(i, 2) * .72,
-        radius: 32 + sample(i, 3) * 52,
-        depth: sample(i, 4),
-        size: 1 + sample(i, 5) * 1.8,
-        appearAt: sample(i, 6) * .6,
-        tint: i % 3
-      }));
-      this.wisps = Array.from({ length: 3 }, () =>
-        Array.from({ length: 45 }, () => ({ x: 0, y: 0, speed: .5 })));
-      this.poses = this.motes.map(() => ({ x: 0, y: 0, alpha: 0, size: 1 }));
+      this.width = this.height = 1;
+      this.grains = [];
+      this.configure(settings);
       this.reset();
     }
 
+    configure(settings = {}) {
+      const {
+        holdParticleCount: count = 96, holdParticleSize: size = 100, holdParticleBrightness: brightness = 100,
+        holdInflowSpeed: inflow = 100, holdRingRadius: ring = 100, holdPalette: colors = DEFAULT_COLORS,
+        holdTailLength: length = 100, holdTailWidth: width = 100, holdTailOpacity: opacity = 20, holdTailFalloff: falloff = 100
+      } = root.EffectSettings ? root.EffectSettings.normalize(settings) : settings;
+      const paletteChanged = !this.colors || colors.length !== this.colors.length || colors.some((c,i) => c !== this.colors[i]);
+      const rebuild = this.grains.length !== count || this.inflowSpeed !== inflow;
+      const radiusChanged = this.ringScale !== ring / 100;
+      if (paletteChanged) {
+        this.colors = colors.slice();
+        this.sprites = null;
+      }
+      if (paletteChanged || this.falloff !== falloff) {
+        this.falloff = falloff;
+        this.tailTints = this.colors.map(color => Array.from({ length: 256 }, (_, i) => {
+          const alpha = Math.round(255 * (i / 255) ** (falloff / 100));
+          return color + alpha.toString(16).padStart(2, '0');
+        }));
+      }
+      this.inflowSpeed = inflow;
+      this.sizeScale = size / 100;
+      this.brightnessScale = brightness / 100;
+      this.ringScale = ring / 100;
+      this.tailMultiplier = TAIL_LENGTH_MULTIPLIER * length / 100;
+      this.tailWidth = width / 100;
+      this.tailOpacity = opacity / 100;
+      if (rebuild) this.grains = this._createGrains(count, inflow / 100);
+      else if (paletteChanged) this.grains.forEach((g, i) => { g.tint = i % this.colors.length; });
+      if (this.mode && (rebuild || radiusChanged)) this._routes();
+      if (this.alpha > 0) this._place();
+    }
+
+    _createGrains(count, speed) {
+      // For slow currents start the last grains earlier, so all reach the ring
+      // before the same three-second automatic appraisal.
+      const emissionSeconds = Math.min(2.1, 3 - .16 - .73 / speed);
+      return Array.from({ length: count }, (_, i) => {
+        // Twelve broad streams distributed along the four edges. Individual
+        // grains fan out from each stream and peel off into separate orbit slots.
+        const lane = i * 5 % 12;
+        const depth = sample(i, 2);
+        return {
+          seed: i + 311, side: lane % 4, tint: i % this.colors.length,
+          along: (Math.floor(lane / 4) + .5 + (sample(i, 3) - .5) * .68) / 3,
+          inset: .027 + sample(i, 4) * .10,
+          born: .16 + (i + sample(i, 5) * .6) / count * emissionSeconds,
+          flight: (.49 + sample(i, 6) * .24) / speed,
+          slot: i * 2.39996323, speed: .45 + depth * .42,
+          band: .87 + sample(i, 7) * .28, curl: (sample(lane, 8) - .5) * .47,
+          size: .8 + depth * 1.35, brightness: .53 + depth * .43,
+          head: {}, tailPath: [], tailCount: 0, tailLength: 0
+        };
+      });
+    }
+
     reset() {
-      this.time = 0;
-      this.age = 0;
-      this.attraction = 0;
-      this.alpha = 0;
+      this.mode = 'idle';
+      this.age = this.alpha = this.attraction = this.returnProgress = 0;
+      this.lastBirth = Infinity;
       this.x = this.width / 2;
       this.y = this.height / 2;
-      this.returning = false;
-      this.returnProgress = 0;
+      this._routes();
       this._place();
     }
 
-    resize(width, height) {
-      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
-      this.x *= width / this.width;
-      this.y *= height / this.height;
-      this.width = width;
-      this.height = height;
+    resize(w, h) {
+      if (!(w > 0 && h > 0) || !Number.isFinite(w + h)) return;
+      this.x *= w / this.width;
+      this.y *= h / this.height;
+      this.width = w;
+      this.height = h;
+      this._routes();
+      this._place();
+    }
+
+    _routes() {
+      const w = this.width, h = this.height;
+      this.ringRadius = Math.max(32, Math.min(62, Math.min(w, h) * .118)) * this.ringScale;
+      for (const g of this.grains) {
+        let sx = w * (g.side % 2 ? g.along : g.side === 0 ? g.inset : 1 - g.inset);
+        let sy = h * (g.side % 2 === 0 ? g.along : g.side === 1 ? g.inset : 1 - g.inset);
+        const dx = sx - this.x, dy = sy - this.y;
+        // A finger near the border still draws power from a distance.
+        if (Math.hypot(dx, dy) < this.ringRadius * 2.5) { sx = w - sx; sy = h - sy; }
+        g.startAngle = Math.atan2((sy - this.y) / SQUASH, sx - this.x);
+        g.distance = Math.hypot(sx - this.x, (sy - this.y) / SQUASH);
+        g.turn = Math.atan2(Math.sin(g.slot - g.startAngle), Math.cos(g.slot - g.startAngle));
+      }
+    }
+
+    _contact(frame) {
+      if (frame.x !== this.x || frame.y !== this.y) {
+        this.x = frame.x; this.y = frame.y;
+        this._routes();
+      }
+      this.age = frame.age;
+      this.alpha = 1;
+    }
+
+    seal(frame) {
+      this._contact(frame);
+      this.mode = 'sealed';
+      this.lastBirth = this.age;
       this._place();
     }
 
     release(frame) {
-      if (frame && Number.isFinite(frame.x) && Number.isFinite(frame.y)) {
-        this.x = frame.x;
-        this.y = frame.y;
-        this.age = frame.age || this.age;
-      }
-      this.alpha = 1;
-      this.returning = true;
+      this.seal(frame);
+      this.mode = 'return';
       this.returnProgress = 0;
-      this._place();
     }
 
     step(seconds, frame, returnProgress = null) {
-      if (!Number.isFinite(seconds) || seconds <= 0) return;
+      if (!Number.isFinite(seconds) || seconds < 0) return;
       const dt = Math.min(seconds, .05);
-      if (!frame && !this.returning && this.alpha === 0 && this.attraction === 0) return;
-      this.time += dt;
-      if (frame && Number.isFinite(frame.x) && Number.isFinite(frame.y)) {
-        this.x = frame.x;
-        this.y = frame.y;
-        this.age = Math.max(0, frame.age);
-        this.attraction = smooth((this.age - .35) / .85);
-        this.alpha = 1;
-        this.returning = false;
+      if (frame) {
+        this._contact(frame);
+        this.mode = 'held';
+        this.lastBirth = Infinity;
         this.returnProgress = 0;
-      } else if (this.returning && Number.isFinite(returnProgress)) {
-        this.returnProgress = clamp(returnProgress);
+        this.attraction = smooth((this.age - .15) / .9);
       } else {
-        this.alpha = Math.max(0, this.alpha - dt * 3.2);
+        if (this.mode === 'idle') return;
+        this.age += dt;
+        this.attraction = Math.max(0, this.attraction - dt * 3);
+        if (this.mode === 'return') this.returnProgress = clamp(returnProgress ?? this.returnProgress);
+        else if (this.mode !== 'sealed') {
+          if (this.mode === 'held') this.lastBirth = this.age - dt;
+          this.mode = 'fading';
+          this.alpha = Math.max(0, this.alpha - dt * 3.8);
+          if (!this.alpha) { this.mode = 'idle'; return; }
+        }
       }
-      if (!frame) this.attraction = Math.max(0, this.attraction - dt * 3.2);
       this._place();
     }
 
-    _center(layer = 0) {
-      const t = this.returning ? smooth(this.returnProgress) : 0;
-      const dx = this.width / 2 - this.x;
-      const dy = this.height / 2 - this.y;
-      const distance = Math.hypot(dx, dy);
-      const bend = Math.sin(t * Math.PI) * Math.min(72, distance * .18) * (1 + layer * .24);
-      const divisor = Math.max(1, distance);
-      return {
-        x: this.x + dx * t - dy / divisor * bend,
-        y: this.y + dy * t + dx / divisor * bend,
-        radius: 1 - t * .45,
-        turn: t * 1.35
-      };
+    _sample(g, age, out) {
+      const p = clamp((age - g.born) / g.flight);
+      const landingTime = age - g.born - g.flight;
+      const turnIn = smooth(p * p);
+      // The last stretch matches the ring's angular and radial velocity.
+      const angle = g.startAngle + g.turn * turnIn + g.curl * Math.sin(Math.PI * p) ** 2
+        + g.speed * landingTime * turnIn;
+      const ring = this.ringRadius * g.band * (1 + .025 * Math.sin(age * 1.9 + g.slot));
+      const approach = smooth(p);
+      const r = g.distance + (ring - g.distance) * approach;
+      out.x = this.x + this.shiftX * approach + Math.cos(angle) * r;
+      out.y = this.y + this.shiftY * approach + Math.sin(angle) * r * SQUASH;
     }
 
     _place() {
-      const growth = smooth((this.age - .25) / .85);
-      for (let strand = 0; strand < this.wisps.length; strand++) {
-        const center = this._center(strand - 1);
-        const phase = strand * TAU / 3 + this.time * (.45 + strand * .07) + center.turn;
-        const points = this.wisps[strand];
-        for (let i = 0; i < points.length; i++) {
-          const u = i / (points.length - 1);
-          const radius = (36 + (1 - u) * (45 + growth * 42) +
-            Math.sin(u * 8 + this.time * .8 + strand) * 4) * center.radius;
-          const angle = phase + u * (1.65 + growth * .4);
-          points[i].x = center.x + Math.cos(angle) * radius;
-          points[i].y = center.y + Math.sin(angle) * radius * .76 +
-            Math.sin(u * 5 + strand + this.time * .5) * 3;
+      const t = smooth(this.returnProgress);
+      const dx = this.width / 2 - this.x, dy = this.height / 2 - this.y;
+      const bend = Math.sin(Math.PI * t) * Math.min(.18, 64 / Math.max(1, Math.hypot(dx, dy)));
+      this.shiftX = t * dx - dy * bend;
+      this.shiftY = t * dy + dx * bend;
+      this.arrived = 0;
+      for (const g of this.grains) {
+        const since = this.age - g.born;
+        g.alpha = since > 0 && g.born <= this.lastBirth ? smooth(since / .15) * g.brightness : 0;
+        if (!g.alpha) continue;
+        const landed = since - g.flight;
+        if (landed >= 0) this.arrived++;
+        this._sample(g, this.age, g.head);
+        g.trail = this.tailOpacity > 0 ? 1 - smooth(landed / .09) : 0;
+        if (g.trail > 0) this._traceTail(g);
+      }
+    }
+
+    _traceTail(g) {
+      // Measure in screen space so accelerating and turning grains get the same
+      // length multiplier. A newly born grain can only show the path already flown.
+      const path = g.tailPath;
+      path[0] = g.head;
+      g.head.distance = 0;
+      let length = 0, target = Infinity, count = 1;
+      while (length < target) {
+        const age = Math.max(g.born, this.age - count * TAIL_SAMPLE_STEP);
+        const p = path[count] || (path[count] = {});
+        this._sample(g, age, p);
+        const prev = path[count - 1], dx = p.x - prev.x, dy = p.y - prev.y;
+        const segment = Math.hypot(dx, dy);
+        if (length + segment > target) {
+          const fraction = (target - length) / segment;
+          p.x = prev.x + dx * fraction;
+          p.y = prev.y + dy * fraction;
         }
+        length = Math.min(target, length + segment);
+        p.distance = length;
+        if (count === ORIGINAL_TAIL_SAMPLES) target = length * this.tailMultiplier;
+        count++;
+        if (age === g.born) break;
       }
-      const center = this._center();
-      for (let i = 0; i < this.motes.length; i++) {
-        const mote = this.motes[i];
-        const pose = this.poses[i];
-        const angle = mote.angle + this.time * mote.speed + center.turn;
-        const breathe = Math.sin(this.time * .8 + mote.angle) * 4;
-        const approach = 1 + (1 - growth) * (.45 + mote.depth * .45);
-        const radius = (mote.radius + breathe) * center.radius * approach;
-        pose.x = center.x + Math.cos(angle) * radius;
-        pose.y = center.y + Math.sin(angle) * radius * (.6 + mote.depth * .3);
-        pose.alpha = (.22 + mote.depth * .5) *
-          (.65 + .35 * Math.sin(this.time * 1.3 + mote.angle) ** 2);
-        pose.size = mote.size * (.8 + mote.depth * .4);
-      }
+      g.tailCount = count;
+      g.tailLength = length;
     }
 
     point(q, kind) {
       if (this.attraction < .002 || kind === 'star') return null;
-      const dx = q.x - this.x;
-      const dy = q.y - this.y;
+      const dx = q.x - this.x, dy = q.y - this.y;
       const distance = Math.hypot(dx, dy);
-      const radius = Math.min(260, this.width * .58);
-      const influence = smooth(1 - distance / radius) * this.attraction;
+      const influence = smooth(1 - distance / Math.min(320, this.width * .7)) * this.attraction;
       if (influence < .002) return null;
       const angle = Math.atan2(dy, dx) + influence * .28;
-      const reach = distance * (1 - influence * .32);
-      return {
-        x: this.x + Math.cos(angle) * reach,
-        y: this.y + Math.sin(angle) * reach,
-        brightness: 1 + influence * .45,
-        scale: 1,
-        alpha: 1
-      };
+      const reach = distance * (1 - influence * .28);
+      return { x: this.x + Math.cos(angle) * reach, y: this.y + Math.sin(angle) * reach,
+        brightness: 1 + influence * .5, scale: 1, alpha: 1 };
     }
 
     _textures() {
       if (this.sprites) return this.sprites;
-      const glow = COLORS.map(color => {
-        const canvas = this.createCanvas();
-        canvas.width = canvas.height = 96;
-        const ctx = canvas.getContext('2d');
-        const gradient = ctx.createRadialGradient(48, 48, 0, 48, 48, 48);
-        gradient.addColorStop(0, color);
-        gradient.addColorStop(.12, color + 'b3');
-        gradient.addColorStop(.42, color + '40');
-        gradient.addColorStop(1, color + '00');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, 96, 96);
-        return canvas;
+      this.sprites = this.colors.map(color => {
+        const c = this.createCanvas();
+        c.width = c.height = 48;
+        const ctx = c.getContext('2d'), glow = ctx.createRadialGradient(24, 24, 0, 24, 24, 24);
+        glow.addColorStop(0, '#f4fcff'); glow.addColorStop(.12, color);
+        glow.addColorStop(.27, color + 'a8'); glow.addColorStop(.53, color + '30');
+        glow.addColorStop(1, color + '00');
+        ctx.fillStyle = glow; ctx.fillRect(0, 0, 48, 48);
+        return c;
       });
-      const pulse = this.createCanvas();
-      pulse.width = pulse.height = 192;
-      const ctx = pulse.getContext('2d');
-      const gradient = ctx.createRadialGradient(96, 96, 0, 96, 96, 96);
-      gradient.addColorStop(0, '#a5ecff00');
-      gradient.addColorStop(.53, '#a5ecff00');
-      gradient.addColorStop(.7, '#a5ecff09');
-      gradient.addColorStop(.82, '#c9f7ff65');
-      gradient.addColorStop(.91, '#a5ecff12');
-      gradient.addColorStop(1, '#a5ecff00');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 192, 192);
-      this.sprites = { glow, pulse };
       return this.sprites;
+    }
+
+    _drawTail(ctx, g) {
+      const path = g.tailPath, tip = g.tailCount - 1, tints = this.tailTints[g.tint];
+      for (let i = 0; i < tip; i++) {
+        const p = path[i], ahead = path[Math.max(0, i - 1)], behind = path[i + 1];
+        const dx = ahead.x - behind.x, dy = ahead.y - behind.y;
+        const fraction = 1 - p.distance / g.tailLength;
+        const taper = this.tailWidth * g.size * .73 * fraction / Math.max(.01, Math.hypot(dx, dy));
+        p.nx = -dy * taper;
+        p.ny = dx * taper;
+        p.color = tints[Math.round(255 * fraction)];
+      }
+      path[tip].nx = path[tip].ny = 0;
+      path[tip].color = tints[0];
+
+      // Each strip shares its cross-section and alpha with the next. Split at
+      // bends so opacity follows distance travelled, including on a curling tail.
+      for (let start = 0; start < tip;) {
+        const a = path[start];
+        let end = start + 1;
+        while (end < tip) {
+          const next = path[end + 1], span = next.distance - a.distance;
+          if (span > g.tailLength * .25 || Math.hypot(next.x - a.x, next.y - a.y) < span * .99) break;
+          end++;
+        }
+        const b = path[end];
+        if (b.distance > a.distance) {
+          const ramp = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+          ramp.addColorStop(0, a.color);
+          ramp.addColorStop(1, b.color);
+          ctx.fillStyle = ramp;
+          ctx.beginPath();
+          ctx.moveTo(a.x + a.nx, a.y + a.ny);
+          for (let i = start + 1; i <= end; i++) ctx.lineTo(path[i].x + path[i].nx, path[i].y + path[i].ny);
+          for (let i = end; i >= start; i--) ctx.lineTo(path[i].x - path[i].nx, path[i].y - path[i].ny);
+          ctx.closePath();
+          ctx.fill();
+        }
+        start = end;
+      }
     }
 
     draw(ctx, opacity = 1) {
       const alpha = this.alpha * clamp(opacity);
       if (!ctx || alpha < .002) return;
-      const sprites = this._textures();
-      const gathered = smooth((this.age - .3) / .75);
-      const center = this._center();
+      const glow = this._textures();
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * (.12 + .13 * gathered);
-      const halo = (29 + gathered * 22) * center.radius;
-      ctx.drawImage(sprites.glow[0], center.x - halo, center.y - halo, halo * 2, halo * 2);
-
-      // Overlapping soft stamps keep a mist body while broken narrow glints reveal flow.
-      for (let strand = 0; strand < this.wisps.length; strand++) {
-        const points = this.wisps[strand];
-        for (let i = 0; i < points.length; i++) {
-          const u = i / (points.length - 1);
-          const envelope = Math.sin(u * Math.PI) ** .8;
-          const width = (7 + Math.sin(u * Math.PI) * 7) * center.radius;
-          ctx.globalAlpha = alpha * gathered * envelope * .065;
-          ctx.drawImage(sprites.glow[strand], points[i].x - width, points[i].y - width, width * 2, width * 2);
+      const coreRadius = 15 + 20 * this.arrived / this.grains.length;
+      ctx.globalAlpha = alpha * .22;
+      ctx.drawImage(glow[0], this.x + this.shiftX - coreRadius, this.y + this.shiftY - coreRadius, coreRadius * 2, coreRadius * 2);
+      for (const g of this.grains) {
+        if (!g.alpha) continue;
+        const light = alpha * g.alpha * this.brightnessScale;
+        if (g.trail > .001 && g.tailLength > .01) {
+          ctx.globalAlpha = this.tailOpacity * alpha * g.trail * (g.alpha / g.brightness);
+          this._drawTail(ctx, g);
         }
-        const start = Math.floor(((this.time * (.34 + strand * .055) + strand * .29) % 1) * 32);
-        ctx.lineWidth = .6;
-        ctx.strokeStyle = COLORS[strand];
-        ctx.globalAlpha = alpha * gathered * .3;
-        ctx.beginPath();
-        ctx.moveTo(points[start].x, points[start].y);
-        for (let i = start + 1; i < start + 8; i++) ctx.lineTo(points[i].x, points[i].y);
-        ctx.stroke();
-      }
-
-      for (let i = 0; i < this.poses.length; i++) {
-        const p = this.poses[i];
-        const mote = this.motes[i];
-        const appear = smooth((gathered - mote.appearAt) / .4);
-        ctx.globalAlpha = alpha * p.alpha * appear;
-        const radius = p.size * 3.2;
-        ctx.drawImage(sprites.glow[mote.tint], p.x - radius, p.y - radius, radius * 2, radius * 2);
-        ctx.globalAlpha *= .8;
-        ctx.fillStyle = COLORS[mote.tint];
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * .42, 0, TAU);
-        ctx.fill();
-      }
-
-      const pulseAge = this.age - 1.2;
-      if (!this.returning && pulseAge >= 0 && pulseAge < .7) {
-        const phase = pulseAge / .7;
-        const size = 50 + smooth(phase) * 80;
-        ctx.globalAlpha = alpha * Math.sin(Math.PI * phase) * .64;
-        ctx.drawImage(sprites.pulse, center.x - size, center.y - size, size * 2, size * 2);
+        const radius = g.size * 3.5 * this.sizeScale;
+        ctx.globalAlpha = light;
+        ctx.drawImage(glow[g.tint], g.head.x - radius, g.head.y - radius, radius * 2, radius * 2);
       }
       ctx.restore();
     }
 
     captureTrails(settings = {}) {
-      const strokes = this.wisps.map((points, index) => ({
-        points: points.map(p => ({ x: p.x, y: p.y, speed: .5 })),
-        seed: 311 + index,
-        color: COLORS[index],
-        released: null
+      const brightness = this.alpha * this.brightnessScale;
+      const holdParticles = this.grains.filter(g => brightness * g.alpha > .01).map(g => ({
+        x: g.head.x, y: g.head.y, color: this.colors[g.tint], opacity: brightness * g.alpha, seed: g.seed
       }));
-      return {
-        width: this.width,
-        height: this.height,
-        time: this.time,
-        settings: { ...settings, trailEnabled: true, trailOpacity: 100 },
-        strokes,
-        opacity: () => 1
-      };
+      return { width: this.width, height: this.height, time: this.age,
+        settings: { ...settings, trailEnabled: true, trailOpacity: 100 }, holdParticles,
+        strokes: [], opacity: () => 1 };
     }
   }
 

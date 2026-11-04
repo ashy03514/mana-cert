@@ -15,14 +15,24 @@
  const seed=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
  const noise=n=>{const i=Math.floor(n);return seed(i)+(seed(i+1)-seed(i))*smooth(n-i);};
  const rotate=(p,x,y,a,w)=>{const dx=p.x-x,dy=p.y-y,c=Math.cos(a),s=Math.sin(a);return {x:p.x+(dx*c-dy*s-dx)*w,y:p.y+(dx*s+dy*c-dy)*w};};
+ // This atmosphere follows real active seconds, independent of wing rank speed.
+ function inwardPulse(value){
+  const time=safeTime(value),cycle=Math.floor(time/2),age=time-cycle*2;
+  return {cycle,phase:age/2,front:1-smooth(age/1.65),
+   alpha:smooth(age/.18)*(1-smooth((age-1.45)/.20))};
+ }
  function sample(value,rank='SS',evolutionAction){
   const time=safeTime(value),phase=time%PERIOD,p=profile(rank);
   // An evolution overrides only the ceremony, never the continuous idle clock.
   const weight=clamp(Number.isFinite(evolutionAction?.weight)?evolutionAction.weight:0);
-  const action=(key,periodic)=>periodic*(1-weight)+clamp(Number.isFinite(evolutionAction?.[key])?evolutionAction[key]:0)*weight;
-  const charge=action('charge',smooth((phase-.42)/1.40)*(1-smooth((phase-2.02)/.40)))*p.charge;
-  const release=action('release',smooth((phase-2.02)/.48)*(1-smooth((phase-2.78)/1.25)))*p.release;
-  const burst=action('burst',smooth((phase-2.14)/.16)*(1-smooth((phase-2.40)/.70)))*p.burst;
+  const evolutionProfile=profile(evolutionAction?.poseRank||p.rank);
+  // The old membrane takes in energy with the arriving membrane from the
+  // first reveal frame, rather than waiting for the target skin to replace it.
+  const action=(key,periodic)=>periodic*(1-weight)*p[key]
+   +clamp(Number.isFinite(evolutionAction?.[key])?evolutionAction[key]:0)*weight*evolutionProfile[key];
+  const charge=action('charge',smooth((phase-.42)/1.40)*(1-smooth((phase-2.02)/.40)));
+  const release=action('release',smooth((phase-2.02)/.48)*(1-smooth((phase-2.78)/1.25)));
+  const burst=action('burst',smooth((phase-2.14)/.16)*(1-smooth((phase-2.40)/.70)));
   return {time,phase,rank:p.rank,cycle:Math.floor(time/PERIOD),charge,release,burst,
    ...(evolutionAction?{evolutionAction}:{}),
    idleStrength:p.idle,chainStrength:p.chainMotion,chainOpacity:p.chainOpacity,
@@ -118,5 +128,5 @@
   }
   return out;
  }
- root.DarkDemonWingMotion=Object.freeze({sample,point,chainPoint,particles,profile,noise,PERIOD,ROOT_X,ROOT_Y});
+ root.DarkDemonWingMotion=Object.freeze({sample,point,chainPoint,particles,profile,noise,inwardPulse,PERIOD,ROOT_X,ROOT_Y});
 })(globalThis);

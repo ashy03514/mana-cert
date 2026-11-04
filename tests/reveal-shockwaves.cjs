@@ -182,6 +182,7 @@ for(const holdTime of [1.2,1.45,1.69]){
   // the previous front must already be completely invisible there.
   assert.equal(sample(continued.state,continued.elapsed)?.alpha??0,0);
   assert.equal(continued.down(2,70,40),true,'the post-wave hold still accepts continued drawing');
+  continued.move(2,90,40);
   advance(continued,5);assert.equal(continued.state,'DRAWING','continuing during the hold cancels the scheduled explosion');
   continued.move(2,100,40);continued.up(2);advance(continued,.49);
   assert.equal(sample(continued.state,continued.elapsed).id,1,'release after the hold restarts from the first wave');

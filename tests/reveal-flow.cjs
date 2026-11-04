@@ -17,12 +17,18 @@ assert.equal(f.state,'DRAWING');assert.equal(f.element,'fire');
 assert.equal(f.gatherDuration,2.1,'orb expansion and curved return share a 2.1-second gather clock');
 assert.equal(f.pointerId,null);assert.equal(f.materialFrame,null);assert.equal(f.progress,0);
 assert.equal(f.down(1,20,40),true);
-for(let n=0;n<500;n++){f.move(1,20+Math.sin(n)*.8,40+Math.cos(n)*.8);f.step(.05);}
-assert.equal(f.distance,0,'stationary input jitter cannot accumulate readiness');
-assert.equal(f.state,'DRAWING','a fully charged hold stays interactive until release');
-assert.equal(f.holdFrame.ready,true);assert.equal(f.up(1),true);
-assert.equal(f.state,'RETURN','stationary charge returns to the center before the shockwaves');
-assert.equal(f.completionSource,'hold');f.reset();
+for(let n=0;n<59;n++){f.move(1,20+Math.sin(n)*.8,40+Math.cos(n)*.8);f.step(.05);}
+assert.equal(f.distance,0,'stationary input jitter cannot accumulate drawing distance');
+assert.equal(f.state,'DRAWING','held ring can continue filling after the optional early release threshold');
+assert.equal(f.holdFrame.ready,true);assert.ok(f.holdFrame.progress<1);
+f.step(.05);
+assert.equal(f.state,'WAITING','full ring begins shockwaves without a lift or return phase');
+assert.equal(f.completionSource,'autoHold');assert.equal(f.heldRelease,true);
+assert.deepEqual(f.releasePoint,{x:20,y:40,age:3});
+assert.equal(f.pointerId,null);assert.equal(f.holdFrame,null);
+assert.equal(f.move(1,150,200),false);assert.equal(f.down(2,50,50),false);assert.equal(f.up(1),false);
+f.cancelPointer();assert.equal(f.state,'WAITING','late pointer cleanup cannot cancel a committed auto hold');
+advance(f,1.7);assert.equal(f.state,'GATHER');f.reset();
 f.down(1,20,40);advance(f,.2);f.up(1);advance(f,20);
 assert.equal(f.state,'DRAWING','a short stationary tap never auto starts');
 assert.equal(f.down(1,20,40),true);f.move(1,43,40);f.up(1);
@@ -248,4 +254,19 @@ assert.equal(slow.state,'DRAWING','time spent paused cannot complete the next re
 slow.reset();slow.down(10,10,20,1000);slow.step(.6,1600);slow.cancelPointer();
 slow.down(11,10,20,9000);slow.up(11,{nowMs:9005});
 assert.equal(slow.state,'DRAWING','cancelled contact time never carries to the next pointer');
-console.log('Reveal flow: input, cancellation, pause, preview timing and animated formal holds for six materials plus no-element passed.');
+// A sparse frame cadence can deliver the deadline first via RAF, movement or lift.
+for(const event of ['frame','move','up']){
+  slow.reset();slow.down(4,6,7,1000);slow.step(.2,1200);
+  if(event==='frame')slow.step(10,11000);
+  if(event==='move')slow.move(4,100,105,4000);
+  if(event==='up')slow.up(4,{nowMs:4000});
+  assert.equal(slow.state,'WAITING',event+' commits the hold once at its deadline');
+  assert.equal(slow.completionSource,'autoHold');
+  assert.deepEqual(slow.releasePoint,{x:6,y:7,age:3});
+  assert.equal(slow.elapsed,0,'a slow frame keeps the entire shockwave sequence visible');
+}
+slow.reset();slow.down(1,20,20,1000);slow.move(1,60,60,3999);slow.step(.1,4100);slow.up(1);
+assert.equal(slow.completionSource,'draw','intentional movement before the deadline takes priority');
+slow.reset();slow.down(1,22,23,1000);slow.step(2.9,3900);slow.up(1,{cancelled:true,nowMs:4000});
+assert.equal(slow.state,'DRAWING','system cancellation cannot synthesize a release at the deadline');
+console.log('Reveal flow: draw, early release, automatic hold, cancellation, pause and reveal timing passed.');

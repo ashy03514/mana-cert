@@ -28,12 +28,14 @@
     const t=time(value),phase=t%PERIOD,p=profile(rank);
     // A deliberate intake, quick release and long recovery. The fully spread
     // silhouette remains readable even at maximum concentration.
-    // Evolution owns one short release without resetting the living clock.
+    // During growth both skins use one target-rank action, including the old
+    // A feathers. Their idle motion still follows the original rank.
     const weight=Number.isFinite(action?.weight)?clamp(action.weight):0;
     const cue=key=>Number.isFinite(action?.[key])?clamp(action[key]):0;
-    const charge=(smooth((phase-.25)/1.45)*(1-smooth((phase-1.82)/.42))*(1-weight)+cue('charge')*weight)*p.charge;
-    const expansion=(smooth((phase-1.82)/.52)*(1-smooth((phase-2.55)/1.55))*(1-weight)+cue('release')*weight)*p.expansion;
-    const burst=(smooth((phase-1.97)/.15)*(1-smooth((phase-2.17)/.75))*(1-weight)+cue('burst')*weight)*p.burst;
+    const evolutionProfile=profile(action?.poseRank||p.rank);
+    const charge=smooth((phase-.25)/1.45)*(1-smooth((phase-1.82)/.42))*(1-weight)*p.charge+cue('charge')*weight*evolutionProfile.charge;
+    const expansion=smooth((phase-1.82)/.52)*(1-smooth((phase-2.55)/1.55))*(1-weight)*p.expansion+cue('release')*weight*evolutionProfile.expansion;
+    const burst=smooth((phase-1.97)/.15)*(1-smooth((phase-2.17)/.75))*(1-weight)*p.burst+cue('burst')*weight*evolutionProfile.burst;
     return {time:t,phase,rank:p.rank,cycle:Math.floor(t/PERIOD),charge,expansion,burst,
       visible:smooth((t-.05)/.5),core:smooth(t/.5)*p.core,crown:smooth(t/1.25)*p.crown,
       scale:1-charge*.09+expansion*.065,

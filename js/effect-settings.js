@@ -32,6 +32,16 @@
     starHeld:range('stars','按住出現頻率',100,25,200,5),
     starDuration:range('stars','平均持續時間',1.1,.3,3.5,.1,'秒'),
     starPalette:palette('stars',['#65eaff','#ce83ff','#ffffff']),
+    holdParticleCount:range('hold','粒子數量',96,16,160,1,'顆'),
+    holdParticleSize:range('hold','粒子大小',100,50,200,5),
+    holdParticleBrightness:range('hold','粒子亮度',100,10,100,5),
+    holdInflowSpeed:range('hold','吸入速度',100,60,180,5),
+    holdRingRadius:range('hold','指尖光環半徑',100,50,160,5),
+    holdPalette:palette('hold',['#83dbff','#c4bdff','#ddf6ff']),
+    holdTailLength:range('hold','拖尾長度',100,25,200,5),
+    holdTailWidth:range('hold','拖尾粗細',100,25,200,5),
+    holdTailOpacity:range('hold','拖尾最高不透明度',20,0,100,1),
+    holdTailFalloff:range('hold','拖尾漸淡強度',100,50,200,5),
     burstCount:range('burst','魔力球數量',100,25,150,5),
     burstSize:range('burst','魔力球大小',100,50,200,5),
     burstOpacity:range('burst','魔力球亮度',100,10,100,5),
@@ -93,12 +103,12 @@
     for(const [k,f] of Object.entries(fields)){
       const v=source[k];
       result[k]=f.type==='range'?(typeof v==='number'&&Number.isFinite(v)?Math.min(f.max,Math.max(f.min,v)):f.value)
-        :f.type==='palette'?normalizePalette(v??(k==='burstPalette'?f.value:
+        :f.type==='palette'?normalizePalette(v??((k==='burstPalette'||k==='holdPalette')?f.value:
           (k==='flashPalette'||k==='burstStarPalette')?(source.starPalette??legacyPalette(source,'starPalette')):legacyPalette(source,k)),f.value)
         :f.type==='color'?(validColor(v)?v.toLowerCase():f.value)
         :typeof v==='boolean'?v:f.value;
     }
-    for(const k of ['mistCount','dotCount','burstStarCount','flashCount'])result[k]=Math.round(result[k]);
+    for(const k of ['mistCount','dotCount','holdParticleCount','burstStarCount','flashCount'])result[k]=Math.round(result[k]);
     return result;
   }
   const appearanceRevision=2,backupKey=key+'.before-reference';
@@ -134,7 +144,7 @@
     const status=doc.getElementById('effectSaveStatus');
     const setDefault=doc.getElementById('effectSetDefault');
     const paletteViews=new Map();
-    const groupNames={mist:'霧',dots:'圓點粒子',stars:'閃爍星芒',trails:'手指軌跡',burst:'爆炸',burstStars:'爆炸星芒',flashes:'瞬閃星芒'};
+    const groupNames={mist:'霧',dots:'圓點粒子',stars:'閃爍星芒',trails:'手指軌跡',hold:'按住聚能',burst:'爆炸',burstStars:'爆炸星芒',flashes:'瞬閃星芒'};
     const suggested=['#65eaff','#ce83ff','#ffffff','#ffb76b','#ff83b7','#91ffc5','#ffe68c'];
     function renderPalette(k){
       const host=doc.getElementById('effect_'+k),colors=values[k];

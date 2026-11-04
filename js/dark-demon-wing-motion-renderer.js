@@ -16,6 +16,46 @@
  }`;
  const fragment=`precision mediump float;uniform sampler2D uImage;uniform float uLight,uOpacity;varying vec2 vUv;
  void main(){vec4 c=texture2D(uImage,vUv);gl_FragColor=vec4(c.rgb*uLight,c.a)*uOpacity;}`;
+ // The pulse is rendered in the wing's existing WebGL context, behind its mesh.
+ const pulseVertex=`attribute vec2 aPosition;varying vec2 vUv;
+ void main(){vUv=aPosition*.5+.5;gl_Position=vec4(aPosition,0.,1.);}`;
+ const pulseFragment=`precision highp float;varying vec2 vUv;
+ uniform vec2 uResolution,uOrigin,uPulse;uniform float uTime;
+ float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+ float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.)),f.x),f.y);}
+ float fbm(vec2 p){float v=0.,a=.57;for(int i=0;i<3;i++){v+=a*noise(p);p=mat2(.8,-.6,.6,.8)*p*2.03+9.7;a*=.5;}return v;}
+ void main(){
+  float unit=min(uResolution.x,uResolution.y);
+  vec2 pixel=vec2(vUv.x*uResolution.x,(1.-vUv.y)*uResolution.y);
+  vec2 p=(pixel-uOrigin)/unit;float radius=length(p);
+  float reach=length(max(uOrigin,uResolution-uOrigin))/unit;
+  float front=.025+(reach+.28)*uPulse.x;
+  if(abs(radius-front)>.62){gl_FragColor=vec4(0.);return;}
+  vec2 dir=p/max(radius,.001);
+  float curl=radius*.38+.13*sin(uTime*.8+radius*3.);
+  dir=mat2(cos(curl),-sin(curl),sin(curl),cos(curl))*dir;
+  // A periodic angular domain avoids a seam at the left side of the vortex.
+  // Increasing time in the radial flow carries texture toward smaller radii.
+  float eddy=fbm(dir*4.7+vec2(uTime*.35,-uTime*.24));
+  vec2 flow=dir*10.+vec2(radius*4.6+uTime*2.8,radius*2.7+uTime*1.6);
+  float folds=fbm(flow+eddy*1.8),filaments=noise(flow*2.7+uTime*.8);
+  float crest=front+(eddy-.48)*.32;
+  float depth=radius-crest+(folds-.46)*.25;
+  float veil=exp(-pow((depth-.07)/.19,2.))*(.24+.76*folds);
+  float body=smoothstep(-.035,.065,depth)*(1.-smoothstep(.12,.40,depth));
+  body*=smoothstep(.22,.72,folds+filaments*.22);
+  float edge=pow(body,1.5)*(.4+.6*filaments);
+  float alpha=clamp(veil*.50+body*.65,0.,.88)*uPulse.y;
+  // Keep a dark fuel body with violet translucent folds and brighter torn tips.
+  vec3 color=vec3(.025,.004,.055)+vec3(.20,.025,.37)*veil+vec3(.28,.06,.46)*edge;
+  float ember=pow(smoothstep(.42,.84,filaments),2.)*body;
+  color+=vec3(.13,.035,.19)*ember;
+  float textShade=1.-.72*(1.-smoothstep(.12,.40,abs(pixel.x/uResolution.x-.5)))
+   *smoothstep(.56,.65,pixel.y/uResolution.y)*(1.-smoothstep(.84,.93,pixel.y/uResolution.y));
+  alpha*=textShade*smoothstep(.025,.11,radius);
+  gl_FragColor=vec4(color*alpha,alpha);
+ }`;
  const seed=n=>{const v=Math.sin(n*127.1+43.7)*43758.5453;return v-Math.floor(v);};
  const chainSpecs=[
   {points:[[.342,.153],[.373,.153],[.365,.185]],thickness:.014,behind:true,wrap:true,start:.35},
@@ -26,10 +66,11 @@
  class DarkDemonWingMotionRenderer{
   constructor(){
    this.canvas=document.createElement('canvas');this.gl=null;this.program=null;
+   this.pulseProgram=null;this.pulseBuffer=null;
    this.meshes=[];this.chains=[];this.textures=[];this.loaded=false;this.lost=false;this.disposed=false;this.error='';this.diagnostic='';
    this.image=new Image();this.chain=new Image();this.drawCount=0;
    this.onLost=e=>{e.preventDefault();this.lost=true;};
-   this.onRestored=()=>{if(this.disposed)return;this.lost=false;this.program=null;this.meshes=[];this.chains=[];this.textures=[];this.init();};
+   this.onRestored=()=>{if(this.disposed)return;this.lost=false;this.program=null;this.meshes=[];this.chains=[];this.textures=[];this.pulseProgram=null;this.pulseBuffer=null;this.init();};
    this.canvas.addEventListener('webglcontextlost',this.onLost);this.canvas.addEventListener('webglcontextrestored',this.onRestored);
    this.ready=new Promise(resolve=>{this.resolveReady=resolve;let left=2;
     const ready=()=>{if(this.disposed||this.error)return resolve(false);if(--left)return;
@@ -67,6 +108,12 @@
    try{
     const gl=this.gl=this.canvas.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:true,depth:false,stencil:false});
     if(!gl)throw Error('WebGL unavailable');this.program=this.makeProgram();
+    this.pulseProgram=this.makeProgram(pulseVertex,pulseFragment);this.pulseUniforms={};
+    for(const name of ['uResolution','uOrigin','uPulse','uTime'])this.pulseUniforms[name]=gl.getUniformLocation(this.pulseProgram,name);
+    this.pulsePosition=gl.getAttribLocation(this.pulseProgram,'aPosition');
+    this.maxAttributes=gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+    this.pulseBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,this.pulseBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
     this.position=gl.getAttribLocation(this.program,'aPosition');this.uv=gl.getAttribLocation(this.program,'aUv');
     this.resolution=gl.getUniformLocation(this.program,'uResolution');this.light=gl.getUniformLocation(this.program,'uLight');this.sampler=gl.getUniformLocation(this.program,'uImage');
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,true);
@@ -150,6 +197,17 @@
     if(Number.isFinite(pulse.age))wave((pulse.age-.30)/1.15,root.DarkDemonWingMotion.profile(pulse.rank).burst);
    }
   }
+  drawInwardPulse(w,h,a,time){
+   const gl=this.gl,frame=root.DarkDemonWingMotion.inwardPulse(time);this.pulseFrame=frame;
+   if(frame.alpha<.001)return;
+   for(let i=0;i<this.maxAttributes;i++)gl.disableVertexAttribArray(i);
+   gl.useProgram(this.pulseProgram);gl.bindBuffer(gl.ARRAY_BUFFER,this.pulseBuffer);
+   gl.enableVertexAttribArray(this.pulsePosition);gl.vertexAttribPointer(this.pulsePosition,2,gl.FLOAT,false,0,0);
+   const u=this.pulseUniforms;gl.uniform2f(u.uResolution,w,h);gl.uniform2f(u.uOrigin,a.cx,a.cy);
+   gl.uniform2f(u.uPulse,frame.front,frame.alpha);gl.uniform1f(u.uTime,time);
+   gl.disable(gl.BLEND);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.BLEND);
+   gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disableVertexAttribArray(this.pulsePosition);
+  }
   particles(ctx,a,time,rank='SS',evolutionAction){
    const colors=['#c5ceff','#bc97f5','#9ba6e3'];
    for(const p of root.DarkDemonWingMotion.particles(time,rank,evolutionAction)){
@@ -170,7 +228,7 @@
    const gl=this.gl,time=Number.isFinite(options.time)?Math.max(0,options.time):0,s=root.DarkDemonWingMotion.sample(time,'SS',options.evolutionAction),a=this.layout(w,h,options.box),dpr=Math.min(1.5,Math.max(1,ctx.getTransform().a));
    const pw=Math.round(w*dpr),ph=Math.round(h*dpr);if(this.canvas.width!==pw||this.canvas.height!==ph){this.canvas.width=pw;this.canvas.height=ph;}
    this.paintWings(a,time,s);if(options.chains!==false)this.paintChains(a,time,s);
-   gl.viewport(0,0,pw,ph);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(this.program);gl.uniform2f(this.resolution,w,h);gl.uniform1i(this.sampler,0);gl.activeTexture(gl.TEXTURE0);
+   gl.viewport(0,0,pw,ph);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);this.drawInwardPulse(w,h,a,time);gl.useProgram(this.program);gl.uniform2f(this.resolution,w,h);gl.uniform1i(this.sampler,0);gl.activeTexture(gl.TEXTURE0);
    gl.uniform1f(gl.getUniformLocation(this.program,'uOpacity'),1);
    gl.bindTexture(gl.TEXTURE_2D,this.textures[1]);gl.uniform1f(this.light,.8+s.release*.15);
    if(options.chains!==false)for(const m of this.chains)if(m.spec.behind)this.drawMesh(m);
@@ -180,7 +238,18 @@
    ctx.save();this.background(ctx,w,h,a,s);ctx.globalAlpha=s.visible;ctx.drawImage(this.canvas,0,0,w,h);ctx.globalAlpha=1;this.core(ctx,a,s);this.particles(ctx,a,time,'SS',options.evolutionAction);ctx.restore();
    this.lastArt=a;this.lastSample=s;this.drawCount++;return true;
   }
-  release(){const gl=this.gl;if(gl&&!this.lost){for(const m of [...this.meshes,...this.chains]){gl.deleteBuffer(m.buffer);gl.deleteBuffer(m.indices);}this.textures.forEach(t=>gl.deleteTexture(t));if(this.program)gl.deleteProgram(this.program);}this.program=null;this.meshes=[];this.chains=[];this.textures=[];}
+  release(){
+   const gl=this.gl;
+   if(gl&&!this.lost){
+    for(const m of [...this.meshes,...this.chains]){gl.deleteBuffer(m.buffer);gl.deleteBuffer(m.indices);}
+    this.textures.forEach(t=>gl.deleteTexture(t));
+    if(this.program)gl.deleteProgram(this.program);
+    if(this.pulseProgram)gl.deleteProgram(this.pulseProgram);
+    if(this.pulseBuffer)gl.deleteBuffer(this.pulseBuffer);
+   }
+   this.pulseProgram=null;this.pulseBuffer=null;this.program=null;
+   this.meshes=[];this.chains=[];this.textures=[];
+  }
   dispose(){if(this.disposed)return;this.disposed=true;this.image.onload=this.chain.onload=this.image.onerror=this.chain.onerror=null;this.resolveReady?.(false);this.release();this.canvas.removeEventListener('webglcontextlost',this.onLost);this.canvas.removeEventListener('webglcontextrestored',this.onRestored);this.gl=null;}
  }
  root.DarkDemonWingMotionRenderer=DarkDemonWingMotionRenderer;

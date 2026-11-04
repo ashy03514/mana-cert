@@ -143,6 +143,7 @@
    for(const m of this.chains)m.curve=m.rankCurves[chainRank];
    if(options.chains!==false)this.paintChains(wingArt,time,s);
    gl.viewport(0,0,pw,ph);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+   this.drawInwardPulse(w,h,a,Number.isFinite(options.time)?Math.max(0,options.time):time);
    // Exposure belongs to the arriving wing; an old attachment must retain
    // its settled brightness at progress=0 before its own dissolve begins.
    const chainExposure=transition&&pair.progress<.5?0:exposure;

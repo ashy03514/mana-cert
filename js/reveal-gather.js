@@ -95,7 +95,10 @@
           weight:Math.max(8,route.length)};
       }).filter(Boolean);
       const sum=candidates.reduce((n,s)=>n+s.weight,0);
-      let remaining=this.maxPoints;
+      // Hold motes already have real positions. Reserve room for them even when
+      // the same round also contains a long drawing.
+      const grains=(trails.holdParticles||[]).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)).slice(0,this.maxPoints-candidates.length*2);
+      let remaining=this.maxPoints-grains.length;
       candidates.forEach((s,index)=>{
         const budget=Math.min(remaining-(candidates.length-index-1)*2,
           Math.max(2,Math.floor(this.maxPoints*s.weight/(sum||1))));
@@ -116,6 +119,16 @@
           opacity:s.opacity,motes:Math.max(2,Math.ceil(s.route.length/10))});
         this.routes.push(route);this.pointCount+=count;remaining-=count;
       });
+      const groups=new Map();
+      for(const grain of grains){
+        if(!groups.has(grain.color))groups.set(grain.color,[]);
+        groups.get(grain.color).push(Object.freeze({x:grain.x/this.width,y:grain.y/this.height,opacity:clamp(finite(grain.opacity,1))}));
+      }
+      for(const [color,points] of groups){
+        this.routes.push(Object.freeze({points:Object.freeze(points),color:Object.freeze(rgb(color)),
+          discrete:true,seed:311+this.routes.length,opacity:1,motes:points.length}));
+        this.pointCount+=points.length;
+      }
       const demand=this.routes.reduce((n,s)=>n+s.motes,0),orbs=[];
       const desired=Math.min(this.maxMotes,Math.round(Math.max(this.pointCount>1?72:2,demand)*settings.burstCount));
       let available=this.maxMotes;
@@ -125,14 +138,15 @@
           // Stratified samples keep the complete drawing represented, without
           // making cut-up chunks of its geometry visible for even one frame.
           const seed=route.seed*19+index*107+i*2.73;
-          const along=clamp((i+.2+.6*rand(seed,2))/count)*(route.points.length-1);
+          const along=route.discrete?Math.floor((i+.5)*route.points.length/count):
+            clamp((i+.2+.6*rand(seed,2))/count)*(route.points.length-1);
           const lo=Math.floor(along),hi=Math.min(lo+1,route.points.length-1),f=along-lo;
           const a=route.points[lo],b=route.points[hi];
           orbs.push({
             x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f,
             depth:rand(seed,3)*2-1,seed,route:index,
             size:2.9+rand(seed,4)*2.1,
-            opacity:route.opacity*(.75+.2*rand(seed,5)),
+            opacity:(a.opacity??route.opacity)*(.75+.2*rand(seed,5)),
             color:settings.burstUseTrail?null:pick(settings.burstPalette,seed,61)
           });
         }

@@ -41,23 +41,28 @@
     }
     return schedules.get(key);
   }
-  // A completed silhouette leads one compact intake/release. This event clock
-  // is separate from the continuous flutter/noise clock, so pause and replay
-  // cannot skip a burst or jerk the wings back to the start of their idle loop.
+  // Intake begins with the root-out reveal. Both wing skins share the target
+  // rank's posture as they form, opening over the rest of the formation window.
   function evolutionAction(elapsed,result){
     const time=Math.max(0,finite(elapsed)),events=schedule(result);
     if(!events.length)return {weight:0,charge:0,release:0,burst:0,pulses:[]};
     const first=events[0],last=events.at(-1);
     const weight=smooth((time-first.at+.20)/.20)*(1-smooth((time-last.formedAt-1.10)/.25));
-    let charge=0,release=0,burst=0;const pulses=[];
+    let charge=0,release=0,burst=0,poseRank=first.to;const pulses=[];
     for(const event of events){
-      const age=time-event.formedAt;
-      charge=Math.max(charge,smooth(age/.20)*(1-smooth((age-.22)/.16)));
-      release=Math.max(release,smooth((age-.22)/.22)*(1-smooth((age-.50)/.45)));
-      burst=Math.max(burst,smooth((age-.30)/.08)*(1-smooth((age-.42)/.40)));
-      if(age>=0&&age<3.2)pulses.push({rank:event.to,age});
+      const fromPeak=time-event.formedAt;
+      const phase=(time-event.at)/event.duration;
+      const opening=smooth((phase-.33)/.67);
+      charge=Math.max(charge,smooth(phase/.33)*(1-opening));
+      release=Math.max(release,opening*(1-smooth(fromPeak/.75)));
+      if(time>=event.at)poseRank=event.to;
+      // The emission clock stays close to full extension, independent of the
+      // longer intake, so stars and chain recoil accompany the opening.
+      const actionAge=fromPeak+.44;
+      burst=Math.max(burst,smooth(1+fromPeak/.14)*(1-smooth(fromPeak/.40)));
+      if(actionAge>=0&&actionAge<3.2)pulses.push({rank:event.to,age:actionAge});
     }
-    return {weight,charge,release,burst,pulses};
+    return {weight,charge,release,burst,poseRank,pulses};
   }
   // Only the numeric climb below A is accelerated. The wing formation clock
   // remains independent, preserving complete silhouettes and exposure settles.

@@ -5,6 +5,8 @@
   // Two inward waves finish at 1.2 s, then build pressure for another 0.5 s.
   const DURATIONS=Object.freeze({RETURN:.55,WAITING:1.7,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
   const NEXT=Object.freeze({RETURN:'WAITING',WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});
+  const HOLD_SECONDS=3;
+  const RELEASE_SECONDS=1.2;
   const clamp=v=>Math.max(0,Math.min(1,v));
   const smooth=v=>{const x=clamp(v);return x*x*(3-2*x);};
 
@@ -31,11 +33,12 @@
       this._paused=value;
       if(value)this._lastHoldMs=null;
     }
-    get ready(){return this.distance>=24||this.holdFrame?.ready===true||this.completionSource==='hold';}
+    get heldRelease(){return this.releasePoint!==null;}
+    get ready(){return this.distance>=24||this.holdFrame?.ready===true||this.heldRelease;}
     get holdFrame(){
       if(this.pointerId===null||this._drawing||!this._origin)return null;
       return {x:this._origin.x,y:this._origin.y,age:this._holdAge,
-        progress:clamp(this._holdAge/1.2),active:this._holdAge>=.35,ready:this._holdAge+1e-9>=1.2};
+        progress:clamp(this._holdAge/HOLD_SECONDS),active:this._holdAge>=.35,ready:this._holdAge+1e-9>=RELEASE_SECONDS};
     }
     get gatherDuration(){return this._gatherDuration;}
     get awakeningEnabled(){return (this.lightAwakening&&this.element==='light')||(this.darkAwakening&&this.element==='dark');}
@@ -65,19 +68,20 @@
     down(id,x,y,nowMs){
       if(this.paused||this.pointerId!==null||id===null||id===undefined||
         !Number.isFinite(x)||!Number.isFinite(y)||
-        (this.state!=='DRAWING'&&(this.state!=='WAITING'||this.completionSource==='hold')))return false;
+        (this.state!=='DRAWING'&&(this.state!=='WAITING'||this.heldRelease)))return false;
       this.pointerId=id;this._point={x,y};this.state='DRAWING';this.elapsed=0;
       this._origin={x,y};this._holdAge=0;this._drawing=false;
       this._lastHoldMs=Number.isFinite(nowMs)?nowMs:null;
       this.completionSource=null;this.releasePoint=null;
       return true;
     }
-    move(id,x,y){
+    move(id,x,y,nowMs){
       if(this.paused||this.pointerId===null||id!==this.pointerId||
         !Number.isFinite(x)||!Number.isFinite(y))return false;
       // Ignore movement inside the original contact area. Repeated hand jitter
       // must neither manufacture a stroke nor restart the charging animation.
       if(!this._drawing){
+        if(this.advanceHold(0,nowMs))return false;
         if(Math.hypot(x-this._origin.x,y-this._origin.y)<=14)return false;
         this._drawing=true;this._holdAge=0;
       }
@@ -96,22 +100,30 @@
       }else if(dt>0){
         this._holdAge+=dt;this._lastHoldMs=null;
       }
+      if(this._holdAge+1e-9<HOLD_SECONDS)return false;
+      this._holdAge=HOLD_SECONDS;
+      this.finishPress('autoHold');
+      return true;
+    }
+    finishPress(source){
+      this.completionSource=source;
+      this.releasePoint=source==='hold'||source==='autoHold'
+        ?{x:this._origin.x,y:this._origin.y,age:this._holdAge}:null;
+      this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this._lastHoldMs=null;
+      this.elapsed=0;
+      this.state=source==='hold'?'RETURN':source?'WAITING':'DRAWING';
     }
     up(id,{cancelled=false,nowMs}={}){
       if(this.paused||this.pointerId===null||id!==this.pointerId)return false;
       if(cancelled){this.cancelPointer();return true;}
-      if(!this._drawing)this.advanceHold(0,nowMs);
-      const hold=this.holdFrame;
-      this.releasePoint=hold?.ready?{x:hold.x,y:hold.y,age:hold.age}:null;
-      this.completionSource=hold?.ready?'hold':this.distance>=24?'draw':null;
-      this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this.elapsed=0;
-      this.state=this.completionSource==='hold'?'RETURN':this.completionSource==='draw'?'WAITING':'DRAWING';
+      if(!this._drawing&&this.advanceHold(0,nowMs))return true;
+      this.finishPress(this.holdFrame?.ready?'hold':this.distance>=24?'draw':null);
       return true;
     }
     cancelPointer(){
       // Lifecycle cancellation must still release capture while animation is paused.
       this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;
-      if(this.state==='DRAWING'||(this.state==='WAITING'&&this.completionSource!=='hold')){
+      if(this.state==='DRAWING'||(this.state==='WAITING'&&!this.heldRelease)){
         this.state='DRAWING';this.elapsed=0;this._drawing=false;
         this.completionSource=null;this.releasePoint=null;
       }

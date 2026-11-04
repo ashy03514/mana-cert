@@ -23,22 +23,63 @@ try{
    assert.equal(peaks,count,'one action for each actual evolution and none at birth');
    for(const event of events){
     const pose=age=>{const s=G.sample(event.formedAt+age,result);return M.sample(s.time,event.to,s.evolutionAction);};
-    const born=pose(0),charge=pose(.22),spreadPose=pose(.50),flash=pose(.40),recovered=pose(.95),p=M.profile(event.to);
-    close(born.burst,0,'no release before the new silhouette is complete');
-    close(charge.charge,p.charge,'short intake follows each completed silhouette');
-    close(spreadPose[spread],p[spread],'each evolved wing makes a full rank-appropriate spread');
-    close(flash.burst,p.burst,'each evolution has one bright release');
-    close(recovered[spread],0,'release recovers before the next rank starts');
-    const at=event.formedAt+.60,s=G.sample(at,result),action=s.evolutionAction,particles=M.particles(s.time,event.to,action);
-    assert.ok(particles.some(v=>v.star&&v.alpha>.05),'burst stars accompany the spread for '+element+' '+event.to);
-    const saved=JSON.stringify({pose:M.sample(s.time,event.to,action),particles});
+    const s=G.sample(event.formedAt,result),action=s.evolutionAction,p=M.profile(event.to),peak=pose(0);
+    assert.equal(s.transition.to,event.to);
+    close(s.transition.progress,1,'new silhouette is complete on the peak frame');
+    close(peak[spread],p[spread],'full rank-appropriate spread at formation');
+    close(peak.burst,p.burst,'flash peaks with the wings');
+    close(peak.charge,0,'the intake has released by the peak');
+    const forming=Array.from({length:121},(_,i)=>pose(event.duration*(i/120-1)));
+    const settling=Array.from({length:91},(_,i)=>pose((event.completeAt-event.formedAt)*i/90));
+    assert.ok(forming.some(frame=>frame.charge>0),'intake is visible during formation');
+    const during=fraction=>G.sample(event.at+event.duration*fraction,result);
+    const oldPose=fraction=>{const frame=during(fraction);return M.sample(frame.time,event.from,frame.evolutionAction);};
+    // Sample the source skin too: A's idle profile has no ceremonial intake,
+    // but its existing feathers must move as soon as the upgrade starts.
+    assert.ok(oldPose(.10).charge>p.charge*.08,'source wing visibly starts charging near reveal onset');
+    assert.ok(oldPose(.25).charge>p.charge*.50,'source wing is charging before the first quarter ends');
+    assert.ok(oldPose(.25).charge>oldPose(.10).charge,'early intake builds gradually');
+    assert.ok(oldPose(.50)[spread]>p[spread]*.05,'opening is underway halfway through formation');
+    assert.ok(oldPose(.70)[spread]>p[spread]*.35,'opening has substantial travel before the final frames');
+    for(const fraction of [.10,.25,.50,.70,1]){
+     const frame=during(fraction),old=M.sample(frame.time,event.from,frame.evolutionAction);
+     const arriving=M.sample(frame.time,event.to,frame.evolutionAction);
+     for(const key of ['charge',spread,'burst'])close(old[key],arriving[key],'both wing skins share the evolution posture');
+    }
+    assert.ok(settling.every(frame=>frame.charge===0),'finished wings recover without another intake');
+    const point=(u,v,frame,action)=>element==='光'
+     ?M.point(u,v,frame.time,1,event.from,action)
+     :M.point(u,v,frame.time,1,M.sample(frame.time,event.from,action));
+    const early=during(.25),tip=point(.92,.65,early,early.evolutionAction);
+    const restingTip=point(.92,.65,early,{weight:1,charge:0,release:0,burst:0});
+    assert.ok(tip.x<restingTip.x-.01,'visible old wing contracts during early feathering');
+    assert.ok(tip.y>restingTip.y+.01,'visible old trailing wing bends down during early feathering');
+    for(const fraction of [0,.10,.25,.50,.70,1,1.5]){
+     const frame=during(fraction),root=point(.5,element==='光'?.72:.43,frame,frame.evolutionAction);
+     close(root.x,element==='光'?0:.5,'wing root remains attached to the magic core');
+     close(root.y,element==='光'?0:.43,'wing root stays fixed vertically through opening');
+    }
+    for(const key of [spread,'burst']){
+     assert.ok(forming.some(frame=>frame[key]>0&&frame[key]<peak[key]),key+' ramps up during formation');
+     assert.ok(pose(-1/60)[key]<peak[key],key+' is still rising on the previous frame');
+     assert.ok(settling.some(frame=>frame[key]>0&&frame[key]<peak[key]),key+' has a visible recovery');
+     assert.ok(forming.every((frame,i)=>i===0||frame[key]>=forming[i-1][key]-1e-8),key+' rises once');
+     assert.ok(settling.every((frame,i)=>i===0||frame[key]<=settling[i-1][key]+1e-8),key+' falls once');
+     close(settling.at(-1)[key],0,key+' recovers before the next rank starts');
+    }
+    // Only this upgrade's particles can satisfy the check; S sparks can still
+    // be on screen when the SS membrane or feathers finish forming.
+    const current={...action,pulses:action.pulses.filter(pulse=>pulse.rank===event.to)};
+    assert.equal(current.pulses.length,1,'a single emission accompanies this upgrade');
+    assert.ok(M.particles(s.time,event.to,current).some(v=>v.star&&v.alpha>.05),
+      'new burst stars visible on the peak frame for '+element+' '+event.to);
+    const render=()=>({pose:M.sample(s.time,event.to,action),particles:M.particles(s.time,event.to,action)});
+    const saved=render();
     M.sample(1e5,event.to,G.evolutionAction(1e5,result));M.particles(1e5,event.to,G.evolutionAction(1e5,result));
-    assert.equal(JSON.stringify({pose:M.sample(s.time,event.to,action),particles:M.particles(s.time,event.to,action)}),saved,'pause/replay/scrubbing never duplicates or reschedules bursts');
-    const before=G.sample(event.formedAt-.001,result);
-    assert.equal(before.evolutionAction.burst,0,'no burst during feathering');
-    for(const at of [event.formedAt,event.formedAt+.22,event.formedAt+.50,event.formedAt+.95]){
-     const a=G.sample(at-1e-5,result),b=G.sample(at+1e-5,result),one=M.sample(a.time,event.to,a.evolutionAction),two=M.sample(b.time,event.to,b.evolutionAction);
-     for(const field of ['charge',spread,'burst'])assert.ok(Math.abs(one[field]-two[field])<.001,'continuous pose at action boundary '+field);
+    assert.deepEqual(render(),saved,'pause/replay/scrubbing never duplicates or reschedules bursts');
+    for(const age of [-1/60,0,1/60]){
+     const before=pose(age-1e-5),after=pose(age+1e-5);
+     for(const key of ['charge',spread,'burst'])assert.ok(Math.abs(before[key]-after[key])<.001,'continuous pose around formation '+key);
     }
    }
    const idle=G.evolutionAction(20,result);assert.equal(idle.weight,0);assert.equal(idle.pulses.length,0);
@@ -46,5 +87,5 @@ try{
    assert.deepEqual(result,{type:'magic',element,rank,mana});
   }
  }
- console.log('PASS both rare wings release once after every completed evolution, preserve numeric results and clock, follow charge/spread/flash timing, retain stars and deterministic pause/replay.');
+ console.log('PASS both rare wings reach peak spread and flash as each evolution finishes, preserve numeric results and clock, follow charge/spread/flash timing, retain stars and deterministic pause/replay.');
 }finally{Math.random=random;Date.now=now;}
