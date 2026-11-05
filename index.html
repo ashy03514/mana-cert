@@ -56,12 +56,30 @@
     letter-spacing:var(--prompt-tracking,2px); color:var(--prompt-color,#fff);
     text-shadow:0 1px 5px #080919cc,0 0 15px #b7bdff55;
   }
-  #waitingPrompt {
-    position:absolute; top:calc(env(safe-area-inset-top,0px) + clamp(36px,10vh,92px));
+  #waitingPrompt, #interactionPrompt {
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + clamp(36px,10vh,92px) + var(--prompt-offset-y,0px));
     left:max(18px,env(safe-area-inset-left)); right:max(18px,env(safe-area-inset-right));
     max-width:42rem; margin-inline:auto; pointer-events:none;
   }
   body:not([data-state="STANDBY"]) #waitingPrompt, #waitingPrompt:empty { display:none; }
+  #interactionPrompt { z-index:2; color:#eef7ff; white-space:normal; }
+  #interactionPrompt[hidden] { display:none; }
+  .interactionPromptLayers { display:grid; }
+  .interactionPromptLayers p {
+    grid-area:1/1; align-self:start; margin:0; color:#eef7ff; white-space:pre-wrap;
+    text-shadow:0 2px 6px #080915,0 0 var(--status-glow,12px) #9cdaff99;
+  }
+  .interactionPromptLayers .interactionPromptGuide {
+    color:var(--prompt-color,#fff); text-shadow:0 1px 5px #080919cc,0 0 15px #b7bdff55;
+  }
+  .interactionPromptLine {
+    display:block; width:min(160px,48%); height:1px; margin:12px auto 0;
+    background:linear-gradient(90deg,transparent,#b7e4ff,transparent);
+    box-shadow:0 0 8px #a5ddff77; opacity:var(--status-line-alpha,0);
+    transform:scaleX(var(--status-line-scale,.72));
+  }
+  .interactionPromptLive { position:absolute; width:1px; height:1px; padding:0;
+    overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   #waitingPromptSettings textarea {
     display:block; width:100%; margin:6px 0; padding:10px 12px; resize:vertical;
     border:1px solid #ad906566; border-radius:9px; background:#ffffffb3; color:#503f2a;
@@ -733,7 +751,7 @@
       <summary>等待鑑定提示文字</summary>
       <label for="waitingPromptText">提示文案</label>
       <textarea id="waitingPromptText" data-prompt-field="text" rows="3" aria-describedby="waitingPromptHint"></textarea>
-      <p id="waitingPromptHint" class="effectHint">可按 Enter 換行，留白即可隱藏提示。首次觸碰後，文字會收起。</p>
+      <p id="waitingPromptHint" class="effectHint">可按 Enter 換行，留白即可隱藏提示。首次觸碰後，切換為感應與注入魔力的系統提示。</p>
       <div class="effectControl">
         <label for="waitingPromptSize">文字大小</label><output id="waitingPromptSizeValue" for="waitingPromptSize"></output>
         <input id="waitingPromptSize" data-prompt-field="size" type="range" min="12" max="48" step="1">
@@ -746,6 +764,11 @@
         <label for="waitingPromptLineHeight">行距</label><output id="waitingPromptLineHeightValue" for="waitingPromptLineHeight"></output>
         <input id="waitingPromptLineHeight" data-prompt-field="lineHeight" type="range" min="0.9" max="2.4" step="0.1">
       </div>
+      <div class="effectControl">
+        <label for="waitingPromptOffsetY">上下位移</label><output id="waitingPromptOffsetYValue" for="waitingPromptOffsetY"></output>
+        <input id="waitingPromptOffsetY" data-prompt-field="offsetY" type="number" min="-500" max="1000" step="1" aria-describedby="waitingPromptOffsetHint" style="width:100%;padding:8px;font:inherit">
+      </div>
+      <p id="waitingPromptOffsetHint" class="effectHint">0 為原本位置，正值向下、負值向上，單位 px。等待文字與互動系統提示使用同一位置，保持水平置中。</p>
       <div class="effectColor"><label for="waitingPromptColor">文字顏色</label>
         <span class="waitingPromptSwatch"><output id="waitingPromptColorValue" for="waitingPromptColor"></output>
         <input id="waitingPromptColor" data-prompt-field="color" type="color"></span>
@@ -903,7 +926,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="161" title="目前載入頁面的版本">目前版本 v161</span>
+        <span id="appVersion" data-version="163" title="目前載入頁面的版本">目前版本 v163</span>
       </div>
     </div>
     </div>
@@ -923,6 +946,13 @@
 <div id="animLayer" aria-label="魔力鑑定：滑動畫符，或按住直到魔力聚滿">
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
   <p id="waitingPrompt" class="waitingPromptCopy"></p>
+  <div id="interactionPrompt" class="waitingPromptCopy" hidden>
+    <div class="interactionPromptLayers" aria-hidden="true">
+      <p data-prompt-previous></p><p data-prompt-current></p>
+    </div>
+    <span class="interactionPromptLine" aria-hidden="true"></span>
+    <span class="interactionPromptLive" data-prompt-live role="status" aria-live="polite" aria-atomic="true"></span>
+  </div>
 </div>
 <button id="effectPreviewBack" type="button" hidden>返回設定</button>
 <div id="materialControls" role="region" aria-label="屬性樣板控制" hidden>
@@ -1024,6 +1054,7 @@
 <script src="./js/probability-settings.js"></script>
 <script src="./js/cert-settings.js"></script>
 <script src="./js/waiting-prompt.js"></script>
+<script src="./js/interaction-prompt.js"></script>
 <script src="./js/rank-lettering.js"></script>
 <script src="./js/result-layout.js"></script>
 <script src="./js/result-system.js"></script>
@@ -1118,7 +1149,8 @@
   let effectStorage;
   try{effectStorage=window.localStorage;}catch(_){}
   let effectValues=EffectSettings.load(effectStorage);
-  WaitingPromptSettings.mount(document,effectStorage);
+  const waitingPromptSettings=WaitingPromptSettings.mount(document,effectStorage);
+  const interactionPrompt=new InteractionPrompt.View(document.getElementById('interactionPrompt'));
 
   function getViewportSize(){
     return window.visualViewport
@@ -1388,7 +1420,7 @@
     closeResultActions(false);
   }
   function resetPortal(){
-    cancelInput();
+    cancelInput();interactionPrompt.reset();
     oceanReveal?.dispose();oceanReveal=null;
     lightningStorm?.dispose();lightningStorm=null;
     windTornado?.dispose();windTornado=null;
@@ -1438,6 +1470,10 @@
     if(flowActive()&&!flow.down(e.pointerId,e.clientX,e.clientY,timeline.now()))return;
     if(!scene.down(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now()))return;
     try{animLayerEl.setPointerCapture(e.pointerId);}catch(_){}
+    if(formalReveal){
+      const guide=session.state===STATES.STANDBY?waitingPromptSettings.values.text:'';
+      interactionPrompt.start(waitingPromptSettings.values,guide);
+    }
     if(!effectPreview&&!flowPreview&&session.state===STATES.STANDBY){
       session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
     }
@@ -1717,7 +1753,7 @@
   function restartRevealFlow(element=flow.element){
     audio.stop();
     flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'||element==='lightning'))});
-    cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
+    cancelInput();interactionPrompt.reset();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
     if(element!==null){
@@ -1738,8 +1774,11 @@
     });
     // If all earlier ink has faded, a later stationary tap is still only a tap.
     if(before==='DRAWING'&&flow.pointerId===null&&flow.distance>0&&
-      flowPortal.settings.trailEnabled&&!flowPortal.trails.strokes.some(s=>flowPortal.trails.opacity(s)>.03))flow.reset(flow.element);
+      flowPortal.settings.trailEnabled&&!flowPortal.trails.strokes.some(s=>flowPortal.trails.opacity(s)>.03)){
+      flow.reset(flow.element);interactionPrompt.reset();
+    }
     flow.step(dt,timeline.now());
+    if(formalReveal)interactionPrompt.step(dt,flow);
     if(before==='DRAWING'&&flow.completionSource==='autoHold')releasePointer(flowPortal.pointer.id);
     if(flow.state==='DRAWING'||flow.state==='RETURN'||flow.state==='WAITING'){
       const transfer=flow.completionSource==='hold'?(flow.state==='RETURN'?flow.progress:1):null;
