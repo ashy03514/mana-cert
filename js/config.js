@@ -17,7 +17,7 @@
       sizeMin:16, sizeMax:40, rareSize:48
     },
     muggleChance: 0.08,
-    elementWeights: { 火:20, 水:20, 風:20, 土:20, 光:10, 暗:10 },
+    elementWeights: { 火:20, 水:20, 風:20, 土:20, 雷:20, 光:10, 暗:10 },
     normalRanks: { SS:0.04, S:0.10, A:0.20, B:0.20, C:0.20, D:0.20, E:0.06 },
     rareElementRanks: { A:0.60, S:0.30, SS:0.10 },
     ranks: {
@@ -33,7 +33,7 @@
     timing: { gather:1100, reveal:1200,
       interactionMin:2800, interactionMax:6000, resonancePause:180, rankConfirm:900 },
     elementReveal: { duration:2000, titleAt:600,
-      colors:{火:'#ff965a',水:'#83d8ff',風:'#91ecc7',土:'#e4ba73',光:'#fff0b6',暗:'#c599f2'} },
+      colors:{火:'#ff965a',水:'#83d8ff',風:'#91ecc7',土:'#e4ba73',雷:'#ffe18a',光:'#fff0b6',暗:'#c599f2'} },
     resonance: { passiveRate:0.10, heldRate:0.09, distanceRate:0.00022,
       distanceCap:0.35, touchGain:0.035, touchCap:0.105, turnRate:0.04 },
     interaction: { particles:354, touchParticles:96, mistClouds:24, followSpeed:1.5, trails:1024, dprMax:1.75,

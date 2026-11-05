@@ -11,6 +11,9 @@
    // The funnel meets world y=-.85. Its ground eddies occupy only a thin
    // layer, rather than the former 12% of the entire tall cloud canvas.
    bottom=b.y+h/2+1.05*h/2.68+h*.035;width=w*1.15;
+  }else if(element==='lightning'){
+   const unit=Math.max(.52,Math.min(w/390,h/495));
+   bottom=b.y+h*.76+150*unit;width=w;
   }else if(element==='earth'){bottom=b.y+h*.97;width=w*1.16;}
   else if(element==='dark'){
    const artWidth=Math.min(w*.88,h*1.35),artHeight=artWidth*2/3;

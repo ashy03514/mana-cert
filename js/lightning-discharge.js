@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   let cached;
+  const full=Object.freeze({arcReach:1,arcWidth:1,arcSecondary:1,branches:1,orbScale:1,brightness:1,skyStrength:1,strikeWidth:1,doubleGain:1,tripleGain:1,sparks:1});
 
   function randomStream(seed) {
     let value = seed >>> 0;
@@ -221,6 +222,7 @@
   }
 
   function drawCorona(ctx,art,time,cycle,phase) {
+    const profile=phase.profile||full;
     ctx.save();
     ctx.translate(art.core.x,art.core.y);
     ctx.scale(art.unit,art.unit);
@@ -239,30 +241,33 @@
       if (age>=1) continue;
       const lead=clamp(age/ch.rise);
       const echo=Math.exp(-((age-ch.restrike)**2)/.0018);
-      const strength=ch.hot*clamp(age/.055)*clamp((1-age)/.23)*
+      const width=ch.width*profile.arcWidth;
+      const reach=profile.arcReach;
+      const strength=ch.hot*profile.brightness*(i<8?1:profile.arcSecondary)*clamp(age/.055)*clamp((1-age)/.23)*
         (.53+.27*phase.charge+.45*echo+.40*phase.flash);
       if (strength<.025) continue;
       const tail=.32*clamp((age-.76)/.24);
       ctx.beginPath();
-      trace(ctx,ch.main,tail,lead);
-      glowStroke(ctx,ch.width*4.8,'#ffa52c',strength*.13);
-      glowStroke(ctx,ch.width*1.8,'#ffbd39',strength*.68);
-      glowStroke(ctx,ch.width,'#fff2bb',strength);
+      trace(ctx,ch.main,tail*reach,lead*reach);
+      glowStroke(ctx,width*4.8,'#ffa52c',strength*.13);
+      glowStroke(ctx,width*1.8,'#ffbd39',strength*.68);
+      glowStroke(ctx,width,'#fff2bb',strength);
       // Branches share a stroke batch; only the advancing leader reveals them.
       ctx.beginPath();
       for (const fork of ch.forks) {
-        if (lead>fork.at) trace(ctx,fork.path,0,clamp((lead-fork.at)/.30));
+        if (lead*reach>fork.at) trace(ctx,fork.path,0,clamp((lead*reach-fork.at)/.30)*profile.branches);
       }
-      glowStroke(ctx,ch.width*1.35,'#eeb044',strength*.38);
-      glowStroke(ctx,ch.width*.63,'#ffeb9f',strength*.84);
+      glowStroke(ctx,width*1.35,'#eeb044',strength*.38*profile.branches);
+      glowStroke(ctx,width*.63,'#ffeb9f',strength*.84*profile.branches);
     }
     ctx.restore();
   }
 
 
   function drawEnergyOrb(ctx, art, time, phase) {
+    const profile=phase.profile||full;
     const flutter=.5+.3*Math.sin(time*8.1)+.2*Math.sin(time*13.7+.8);
-    const radius=(10.8+2.4*phase.charge+2.1*phase.flash+.85*flutter)*art.unit;
+    const radius=(10.8+2.4*phase.charge+2.1*phase.flash+.85*flutter)*art.unit*profile.orbScale;
     const hotX=-.14+.12*Math.sin(time*2.6), hotY=-.10+.10*Math.sin(time*3.7);
     ctx.save();
     ctx.translate(art.core.x,art.core.y);
@@ -273,7 +278,7 @@
     halo.addColorStop(.48,'#ff9b2329');
     halo.addColorStop(1,'#ed840000');
     ctx.fillStyle=halo;
-    ctx.globalAlpha=.69+.19*flutter+.12*phase.flash;
+    ctx.globalAlpha=(.69+.19*flutter+.12*phase.flash)*profile.brightness;
     ctx.fillRect(-2.3,-2.3,4.6,4.6);
 
     // A slightly off-axis hot pocket leaves a darker gold crescent on the far side.
@@ -284,7 +289,7 @@
     body.addColorStop(.71,'#b45d234d');
     body.addColorStop(.90,'#ffc85f8c');
     body.addColorStop(1,'#f9af3812');
-    ctx.globalAlpha=1;
+    ctx.globalAlpha=profile.brightness;
     ctx.fillStyle=body;
     ctx.beginPath();
     ctx.arc(0,0,1,0,Math.PI*2);
@@ -304,8 +309,8 @@
         ctx.lineTo((1-t)*hotX+t*Math.cos(angle+bend),(1-t)*hotY+t*Math.sin(angle+bend));
       }
       const current=.53+.26*Math.sin(time*(6.4+i*.3)+seed)+.16*phase.charge;
-      glowStroke(ctx,.12,'#ffad40',current*.39);
-      glowStroke(ctx,.049,'#fff2b3',current);
+      glowStroke(ctx,.12,'#ffad40',current*.39*profile.brightness);
+      glowStroke(ctx,.049,'#fff2b3',current*profile.brightness);
     }
     ctx.restore();
   }
@@ -315,6 +320,9 @@
   function drawTree(ctx, main, branches, growth, returning, phase, s) {
     if (growth <= 0) return;
     const {flash, afterglow, impactAge} = phase;
+    const exposure=phase.strength??1;
+    if(exposure<.002)return;
+    const lightStroke=(size,color,opacity)=>glowStroke(ctx,size,color,opacity*exposure);
     const landed = impactAge >= 0;
     const traceLight = landed ? Math.max(flash, afterglow*.67) : 1;
     for (const b of branches) {
@@ -323,13 +331,13 @@
       const branchLight = landed ? Math.max(flash, .68*Math.pow(afterglow,1.1+b.attach)) : .85;
       ctx.beginPath();
       trace(ctx,b.section,0,portion);
-      glowStroke(ctx,(2.3+b.width)*s,'#f69516',branchLight*.13);
-      glowStroke(ctx,Math.max(.38,b.width*1.12*s),'#ffd85c',branchLight*(.40+.40*b.width));
+      lightStroke((2.3+b.width)*s,'#f69516',branchLight*.13);
+      lightStroke(Math.max(.38,b.width*1.12*s),'#ffd85c',branchLight*(.40+.40*b.width));
       const lit = clamp((returning-b.backStart)/(b.end-b.attach));
       if (lit > 0 && flash > .01) {
         ctx.beginPath();
         trace(ctx,b.section,0,lit);
-        glowStroke(ctx,(1.1+b.width)*s,'#ffe993',flash*.67*b.width);
+        lightStroke((1.1+b.width)*s,'#ffe993',flash*.67*b.width);
       }
     }
 
@@ -340,18 +348,18 @@
     // A single blurred envelope avoids hard edges from stacking wide opaque strokes.
     ctx.shadowColor = '#ffb017';
     ctx.shadowBlur = (6+10*flash)*s*ctx.getTransform().a;
-    glowStroke(ctx,1.02*mainWidth*s,'#ffca26',attenuate);
-    if (flash > .008) glowStroke(ctx,2.35*mainWidth*s,'#ffcd38',flash);
+    lightStroke(1.02*mainWidth*s,'#ffca26',attenuate);
+    if (flash > .008) lightStroke(2.35*mainWidth*s,'#ffcd38',flash);
     ctx.restore();
-    glowStroke(ctx,1.02*mainWidth*s,'#ffda45',attenuate*.86);
+    lightStroke(1.02*mainWidth*s,'#ffda45',attenuate*.86);
     if (flash > .008) {
       // The whole conductive path ionises at impact. A hotter return then races up it.
-      glowStroke(ctx,3.65*mainWidth*s,'#ffb90a',flash*.45);
-      glowStroke(ctx,2.35*mainWidth*s,'#fff8db',flash*.98);
+      lightStroke(3.65*mainWidth*s,'#ffb90a',flash*.45);
+      lightStroke(2.35*mainWidth*s,'#fff8db',flash*.98);
       if (returning > 0) {
         ctx.beginPath();
         trace(ctx,main,1-returning,1);
-        glowStroke(ctx,2.35*mainWidth*s,'#fffff2',flash*.62);
+        lightStroke(2.35*mainWidth*s,'#fffff2',flash*.62);
       }
     }
     if (!landed && growth < 1) {
@@ -361,7 +369,7 @@
       glow.addColorStop(0,'#fff9ce');
       glow.addColorStop(.24,'#ffd13fc9');
       glow.addColorStop(1,'#ed970000');
-      ctx.globalAlpha=1;
+      ctx.globalAlpha=exposure;
       ctx.fillStyle=glow;
       ctx.fillRect(tip.x-r,tip.y-r,2*r,2*r);
     }
@@ -384,13 +392,17 @@
     ctx.fillRect(x-radius,y-radius,2*radius,2*radius);
   }
 
-  function drawSparks(ctx, art, age) {
+  function drawSparks(ctx, art, age, profile=full, strength=1) {
     const {x,y}=art.core;
-    for (const p of art.sparks) {
+    for (let i=0;i<art.sparks.length;i++) {
+      const p=art.sparks[i];
+      // Interleaving indices keeps the smaller showers spread all around.
+      const weight=clamp(profile.sparks*art.sparks.length-(i*17%art.sparks.length));
+      if(weight<.002)continue;
       if (age >= p.life) continue;
       // The first displayed instant already contains flying trails close to the core.
       const head=age+p.advance, tail=Math.max(0,head-p.trail);
-      const fade=clamp((p.life-age)/(.64*p.life));
+      const fade=clamp((p.life-age)/(.64*p.life))*weight*strength;
       // Hot projectiles slow down as they leave the pressure front.
       const travel=t => p.fast ? -Math.expm1(-3.8*t)/3.8 : t;
       const dt=travel(tail), dh=travel(head);
@@ -424,23 +436,24 @@
     drawCorona(ctx,art,time,cycle,phase);
     drawEnergyOrb(ctx,art,time,phase);
     const phases=phase.strokes || strikePhases(cycle,phase.impactAge);
+    const strikeProfile=phase.strikeProfile||full;
     ctx.save();
     ctx.globalCompositeOperation='lighter';
     ctx.lineCap='round'; ctx.lineJoin='round';
     for (let i=0;i<art.strokes.length;i++) {
       const stroke=art.strokes[i], local=phases[i];
-      if (!(local.upper>0 || local.lower>0)) continue;
+      if (!local || (local.strength??1)<.002 || !(local.upper>0 || local.lower>0)) continue;
       if (local.afterglow<=0 && local.flash<.005 && local.impactAge>0) continue;
       const lowerShare=stroke.bottom.length/(stroke.top.length+stroke.bottom.length);
       const lowerReturn=clamp(local.returnReach/lowerShare);
       const upperReturn=clamp((local.returnReach-lowerShare)/(1-lowerShare));
-      drawTree(ctx,stroke.top,stroke.upper,local.upper,upperReturn,local,art.unit*stroke.thickness);
-      drawTree(ctx,stroke.bottom,stroke.lower,local.lower,lowerReturn,local,art.unit*stroke.thickness);
+      drawTree(ctx,stroke.top,stroke.upper,local.upper,upperReturn,local,art.unit*stroke.thickness*strikeProfile.strikeWidth);
+      drawTree(ctx,stroke.bottom,stroke.lower,local.lower,lowerReturn,local,art.unit*stroke.thickness*strikeProfile.strikeWidth);
     }
     for (const local of phases) {
       if (local.impactAge>=0) {
-        impactLight(ctx,art,local.impactAge,local.flash*(art.type==='medium' ? .58 : 1));
-        drawSparks(ctx,art,local.impactAge);
+        impactLight(ctx,art,local.impactAge,local.flash*(local.strength??1)*(art.type==='medium' ? .58 : 1));
+        drawSparks(ctx,art,local.impactAge,strikeProfile,local.strength??1);
       }
     }
     ctx.restore();

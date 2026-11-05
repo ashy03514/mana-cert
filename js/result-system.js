@@ -11,7 +11,7 @@
   function validSettings(s) {
     const distributionValid=(weights,keys)=>keys.every(k=>Number.isFinite(weights[k])&&weights[k]>=0)
       &&keys.reduce((sum,k)=>sum+weights[k],0)>0;
-    if(['火','水','風','土'].some(k=>s.elements[k])&&!distributionValid(s.normalRanks||C.normalRanks,Object.keys(C.normalRanks)))return false;
+    if(['火','水','風','土','雷'].some(k=>s.elements[k])&&!distributionValid(s.normalRanks||C.normalRanks,Object.keys(C.normalRanks)))return false;
     if(['光','暗'].some(k=>s.elements[k])&&!distributionValid(s.rareElementRanks||C.rareElementRanks,['A','S','SS']))return false;
     return Number.isFinite(s.muggleChance) && s.muggleChance >= 0 && s.muggleChance <= 1 &&
       (Object.keys(C.elementWeights).some(k => s.elements[k]) ||

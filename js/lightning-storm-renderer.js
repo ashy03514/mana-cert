@@ -3,18 +3,22 @@
   const cycleSeconds=4.4/1.5,hitTime=1.28,tau=Math.PI*2;
   const clamp=n=>Math.max(0,Math.min(1,n));
   const smooth=n=>{n=clamp(n);return n*n*(3-2*n);};
-  function stateAt(t,strikeSeed) {
-    const age = t % cycleSeconds;
-    const since = age - hitTime;
-    const cycle=strikeSeed+Math.floor(t/cycleSeconds);
-    const strokes=LightningDischarge.strikePhases(cycle,since);
-    const flash=Math.max(...strokes.map(p=>p.flash));
-    const afterglow=Math.max(...strokes.map(p=>p.afterglow));
-    const descending=strokes.some(p=>p.upper>0 && p.impactAge<0);
+  function stateAt(t,strikeSeed,effects) {
+    const stormTime=effects?.stormTime??t;
+    const profile=effects?.profile||LightningRankEffects.forRank('SS');
+    const strikeProfile=effects?.strikeProfile||profile;
+    const age = stormTime % cycleSeconds;
+    const since = effects?.impactAge??(age-hitTime);
+    const cycle=strikeSeed+Math.floor(stormTime/cycleSeconds);
+    const strokes=LightningDischarge.strikePhases(cycle,since).map((p,i)=>({...p,
+      strength:strikeProfile.skyStrength*(i===0?1:i===1?strikeProfile.doubleGain:strikeProfile.tripleGain)}));
+    const flash=Math.max(0,...strokes.map(p=>p.flash*p.strength));
+    const afterglow=Math.max(0,...strokes.map(p=>p.afterglow*p.strength));
+    const descending=strokes.some(p=>p.strength>.01 && p.upper>0 && p.impactAge<0);
     return {
-      strokes, flash, afterglow, impactAge: since,
+      strokes, flash, afterglow, impactAge: since, profile, strikeProfile,
       charge: since < 0 ? 0.18 + 0.82 * smooth(age / hitTime) : 0.18 + 0.70 * Math.exp(-since * 4),
-      name: descending ? '金雷直落' : flash>.20 ? '雷核命中' : since<0 ? '雷核蓄能' : afterglow>0 ? '餘弧消散' : '雷核待機',
+      name: profile.skyStrength<.01?'電流聚集':descending ? '金雷直落' : flash>.20 ? '雷核命中' : since<0 ? '雷核蓄能' : afterglow>0 ? '餘弧消散' : '雷核待機',
       value: t >= hitTime ? 999 : 900 + Math.min(98, Math.floor(99 * t / hitTime))
     };
   }
@@ -57,6 +61,7 @@
     const cx = width * 0.50, cy = height * 0.76;
     const unit = Math.min(width, height);
     const age = t % 2;
+    const ambience=p.profile.skyLight;
     // Delayed patches conduct sideways through the air every two seconds.
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
@@ -64,12 +69,12 @@
         if (local <= 0 || local >= 1) continue;
         const x = cx + side * width * (0.16 + 0.145 * i + 0.04 * local);
         const y = cy - height * (0.17 + i * 0.055 + 0.045 * side);
-        glow(ctx, x, y, width * 0.22, height * 0.12, '166,135,54', 0.15 * Math.sin(local * Math.PI) ** 2);
+        glow(ctx, x, y, width * 0.22, height * 0.12, '166,135,54', 0.15 * ambience * Math.sin(local * Math.PI) ** 2);
       }
     }
-    glow(ctx, cx, cy, unit * 0.32, unit * 0.23, '208,147,34', 0.045 + p.charge * 0.075 + 0.16 * p.flash);
+    glow(ctx, cx, cy, unit * 0.32, unit * 0.23, '208,147,34', (0.045 + p.charge * 0.075 + 0.16 * p.flash)*ambience);
     // Incoming lightning briefly lights up its source; the white exposure is anchored to the impact.
-    const chargedSky = Math.max(0, p.charge - 0.46);
+    const chargedSky = Math.max(0, p.charge - 0.46)*p.profile.skyStrength;
     if (chargedSky > 0 || p.flash > 0.008) {
       const fork = LightningDischarge.contact(width, height, cycle);
       glow(ctx, fork.x, 0, width * 0.67, height * 0.23, '246,188,68', (chargedSky * 0.24 + p.flash * 0.27) * skyExposure);
@@ -82,7 +87,7 @@
       const travel = (i * 0.618034 + t * (0.045 + (i % 5) * 0.006)) % 1;
       const x = cx + unit * Math.sin(i * 34.71 + travel * 1.8) * (0.13 + travel * 0.44);
       const y = cy - height * travel * 0.8;
-      const a = Math.sin(travel * Math.PI) * (0.10 + 0.22 * p.charge);
+      const a = Math.sin(travel * Math.PI) * (0.10 + 0.22 * p.charge)*ambience;
       ctx.fillStyle = 'rgba(245,213,132,' + a + ')';
       ctx.beginPath();ctx.arc(x, y, i % 6 ? 0.66 : 1.15, 0, tau);ctx.fill();
     }
@@ -94,13 +99,14 @@
       this.seed=seed;this.sky=null;
       this.canvas=document.createElement('canvas');this.ctx=this.canvas.getContext('2d');
     }
-    static stateAt(time,seed=0){return stateAt(time,seed);}
+    static stateAt(time,seed=0,effects){return stateAt(time,seed,effects);}
     layout(width,height){
       const h=Math.max(160,Math.min(height*.68,height-200));
       return {x:0,y:0,width,height:h,gatherY:h*.76};
     }
     draw(ctx,background,width,height,frame={}){
-      const time=frame.time??0,box=frame.box||this.layout(width,height);
+      const hostTime=frame.time??0,effects=frame.lightningEffects;
+      const time=effects?.time??hostTime,box=frame.box||this.layout(width,height);
       const opacity=clamp(frame.opacity??1);
       if(!opacity)return true;
       const scale=Math.min(2,Math.max(1,ctx.getTransform().a));
@@ -111,8 +117,8 @@
       if(!this.sky||this.sky.width!==Math.round(width)||this.sky.height!==Math.round(height)){
         this.sky=makeSky(width,height);
       }
-      const g=this.ctx,p=stateAt(time,this.seed);
-      const cycle=this.seed+Math.floor(time/cycleSeconds);
+      const g=this.ctx,p=stateAt(hostTime,this.seed,effects);
+      const cycle=this.seed+Math.floor((effects?.stormTime??hostTime)/cycleSeconds);
       g.setTransform(scale,0,0,scale,0,0);
       g.drawImage(this.sky,0,0,width,height);
       g.save();g.translate(box.x,box.y);

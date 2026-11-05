@@ -10,7 +10,14 @@
    return v&&keys.every(k=>Number.isInteger(v[k])&&v[k]>=0&&v[k]<=100)&&keys.reduce((n,k)=>n+v[k],0)===100
     ?Object.fromEntries(keys.map(k=>[k,v[k]])):{...f};
   };
-  return {elements:Object.fromEntries(Object.entries(defaults.elements).map(([k,v])=>[k,bool(data.elements?.[k],v)])),
+  const elements=Object.fromEntries(Object.entries(defaults.elements).map(([k,v])=>[k,bool(data.elements?.[k],v)]));
+  // Preserve intentional single-element and all-off selections from before
+  // lightning existed. An all-basic selection includes the new basic element.
+  if(data.elements&&typeof data.elements==='object'&&'雷' in defaults.elements&&
+    !Object.prototype.hasOwnProperty.call(data.elements,'雷')){
+   elements.雷=['火','水','風','土'].every(k=>data.elements[k]===true);
+  }
+  return {elements,
    muggleEnabled:bool(data.muggleEnabled,defaults.muggleEnabled),
    soundEnabled:bool(data.soundEnabled,defaults.soundEnabled),hapticsEnabled:bool(data.hapticsEnabled,defaults.hapticsEnabled),
    mugglePercent:Number.isInteger(data.mugglePercent)&&data.mugglePercent>=0&&data.mugglePercent<=100?data.mugglePercent:defaults.mugglePercent,

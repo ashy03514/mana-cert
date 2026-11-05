@@ -66,7 +66,7 @@
         // A single-value SS still unfolds smoothly after numeric confirmation.
         power:value===999?FireScanTransition.powerForValue(998)+(3-FireScanTransition.powerForValue(998))*smooth((time-TIMING.complete)/.65):FireScanTransition.powerForValue(value),fireTime:FireScanTransition.flameTime(time,result),
         rank:FireScanTransition.rankForValue(value),
-        label:complete?'階段完成':time>=TIMING.scanStart?'魔力攀升':time>=TIMING.numbersStart?'數值顯現':time>=TIMING.identify?(result?.element==='水'?'水流凝聚':result?.element==='風'?'風勢凝聚':result?.element==='土'?'土脈凝聚':'火焰蓄熱'):'屬性展開'
+        label:complete?'階段完成':time>=TIMING.scanStart?'魔力攀升':time>=TIMING.numbersStart?'數值顯現':time>=TIMING.identify?(result?.element==='水'?'水流凝聚':result?.element==='風'?'風勢凝聚':result?.element==='土'?'土脈凝聚':result?.element==='雷'?'雷核蓄能':'火焰蓄熱'):'屬性展開'
       };
     }
     static layout(width,height,baseBox,shift,{preview=false}={}){
