@@ -1,7 +1,7 @@
 /* Shared reveal pacing. No timers, DOM, randomness, or certification outcome. */
 (function(root) {
   'use strict';
-  const ELEMENTS=Object.freeze(['fire','water','wind','earth','light','dark']);
+  const ELEMENTS=Object.freeze(['fire','water','wind','earth','light','dark','lightning']);
   // Two inward waves finish at 1.2 s, then build pressure for another 0.5 s.
   const DURATIONS=Object.freeze({RETURN:.55,WAITING:1.7,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
   const NEXT=Object.freeze({RETURN:'WAITING',WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});

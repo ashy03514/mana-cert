@@ -1,4 +1,4 @@
-const CACHE_NAME = "mana-pwa-v3-portal-150";
+const CACHE_NAME = "mana-pwa-v3-portal-159";
 const ASSETS = [
   "./",
   "./index.html",
@@ -30,6 +30,10 @@ const ASSETS = [
   "./js/earth-backdrop.js",
   "./js/earth-mountain-renderer.js",
   "./earth-mountain-study.html",
+  "./lightning-storm-study.html",
+  "./js/lightning-discharge.js",
+  "./js/lightning-storm-renderer.js",
+  "./js/lightning-storm-study.js",
   "./js/light-holy-shader.js",
   "./js/light-holy-wings.js",
   "./js/light-holy-renderer.js",

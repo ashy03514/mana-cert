@@ -199,7 +199,7 @@
   #materialControls[hidden] { display:none; }
   .materialHeading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:13px; }
   #materialStatus { color:#a7a0b9; font-size:12px; }
-  .materialChoices { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; }
+  .materialChoices { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
   .materialWindRanks { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; margin-top:8px; }
   .materialWindRanks[hidden] { display:none; }
   .materialChoices button,.materialPlayback button,.materialWindRanks button {
@@ -771,8 +771,8 @@
     <section id="panel_effects" class="settingsPanel" role="tabpanel" aria-labelledby="tab_effects" hidden>
 <p class="effectHint">100% 為目前預設效果；調整後可全螢幕預覽。</p>
 <details class="effectGroup"><summary>屬性揭曉樣板</summary>
-<p class="effectHint">切換六種屬性，比較材質與動態；可暫停檢視或重新播放。火、水的收筆預覽包含數字與階級攀升；水屬性會從小水球成長為 SS 水之星球。風屬性可切換 E～SS 階級，以 SS 的 1.5× 為速度基準；正式鑑定會隨魔力值從斷續風捲逐漸形成龍捲風。</p>
-<button id="materialPreviewOpen" class="btn btnGhost materialOpen" type="button">預覽六種屬性</button>
+<p class="effectHint">切換七種屬性，比較材質與動態；雷屬性目前為 SS 樣板；可暫停檢視或重新播放。火、水的收筆預覽包含數字與階級攀升；水屬性會從小水球成長為 SS 水之星球。風屬性可切換 E～SS 階級，以 SS 的 1.5× 為速度基準；正式鑑定會隨魔力值從斷續風捲逐漸形成龍捲風。</p>
+<button id="materialPreviewOpen" class="btn btnGhost materialOpen" type="button">預覽七種屬性</button>
 <button id="flowPreviewOpen" class="btn materialOpen" type="button">預覽收筆到屬性</button>
 </details>
 <details class="effectGroup"><summary>整體動態</summary>
@@ -891,7 +891,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="150" title="目前載入頁面的版本">目前版本 v150</span>
+        <span id="appVersion" data-version="159" title="目前載入頁面的版本">目前版本 v159</span>
       </div>
     </div>
     </div>
@@ -921,6 +921,7 @@
     <button id="material_wind" type="button" aria-pressed="false" aria-label="預覽風屬性">風</button>
     <button id="material_earth" type="button" aria-pressed="false" aria-label="預覽土屬性">土</button>
     <button id="material_light" type="button" aria-pressed="false" aria-label="預覽光屬性">光</button>
+    <button id="material_lightning" type="button" aria-pressed="false" aria-label="預覽 SS 級雷屬性">雷</button>
     <button id="material_dark" type="button" aria-pressed="false" aria-label="預覽暗屬性">暗</button>
   </div>
   <div id="materialWindRanks" class="materialWindRanks" role="group" aria-label="選擇風屬性預覽階級" hidden>
@@ -1012,6 +1013,8 @@
 <script src="./js/element-material-matter.js"></script>
 <script src="./js/element-material-energy.js"></script>
 <script src="./js/element-material-renderer.js"></script>
+<script src="./js/lightning-discharge.js"></script>
+<script src="./js/lightning-storm-renderer.js"></script>
 <script src="./js/ocean-surface-shader.js"></script>
 <script src="./js/ocean-spray-field.js"></script>
 <script src="./js/ocean-spray.js"></script>
@@ -1074,7 +1077,7 @@
   const ctx=canvas.getContext('2d');
   const animLayerEl=document.getElementById('animLayer');
   let portal=null,lastParticleTs=null,pagePaused=false,effectPreview=false,effectsDirty=false;
-  let materialPreview=false,materialRenderer=null,materialBackdrop=null,oceanReveal=null,windTornado=null,earthMountain=null,lightAngel=null,darkDemon=null;
+  let materialPreview=false,materialRenderer=null,materialBackdrop=null,oceanReveal=null,windTornado=null,earthMountain=null,lightAngel=null,darkDemon=null,lightningStorm=null;
   let windPreviewRank='SS',earthPreviewRank='SS',lightPreviewRank='SS',darkPreviewRank='SS';
   const lightFeatherPlans=new WeakMap();
   const elementBackdrop=new ElementRevealBackdrop();
@@ -1363,6 +1366,7 @@
   function resetPortal(){
     cancelInput();
     oceanReveal?.dispose();oceanReveal=null;
+    lightningStorm?.dispose();lightningStorm=null;
     windTornado?.dispose();windTornado=null;
     earthMountain?.dispose();earthMountain=null;
     lightAngel?.dispose();lightAngel=null;
@@ -1507,8 +1511,11 @@
     for(const rank of rankOrder)document.getElementById('earthRank_'+rank).setAttribute('aria-pressed',String(rank===earthPreviewRank));
     for(const rank of ['A','S','SS'])document.getElementById('lightRank_'+rank).setAttribute('aria-pressed',String(rank===lightPreviewRank));
     for(const rank of ['A','S','SS'])document.getElementById('darkRank_'+rank).setAttribute('aria-pressed',String(rank===darkPreviewRank));
-    document.getElementById('materialHeadingTitle').textContent=usesDarkPreview()?'闇屬性 · '+darkPreviewRank+' · 魔王羽翼':usesLightPreview()?'光屬性 · '+lightPreviewRank+' · 聖光羽翼':earth?'土屬性 · '+earthPreviewRank+' · 地脈之心':wind?'風屬性 · '+windPreviewRank+' · 1.5×基準':flowPreview?'收筆流程預覽':'屬性材質樣板';
+    document.getElementById('materialHeadingTitle').textContent=usesLightningMaterial()?'雷屬性 · SS · 天地對擊':usesDarkPreview()?'闇屬性 · '+darkPreviewRank+' · 魔王羽翼':usesLightPreview()?'光屬性 · '+lightPreviewRank+' · 聖光羽翼':earth?'土屬性 · '+earthPreviewRank+' · 地脈之心':wind?'風屬性 · '+windPreviewRank+' · 1.5×基準':flowPreview?'收筆流程預覽':'屬性材質樣板';
     document.getElementById('materialReplay').textContent=flowPreview?'重新畫一次':'重新播放';
+  }
+  function usesLightningMaterial(){
+    return (materialPreview||flowPreview)&&materialRenderer?.element==='lightning';
   }
   function usesOceanPreview(){
     return (materialPreview||flowPreview||formalReveal)&&materialRenderer?.element==='water';
@@ -1540,6 +1547,7 @@
     return {...box,gatherY:activeMaterialRenderer().layout(w,h,box).cy};
   }
   function activeMaterialRenderer(){
+    if(usesLightningMaterial())return lightningStorm??=new LightningStormRenderer();
     if(usesLightMaterial())return lightAngel??=new LightAngelLayeredGrowthRenderer();
     if(usesDarkMaterial())return darkDemon??=new DarkDemonWingGrowthRenderer();
     if(usesEarthMaterial())return earthMountain??=new EarthMountainRenderer();
@@ -1553,6 +1561,7 @@
   }
   function drawPreviewMaterial(w,h,frame=null){
     const active=activeMaterialRenderer();
+    if(usesLightningMaterial())return active.draw(ctx,canvas,w,h,frame||{time:materialRenderer.time,opacity:1});
     if(usesDarkMaterial())return active.draw(ctx,w,h,{
       time:frame?.time??materialRenderer.time,opacity:frame?.opacity??1,
       box:formalReveal?frame?.box:lightPreviewBox(w,h),
@@ -1661,7 +1670,7 @@
     }
     updateMaterialError();
     const phase=materialRenderer.phase;
-    const label=materialRenderer.paused?'已暫停':usesDarkPreview()?darkPreviewRank+' · 魔翼甦醒':usesLightPreview()?lightPreviewRank+' · 聖光流動':usesEarthPreview()?earthPreviewRank+' · 岩層展開':usesWindMaterial()?windPreviewRank+' · 風勢展開':phase<.18?'形成':phase>.84?'消散':'展開';
+    const label=materialRenderer.paused?'已暫停':usesLightningMaterial()?LightningStormRenderer.stateAt(time,activeMaterialRenderer().seed).name:usesDarkPreview()?darkPreviewRank+' · 魔翼甦醒':usesLightPreview()?lightPreviewRank+' · 聖光流動':usesEarthPreview()?earthPreviewRank+' · 岩層展開':usesWindMaterial()?windPreviewRank+' · 風勢展開':phase<.18?'形成':phase>.84?'消散':'展開';
     if(materialStatus.textContent!==label)materialStatus.textContent=label;
   }
   function prepareFlow(element,formal=false){
@@ -1677,14 +1686,14 @@
   }
   function restartRevealFlow(element=flow.element){
     audio.stop();
-    flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'))});
+    flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'||element==='lightning'))});
     cancelInput();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
     if(element!==null){
       if(element==='dark'&&flow.awakeningEnabled)DarkAwakening.prepare();
       materialRenderer.select(element);
-      if(usesOceanPreview()||usesWindMaterial()||usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())activeMaterialRenderer();
+      if(usesLightningMaterial()||usesOceanPreview()||usesWindMaterial()||usesEarthMaterial()||usesLightMaterial()||usesDarkMaterial())activeMaterialRenderer();
       else if(materialRenderer.init())materialRenderer.compile(element);
     }
     revealTitle.hidden=true;formalReplay.hidden=true;lastParticleTs=null;
@@ -1794,7 +1803,7 @@
     const presentation=(formalReveal&&flow.element!==null)||(flowPreview&&['fire','water'].includes(flow.element))
       ?formalMaterialLayout(w,h,scan?.shift||0,windProfile,earthEffects?.profile):null;
     const scanLayout=scan?presentation:null;
-    const box=presentation?.box||((usesLightPreview()||usesDarkPreview())?lightPreviewBox(w,h):usesEarthMaterial()?activeMaterialRenderer().layout(w,h):usesWindMaterial()?activeMaterialRenderer().layout(w,h,windProfile):materialRenderer.layout(w,h));
+    const box=presentation?.box||(usesLightningMaterial()?activeMaterialRenderer().layout(w,h):(usesLightPreview()||usesDarkPreview())?lightPreviewBox(w,h):usesEarthMaterial()?activeMaterialRenderer().layout(w,h):usesWindMaterial()?activeMaterialRenderer().layout(w,h,windProfile):materialRenderer.layout(w,h));
     const firePower=flow.element==='fire'?(scan?.power||0):undefined;
     const waterPower=flow.element==='water'?(scan?.power||0):undefined;
     // Zooming the wind's framing must not move the existing gathering point.

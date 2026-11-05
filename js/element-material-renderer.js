@@ -1,7 +1,7 @@
 /* Shared real-time material renderer: preview and later reveals use these same programs. */
 (function(root){
   'use strict';
-  const names=Object.freeze({fire:'火',water:'水',wind:'風',earth:'土',light:'光',dark:'暗'});
+  const names=Object.freeze({fire:'火',water:'水',wind:'風',earth:'土',light:'光',dark:'暗',lightning:'雷'});
   const hash=n=>{const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v);};
   const smooth=v=>{v=Math.max(0,Math.min(1,v));return v*v*(3-2*v);};
   // Four independent impact lanes. Sample absolute active time so pause/replay

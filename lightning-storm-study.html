@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090b1c">
+  <title>天地對擊 · 雷屬性 SS 美術樣板</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #e2e6ff;
+      background: #090b1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 280px;
+      min-height: 100vh;
+      min-height: 100svh;
+      background: radial-gradient(ellipse at 40% 28%, #151932, transparent 71%), #090b1c;
+    }
+    button, a { font: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    button { cursor: pointer; }
+    :is(a, button):focus-visible { outline: 2px solid #c4ceff; outline-offset: 3px; }
+    button:hover, .back:hover { border-color: #7481b6; color: #fff; }
+    .shell { position: relative; isolation: isolate; max-width: 1460px; min-height: 100svh; margin: 0 auto; }
+    header {
+      position: absolute; z-index: 1; inset: 0 0 auto; display: flex;
+      justify-content: space-between; align-items: center; gap: 10px;
+      padding: max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));
+      pointer-events: none;
+    }
+    .eyebrow, .back {
+      font-size: 11px; letter-spacing: .1em; line-height: 1.4;
+      text-shadow: 0 1px 4px #060818;
+    }
+    .eyebrow { color: #c2c9e7; }
+    .eyebrow::before { content: ""; display: inline-block; width: 17px; height: 1px; margin: 0 8px 4px 0; background: #d4ac5c; }
+    .back {
+      padding: 8px 12px; border-radius: 9px; border: 1px solid #515d826e;
+      color: #c7cfeb; background: #0c1026cf; text-decoration: none; pointer-events: auto;
+    }
+    .stage { position: relative; height: 57vh; height: 57svh; }
+    #storm { display: block; width: 100%; height: 100%; }
+    .panel { width: min(calc(100% - 36px),408px); padding: 2px 0 max(16px,env(safe-area-inset-bottom)); margin: 0 auto; }
+    .readout {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding-bottom: 12px; border-bottom: 1px solid #939fd32c;
+    }
+    .stage-label, .reading-label { display: block; font-size: 10px; letter-spacing: .17em; color: #9daacb; }
+    h1 { font-family: "Noto Serif TC", "Songti TC", PMingLiU, serif; font-size: clamp(27px,7vw,44px); font-weight: 500; line-height: 1.25; letter-spacing: .16em; margin: 4px 0 0; }
+    .reading { text-align: right; }
+    #mana {
+      display: block; color: #fff3cc; font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(40px,11vw,57px); line-height: 1; letter-spacing: .015em;
+      font-variant-numeric: lining-nums tabular-nums; text-shadow: 0 0 14px #edba4555;
+    }
+    .status { margin: 11px 0; font-size: 12px; color: #b1bad6; line-height: 1.5; }
+    #phaseName { color: #f5da95; font-weight: 650; }
+    .controls { display: grid; gap: 9px; border: 1px solid #707eac3e; border-radius: 13px; padding: 11px; background: #14182ce0; }
+    .row { display: grid; gap: 7px; }
+    .play { grid-template-columns: 1fr 1fr; }
+    .phases, .speeds { grid-template-columns: repeat(3,minmax(0,1fr)); }
+    button {
+      min-height: 36px; padding: 5px 4px; border: 1px solid #8591be38; border-radius: 7px;
+      background: #171c34; color: #c7cfe8; font-size: 12px; font-weight: 550;
+    }
+    #pause { color: #f0edff; background: linear-gradient(115deg,#423862,#393559); border-color: #9a8ac269; }
+    .adjust { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 9px; align-items: center; }
+    .label { font-size: 11px; color: #a2aecb; white-space: nowrap; }
+    .speeds button { min-height: 27px; border-color: transparent; background: transparent; color: #9aa7c7; font-variant-numeric: tabular-nums; }
+    .speeds button[aria-pressed="true"], .phases button[aria-pressed="true"] { border-color: #a096d17a; background: #66558f36; color: #eeeaff; }
+    .phases { padding-top: 8px; border-top: 1px solid #8997c224; }
+    .phases button { min-height: 30px; font-size: 11px; }
+    @media (max-height: 670px) and (orientation: portrait) {
+      .stage { height: 51vh; height: 51svh; } .controls { gap: 5px; } .readout { padding-bottom: 6px; } .status { margin: 6px 0; }
+    }
+    @media (min-width: 700px) and (orientation: landscape) {
+      main { display: grid; min-height: 100svh; grid-template-columns: minmax(0,1fr) minmax(270px,33%); align-items: center; gap: clamp(12px,2vw,34px); padding-right: clamp(20px,5vw,80px); }
+      header { padding: 19px clamp(20px,4vw,62px) 0; }
+      .stage { height: 100svh; min-height: 345px; }
+      .panel { width: 100%; max-width: 390px; margin: 40px auto 18px; padding-bottom: 0; }
+      .controls { padding: 15px; gap: 12px; } .status { margin: 15px 0; } .readout { padding-bottom: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <span class="eyebrow">雷屬性 · SS 美術樣板</span>
+      <a class="back" href="./index.html">返回設定</a>
+    </header>
+    <main>
+      <div class="stage"><canvas id="storm" role="img" aria-label="金色電球持續向全方位迸出密集電弧。天空有時劈下一道強弱不一的雷，有時兩三道雷先後擊中電球，每次命中都迸出白光與金色火花。"></canvas></div>
+      <section class="panel" aria-labelledby="title">
+        <div class="readout">
+          <div><span class="stage-label">SS 級放電演出</span><h1 id="title">天地對擊</h1></div>
+          <div class="reading"><span class="reading-label">試演數值</span><span id="mana">900</span></div>
+        </div>
+        <p class="status">放電階段 <span aria-hidden="true">／</span> <span id="phaseName" role="status">蓄電</span></p>
+        <div class="controls">
+          <div class="row play">
+            <button id="pause" type="button" aria-pressed="false">暫停</button>
+            <button id="replay" type="button">重新播放</button>
+          </div>
+          <div class="adjust">
+            <span id="speedLabel" class="label">播放速度</span>
+            <div class="row speeds" role="group" aria-labelledby="speedLabel">
+              <button type="button" data-speed="0.5" aria-pressed="false">0.5×</button>
+              <button type="button" data-speed="1" aria-pressed="true">1×</button>
+              <button type="button" data-speed="1.5" aria-pressed="false">1.5×</button>
+            </div>
+          </div>
+          <div class="row phases" role="group" aria-label="定格觀察放電階段">
+            <button type="button" data-time="1.22" aria-pressed="false">定格 · 落雷</button>
+            <button type="button" data-time="1.34" aria-pressed="false">定格 · 命中</button>
+            <button type="button" data-time="1.80" aria-pressed="false">定格 · 餘弧</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="./js/lightning-discharge.js"></script>
+  <script src="./js/lightning-storm-renderer.js"></script>
+  <script src="./js/lightning-storm-study.js"></script>
+</body>
+</html>

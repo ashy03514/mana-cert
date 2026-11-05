@@ -45,7 +45,7 @@
   }
   const pick=(colors,seed,salt)=>colors[Math.floor(rand(seed,salt)*colors.length)];
   const palettes={fire:[244,170,83],water:[118,218,237],wind:[192,216,183],
-    earth:[195,169,116],light:[246,231,192],dark:[171,118,225]};
+    earth:[195,169,116],light:[246,231,192],dark:[171,118,225],lightning:[255,214,101]};
   class RevealGather {
     constructor(){
       this.width=0;this.height=0;this.routes=[];this.pointCount=0;this.moteCount=0;
