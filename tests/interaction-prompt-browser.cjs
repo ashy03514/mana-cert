@@ -43,7 +43,7 @@ const {chromium}=require(process.env.MANA_PLAYWRIGHT_MODULE||'C:/Users/ashy0/.ca
     const restart=async()=>{await advance(16000);await click('#formalReplay');await click('#btnRetryCert');await advance(0);
       assert.equal(await status.isVisible(),false);assert.equal(await page.locator('#waitingPrompt').isVisible(),true);};
     assert.equal(await status.isVisible(),false);
-    await edit('waitingPromptOffsetY',120);
+    await edit('waitingPromptPositionY',100);
     await edit('waitingPromptText','請按照你的方法\n觸碰儀器');
     // Public controls select a real fire round; instrumentation observes without forcing outcomes.
     for(const name of ['water','wind','earth','lightning','light','dark','muggle']) await page.locator('#s_'+name).uncheck({force:true});
@@ -55,11 +55,11 @@ const {chromium}=require(process.env.MANA_PLAYWRIGHT_MODULE||'C:/Users/ashy0/.ca
     assert.equal(await state(),'sensed');
     assert.equal(await page.locator('#waitingPrompt').isVisible(),false);
     const box=await status.boundingBox();
-    assert.ok(Math.abs(box.y-guide.y)<.1&&Math.abs(box.x+box.width/2-217.5)<.1,'same saved position and horizontal center');
+    assert.ok(Math.abs(box.y-92)<.1&&Math.abs(box.x+box.width/2-217.5)<.1,'independent upper position and horizontal center');
     assert.equal(await status.evaluate(el=>getComputedStyle(el).pointerEvents),'none');
     await advance(900);assert.equal(await state(),'holding');
     const labelBox=await status.locator('[data-prompt-current]').boundingBox();
-    assert.ok(Math.abs(labelBox.y-guide.y)<.1,'visible copy has no inherited whitespace offset');
+    assert.ok(Math.abs(labelBox.y-92)<.1,'visible copy remains at the fixed upper position');
     await page.screenshot({path:path.join(os.tmpdir(),'mana-prompt-v163-hold.png')});
     await page.mouse.move(290,520,{steps:5});await advance(900);
     assert.equal(await state(),'drawing');

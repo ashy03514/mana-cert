@@ -64,7 +64,7 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     assert.equal(presentation.lineHeight, 45);
     assert.equal(presentation.color, 'rgb(171, 201, 239)');
     assert.ok(presentation.height >= 3 * presentation.lineHeight, 'empty middle line occupies one full line');
-    assert.ok(presentation.y > 0 && presentation.y + presentation.height < 941 / 2, 'copy sits above the drawing center');
+    assert.ok(presentation.y > 0 && Math.abs(presentation.y + presentation.height / 2 - 941 / 2) < 1, 'default copy is vertically centered');
     assert.equal(presentation.pointer, 'none');
     await page.mouse.click(218, presentation.y + 12, { button: 'right' });
     assert.equal(await prompt.isVisible(), true, 'ignored input must not dismiss the instructions');

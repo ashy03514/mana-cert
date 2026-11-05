@@ -56,13 +56,24 @@
     letter-spacing:var(--prompt-tracking,2px); color:var(--prompt-color,#fff);
     text-shadow:0 1px 5px #080919cc,0 0 15px #b7bdff55;
   }
-  #waitingPrompt, #interactionPrompt {
-    position:absolute; top:calc(env(safe-area-inset-top,0px) + clamp(36px,10vh,92px) + var(--prompt-offset-y,0px));
+  #interactionPrompt {
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + clamp(36px,10vh,92px));
     left:max(18px,env(safe-area-inset-left)); right:max(18px,env(safe-area-inset-right));
     max-width:42rem; margin-inline:auto; pointer-events:none;
   }
+  #waitingPromptAnchor {
+    position:absolute; inset:calc(env(safe-area-inset-top,0px) + 18px) max(18px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 18px) max(18px,env(safe-area-inset-left,0px));
+    pointer-events:none;
+  }
+  #waitingPrompt {
+    position:absolute; top:var(--prompt-position,50%); left:0; right:0;
+    transform:translateY(calc(0% - var(--prompt-position,50%)));
+    max-width:42rem; max-height:100%; overflow:hidden; margin-inline:auto;
+    pointer-events:none;
+  }
   body:not([data-state="STANDBY"]) #waitingPrompt, #waitingPrompt:empty { display:none; }
-  #interactionPrompt { z-index:2; color:#eef7ff; white-space:normal; }
+  #interactionPrompt { z-index:2; color:#eef7ff; white-space:normal;
+    --prompt-size:22px; --prompt-tracking:2px; --prompt-leading:1.5; --prompt-color:#eef7ff; }
   #interactionPrompt[hidden] { display:none; }
   .interactionPromptLayers { display:grid; }
   .interactionPromptLayers p {
@@ -765,10 +776,10 @@
         <input id="waitingPromptLineHeight" data-prompt-field="lineHeight" type="range" min="0.9" max="2.4" step="0.1">
       </div>
       <div class="effectControl">
-        <label for="waitingPromptOffsetY">上下位移</label><output id="waitingPromptOffsetYValue" for="waitingPromptOffsetY"></output>
-        <input id="waitingPromptOffsetY" data-prompt-field="offsetY" type="number" min="-500" max="1000" step="1" aria-describedby="waitingPromptOffsetHint" style="width:100%;padding:8px;font:inherit">
+        <label for="waitingPromptPositionY">上下位置</label><output id="waitingPromptPositionYValue" for="waitingPromptPositionY"></output>
+        <input id="waitingPromptPositionY" data-prompt-field="positionY" type="range" min="0" max="100" step="1" aria-describedby="waitingPromptOffsetHint">
       </div>
-      <p id="waitingPromptOffsetHint" class="effectHint">0 為原本位置，正值向下、負值向上，單位 px。等待文字與互動系統提示使用同一位置，保持水平置中。</p>
+      <p id="waitingPromptOffsetHint" class="effectHint">拉桿中央為畫面中央，往左移到上方、往右移到下方。文字永遠水平置中；互動系統提示固定在上方，不受此區設定影響。</p>
       <div class="effectColor"><label for="waitingPromptColor">文字顏色</label>
         <span class="waitingPromptSwatch"><output id="waitingPromptColorValue" for="waitingPromptColor"></output>
         <input id="waitingPromptColor" data-prompt-field="color" type="color"></span>
@@ -926,7 +937,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="163" title="目前載入頁面的版本">目前版本 v163</span>
+        <span id="appVersion" data-version="164" title="目前載入頁面的版本">目前版本 v164</span>
       </div>
     </div>
     </div>
@@ -945,7 +956,7 @@
 
 <div id="animLayer" aria-label="魔力鑑定：滑動畫符，或按住直到魔力聚滿">
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
-  <p id="waitingPrompt" class="waitingPromptCopy"></p>
+  <div id="waitingPromptAnchor"><p id="waitingPrompt" class="waitingPromptCopy"></p></div>
   <div id="interactionPrompt" class="waitingPromptCopy" hidden>
     <div class="interactionPromptLayers" aria-hidden="true">
       <p data-prompt-previous></p><p data-prompt-current></p>
@@ -1149,7 +1160,7 @@
   let effectStorage;
   try{effectStorage=window.localStorage;}catch(_){}
   let effectValues=EffectSettings.load(effectStorage);
-  const waitingPromptSettings=WaitingPromptSettings.mount(document,effectStorage);
+  WaitingPromptSettings.mount(document,effectStorage);
   const interactionPrompt=new InteractionPrompt.View(document.getElementById('interactionPrompt'));
 
   function getViewportSize(){
@@ -1470,10 +1481,7 @@
     if(flowActive()&&!flow.down(e.pointerId,e.clientX,e.clientY,timeline.now()))return;
     if(!scene.down(e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now()))return;
     try{animLayerEl.setPointerCapture(e.pointerId);}catch(_){}
-    if(formalReveal){
-      const guide=session.state===STATES.STANDBY?waitingPromptSettings.values.text:'';
-      interactionPrompt.start(waitingPromptSettings.values,guide);
-    }
+    if(formalReveal)interactionPrompt.start();
     if(!effectPreview&&!flowPreview&&session.state===STATES.STANDBY){
       session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
     }

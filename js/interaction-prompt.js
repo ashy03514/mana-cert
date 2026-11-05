@@ -60,14 +60,8 @@
       this.reduced=root.matchMedia?.('(prefers-reduced-motion: reduce)');
       this.render();
     }
-    start(values, guide='') {
-      if (!this.model.active) {
-        for (const [name,value] of Object.entries({'offset-y':values.offsetY+'px',size:values.size+'px',
-          tracking:values.letterSpacing+'px',leading:values.lineHeight,color:values.color})) {
-          this.element.style.setProperty('--prompt-'+name,String(value));
-        }
-      }
-      this.model.start(guide); this.render();
+    start() {
+      this.model.start(); this.render();
     }
     reset() { this.model.reset(); this.render(); }
     step(dt,flow) { this.model.step(dt,flow); this.render(); }

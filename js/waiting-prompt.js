@@ -6,7 +6,7 @@
   const defaults = Object.freeze({
     text: '請按照你的方法觸碰儀器',
     size: 22,
-    offsetY: 0,
+    positionY: 50,
     letterSpacing: 2,
     lineHeight: 1.5,
     color: '#ffffff'
@@ -23,7 +23,7 @@
     const data = value && typeof value === 'object' ? value : {};
     return {
       text: typeof data.text === 'string' ? data.text.replace(/\r\n?/g, '\n') : defaults.text,
-      offsetY: boundedNumber(data.offsetY, defaults.offsetY, -500, 1000),
+      positionY: boundedNumber(data.positionY, defaults.positionY, 0, 100),
       size: boundedNumber(data.size, defaults.size, 12, 48),
       letterSpacing: boundedNumber(data.letterSpacing, defaults.letterSpacing, 0, 12),
       lineHeight: boundedNumber(data.lineHeight, defaults.lineHeight, .9, 2.4, 10),
@@ -58,7 +58,7 @@
     function displayCopy() {
       for (const copy of copies) {
         copy.textContent = values.text;
-        copy.style.setProperty('--prompt-offset-y', values.offsetY + 'px');
+        copy.style.setProperty('--prompt-position', values.positionY + '%');
         copy.style.setProperty('--prompt-size', values.size + 'px');
         copy.style.setProperty('--prompt-tracking', values.letterSpacing + 'px');
         copy.style.setProperty('--prompt-leading', String(values.lineHeight));
@@ -71,6 +71,7 @@
       const output = doc.getElementById(input.id + 'Value');
       if (!output) return;
       if (field === 'color') output.textContent = values.color.toUpperCase();
+      else if (field === 'positionY') output.textContent = values.positionY === 50 ? '中央' : values.positionY === 0 ? '最上方' : values.positionY === 100 ? '最下方' : values.positionY + '%';
       else if (field === 'lineHeight') output.textContent = values.lineHeight.toFixed(1) + ' 倍';
       else output.textContent = values[field] + ' px';
     }
