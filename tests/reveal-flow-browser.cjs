@@ -76,7 +76,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await click('#flowPreviewOpen');
     await advance(0);
     assert.equal(await page.locator('body').getAttribute('data-state'),'FLOW_PREVIEW');
-    await assertStatus('畫完後放開');
+    await assertStatus('可畫符、點星芒或按住聚能');
     const controls=await page.locator('#materialControls').boundingBox();
     assert.ok(controls.x>=0&&controls.y>=0&&controls.x+controls.width<=390&&controls.y+controls.height<=844,
       'flow controls fit the complete 390 × 844 phone viewport');
@@ -86,19 +86,19 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     }
     assert.equal(await page.locator('#materialReplay').textContent(),'重新畫一次');
 
-    // A blank tap cannot start the release timer.
+    // A single star enters the resumable quiet period before gathering.
     await page.mouse.click(195,330);
     await advance(1500);
-    await assertStatus('畫完後放開','a stationary tap is not a completed drawing');
+    await assertStatus('魔力蓄勢','a tap waits for the full quiet period');
 
     // A meaningful stroke held down for longer than the waiting period stays drawable.
     await stroke();
     await advance(2600);
-    await assertStatus('畫完後放開','holding a drawn stroke must never auto-start');
+    await assertStatus('可畫符、點星芒或按住聚能','holding a drawn stroke must never auto-start');
     await page.mouse.up();
     await page.evaluate(()=>{window.__recordReleasedTrail=true;});
     await advance(0);
-    await assertStatus('可接著畫');
+    await assertStatus('可接著畫、點星芒或按住');
     const releasedTrail=await page.evaluate(()=>window.__releasedTrail);
     await advance(300);
     const movingTrail=await page.evaluate(()=>window.__releasedTrail);
@@ -112,10 +112,10 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await page.mouse.down();
     await move(300,385);
     await advance(1400);
-    await assertStatus('畫完後放開','continuing the stroke during the charge hold cancels the previous release timer');
+    await assertStatus('可畫符、點星芒或按住聚能','continuing the stroke during the charge hold cancels the previous release timer');
     await page.mouse.up();
     await advance(550);
-    await assertStatus('可接著畫','the second release starts a fresh waiting interval');
+    await assertStatus('可接著畫、點星芒或按住','the second release starts a fresh waiting interval');
     await capture('waiting','1 / RELEASE WAIT');
 
     await advance(1000);
@@ -169,7 +169,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
       await click('#material_'+key);
       await advance(0);
       assert.equal(await page.locator('#material_'+key).getAttribute('aria-pressed'),'true');
-      await assertStatus('畫完後放開',key+' starts a new drawing');
+      await assertStatus('可畫符、點星芒或按住聚能',key+' starts a new drawing');
       const hiddenTitle=await page.locator('#revealTitle').evaluate(el=>el.hidden||getComputedStyle(el).display==='none'||Number(getComputedStyle(el).opacity)===0);
       assert.equal(hiddenTitle,true,key+' clears the previous title');
       const before=await page.evaluate(()=>window.__revealGl.draws);
@@ -186,10 +186,10 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     }
     await click('#materialReplay');await advance(0);
     await stroke();await page.mouse.up();await advance(500);
-    await assertStatus('可接著畫');
+    await assertStatus('可接著畫、點星芒或按住');
     await click('#materialReplay');
     await advance(1400);
-    await assertStatus('畫完後放開','replay clears the old input and pending timer');
+    await assertStatus('可畫符、點星芒或按住聚能','replay clears the old input and pending timer');
 
     // Fire continues into its numeric scan; the certification card remains deferred.
     await click('#effectPreviewBack');

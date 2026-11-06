@@ -1,7 +1,7 @@
 /* Presentation only. Observe RevealFlow without controlling input or results. */
 (function (root) {
   'use strict';
-  const copy = Object.freeze({sensed:'感應到魔力波動', drawing:'正在解析魔力軌跡',
+  const copy = Object.freeze({sensed:'感應到魔力波動', drawing:'正在解析魔力軌跡', stars:'星芒正在連結',
     holding:'魔力持續注入中', resonance:'共鳴已建立', gathering:'正在凝聚魔力'});
   const FADE = .25, MINIMUM = .8;
   const clamp = value => Math.max(0, Math.min(1, value));
@@ -26,18 +26,20 @@
       const dt=Math.min(delta,.05);
       this.time+=dt; this.age+=dt; this.mixAge+=dt;
       const hold=flow.holdFrame;
-      const locked=flow.state==='RETURN' || (flow.state==='WAITING' && flow.heldRelease) || flow.state==='GATHER';
+      const locked=flow.committed;
       this.committed ||= locked;
       const idle=flow.state==='DRAWING' && flow.pointerId===null;
       let desired=this.key;
       if (this.committed) desired=!this.announced || (this.key==='resonance' && this.age<MINIMUM) ? 'resonance' : 'gathering';
-      else if (!idle) desired=hold ? (hold.active?'holding':'sensed') : 'drawing';
+      else if (!idle) desired=hold ? (hold.active?'holding':'sensed')
+        : flow.state==='WAITING' && flow.completionSource==='tap' ? 'stars'
+        : flow.state==='WAITING' && (flow.heldRelease||flow.completionSource==='release') ? 'holding' : 'drawing';
       if (desired!==this.key && this.age+1e-9>=MINIMUM) {
         this.previous=copy[this.key]; this.previousGuide=false;
         this.key=desired; this.age=0; this.mixAge=0;
         if (desired==='resonance') this.announced=true;
       }
-      // A cancelled gesture / short tap fades quietly; it never claims success.
+      // A cancelled gesture fades quietly; it never claims success.
       const fading=idle && this.age>=MINIMUM;
       this.visibility=clamp(this.visibility+(fading?-1:1)*dt/FADE);
       if (flow.state==='GATHER') this.visibility=Math.min(this.visibility,smooth((flow.gatherDuration-flow.elapsed)/FADE));

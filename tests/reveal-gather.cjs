@@ -124,6 +124,16 @@ assert.throws(()=>{gather.routes[0].points[0].x=999;},TypeError);
 assert.throws(()=>{gather.orbs[0].depth=100;},TypeError);
 assert.throws(()=>{gather.routes.push({});},TypeError);
 
+// Stars and charge grains may share colors, but are never joined as brush ink.
+const mixedInput=trails([stroke(4)]);
+mixedInput.holdParticles=[{x:40,y:100,color:'#65eaff',opacity:1},{x:300,y:700,color:'#65eaff',opacity:1}];
+const mixed=new RevealGather();mixed.capture(mixedInput,390,844);
+let drawnInk=0;
+mixed.renderer.renderStroke=()=>{drawnInk++;};
+render(mixed,{progress:0});
+assert.equal(drawnInk,1,'only the real brush stroke retains a ribbon silhouette');
+assert.ok(mixed.routes.some(route=>route.discrete),'independent star/hold sources still feed the shared burst');
+
 const mutable=trails([stroke(7)]);
 const separate=new RevealGather();separate.capture(mutable,390,844);
 const independent=JSON.stringify([separate.routes,separate.orbs]);

@@ -7,6 +7,7 @@
   const NEXT=Object.freeze({RETURN:'WAITING',WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});
   const HOLD_SECONDS=3;
   const RELEASE_SECONDS=1.2;
+  const TAP_SECONDS=.35;
   const clamp=v=>Math.max(0,Math.min(1,v));
   const smooth=v=>{const x=clamp(v);return x*x*(3-2*x);};
 
@@ -26,6 +27,7 @@
       this.pointerId=null;this.distance=0;this._point=null;
       this._origin=null;this._holdAge=0;this._drawing=false;this._lastHoldMs=null;
       this.completionSource=null;this.releasePoint=null;
+      this.tapCount=0;this.lastTap=null;
       return this;
     }
     get paused(){return this._paused;}
@@ -34,7 +36,8 @@
       if(value)this._lastHoldMs=null;
     }
     get heldRelease(){return this.releasePoint!==null;}
-    get ready(){return this.distance>=24||this.holdFrame?.ready===true||this.heldRelease;}
+    get committed(){return this.state!=='DRAWING'&&(this.state!=='WAITING'||this.completionSource==='autoHold');}
+    get ready(){return this.distance>0||this.tapCount>0||this.holdFrame?.ready===true||this.heldRelease;}
     get holdFrame(){
       if(this.pointerId===null||this._drawing||!this._origin)return null;
       return {x:this._origin.x,y:this._origin.y,age:this._holdAge,
@@ -68,7 +71,7 @@
     down(id,x,y,nowMs){
       if(this.paused||this.pointerId!==null||id===null||id===undefined||
         !Number.isFinite(x)||!Number.isFinite(y)||
-        (this.state!=='DRAWING'&&(this.state!=='WAITING'||this.heldRelease)))return false;
+        (this.state!=='DRAWING'&&(this.state!=='WAITING'||this.committed)))return false;
       this.pointerId=id;this._point={x,y};this.state='DRAWING';this.elapsed=0;
       this._origin={x,y};this._holdAge=0;this._drawing=false;
       this._lastHoldMs=Number.isFinite(nowMs)?nowMs:null;
@@ -107,23 +110,27 @@
     }
     finishPress(source){
       this.completionSource=source;
+      if(source==='tap')this.lastTap=Object.freeze({x:this._origin.x,y:this._origin.y,sequence:++this.tapCount});
       this.releasePoint=source==='hold'||source==='autoHold'
         ?{x:this._origin.x,y:this._origin.y,age:this._holdAge}:null;
       this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this._lastHoldMs=null;
       this.elapsed=0;
-      this.state=source==='hold'?'RETURN':source?'WAITING':'DRAWING';
+      // Every completed touch gets the same quiet period. Only a full automatic
+      // hold commits early; a released charge can still be followed by ink or stars.
+      this.state=source?'WAITING':'DRAWING';
     }
     up(id,{cancelled=false,nowMs}={}){
       if(this.paused||this.pointerId===null||id!==this.pointerId)return false;
       if(cancelled){this.cancelPointer();return true;}
       if(!this._drawing&&this.advanceHold(0,nowMs))return true;
-      this.finishPress(this.holdFrame?.ready?'hold':this.distance>=24?'draw':null);
+      const source=this._drawing?'draw':this._holdAge<=TAP_SECONDS+1e-9?'tap':this.holdFrame?.ready?'hold':'release';
+      this.finishPress(source);
       return true;
     }
     cancelPointer(){
       // Lifecycle cancellation must still release capture while animation is paused.
-      this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;
-      if(this.state==='DRAWING'||(this.state==='WAITING'&&!this.heldRelease)){
+      this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this._lastHoldMs=null;
+      if(this.state==='DRAWING'||(this.state==='WAITING'&&!this.committed)){
         this.state='DRAWING';this.elapsed=0;this._drawing=false;
         this.completionSource=null;this.releasePoint=null;
       }

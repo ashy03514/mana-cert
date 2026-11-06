@@ -402,6 +402,8 @@
       // Only the unbroken original silhouette is rendered during the first
       // ~115 ms. The next layer is already made of spheres, never line sections.
       if(showInk&&original>.001&&this.renderer)for(const route of this.routes){
+        // Held grains and tapped stars are separate points, never ribbon paths.
+        if(route.discrete)continue;
         const points=route.points.map(p=>({x:p.x*width,y:p.y*height,speed:p.speed}));
         let length=0;
         for(let i=0;i<points.length;i++){

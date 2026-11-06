@@ -877,7 +877,7 @@
 <p class="effectHint">越高，近遠粒子的大小、亮度與速度差異越明顯。</p>
 <button id="effect_reset_dots" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
 <details class="effectGroup"><summary>閃爍星芒</summary>
-<p class="effectHint">待機與按住時出現的柔和星芒。</p>
+<p class="effectHint">待機與按住時出現的柔和星芒。鑑定時單擊會留下星芒，並與先前的星芒連線。</p>
 <label class="effectToggle"><input id="effect_starEnabled" type="checkbox">顯示星芒</label>
 <div class="effectControl"><label for="effect_starSize">大小</label><output id="effect_value_starSize" for="effect_starSize"></output><input id="effect_starSize" type="range" min="50" max="200" step="5"></div>
 <div class="effectControl"><label for="effect_starOpacity">亮度</label><output id="effect_value_starOpacity" for="effect_starOpacity"></output><input id="effect_starOpacity" type="range" min="10" max="115" step="5"></div>
@@ -892,7 +892,7 @@
 <div class="effectColor"><label for="effect_backgroundOuter">外圍顏色</label><input id="effect_backgroundOuter" type="color"></div>
 <button id="effect_reset_background" type="button" class="btn btnGhost effectReset">回復本區預設</button></details>
 <details class="effectGroup"><summary>手指軌跡</summary>
-<p class="effectHint">畫線時保留整筆；放開後先停留，再縮細淡出。</p>
+<p class="effectHint">鑑定時筆跡會與單擊星芒、按住聚能一起保留；停止觸碰約 1.7 秒後一起收束。一般特效預覽仍依下方設定淡出。</p>
 <label class="effectToggle"><input id="effect_trailEnabled" type="checkbox">顯示手指軌跡</label>
 <div class="effectControl"><label for="effect_trailWidth">光帶粗細</label><output id="effect_value_trailWidth" for="effect_trailWidth"></output><input id="effect_trailWidth" type="range" min="1" max="6" step="0.5"></div>
 <div class="effectControl"><label for="effect_trailOpacity">線條亮度</label><output id="effect_value_trailOpacity" for="effect_trailOpacity"></output><input id="effect_trailOpacity" type="range" min="10" max="100" step="1"></div>
@@ -965,7 +965,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="166" title="目前載入頁面的版本">目前版本 v166</span>
+        <span id="appVersion" data-version="167" title="目前載入頁面的版本">目前版本 v167</span>
       </div>
     </div>
     </div>
@@ -982,7 +982,7 @@
   </div>
 </div>
 
-<div id="animLayer" aria-label="魔力鑑定：滑動畫符，或按住直到魔力聚滿">
+<div id="animLayer" aria-label="魔力鑑定：滑動畫符、單擊星芒連線，或按住聚能；停止觸碰後收束">
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
   <div id="waitingPromptAnchor"><p id="waitingPrompt" class="waitingPromptCopy"></p></div>
   <div id="interactionPrompt" class="waitingPromptCopy" hidden>
@@ -1147,6 +1147,7 @@
 <script src="./js/fire-rank-embers.js"></script>
 <script src="./js/reveal-gather.js"></script>
 <script src="./js/hold-magic.js"></script>
+<script src="./js/tap-stars.js"></script>
 <script src="./js/reveal-atmosphere.js"></script>
 <script src="./js/reveal-shockwaves.js"></script>
 <script src="./js/runtime.js"></script>
@@ -1177,6 +1178,7 @@
   const elementBackdrop=new ElementRevealBackdrop();
   let flowPreview=false,flowPortal=null,flow=null,gather=null,flowAtmosphere=null,flowPreviewOrigin=null;
   const holdMagic=new HoldMagic();
+  const tapStars=new TapStars();
   let formalReveal=false;
   const formalReplay=document.getElementById('formalReplay');
   const materialControls=document.getElementById('materialControls');
@@ -1233,12 +1235,14 @@
     const lastStroke=scene.trails.active;
     if(!scene.release(id))return;
     if(flowActive()){
+      const previousTap=flow.lastTap;
+      const heldContact=flow.holdFrame;
       if(flow.pointerId===active)flow.up(active,{cancelled,nowMs:timeline.now()});
-      if(!cancelled&&flow.heldRelease){
-        if(flow.completionSource==='autoHold')holdMagic.seal(flow.releasePoint);
-        else holdMagic.release(flow.releasePoint);
-        if(lastStroke&&scene.trails.strokes.at(-1)===lastStroke)scene.trails.strokes.pop();
-      }
+      if(!cancelled&&flow.lastTap&&flow.lastTap!==previousTap)tapStars.add(flow.lastTap.x,flow.lastTap.y);
+      const releasedHold=flow.releasePoint||(flow.completionSource==='release'?heldContact:null);
+      if(!cancelled&&releasedHold)holdMagic.seal(releasedHold);
+      // A tap or stationary charge has its own visual; keep only actual ink.
+      if(lastStroke?.points.length===1&&scene.trails.strokes.at(-1)===lastStroke)scene.trails.strokes.pop();
     }
     if(active!==null){try{animLayerEl.releasePointerCapture(active);}catch(_){}}
   }
@@ -1262,12 +1266,13 @@
     canvas.style.width=w+'px';canvas.style.height=h+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
     if(portal){
-      if(portal.width!==w||portal.height!==h)cancelInput();
+      if((portal.width!==w||portal.height!==h)&&inputScene()?.pointer.id!=null)cancelInput();
       portal.resize(w,h);
     }
     if(flowPortal)flowPortal.resize(w,h);
     if(gather)gather.resize(w,h);
     holdMagic.resize(w,h);
+    tapStars.resize(w,h);
     if(materialBackdrop)materialBackdrop.resize(w,h);
     if(materialRenderer)materialRenderer.lastRender=-Infinity;
     // Resizing clears Canvas immediately. Restore the current frame even when
@@ -1527,7 +1532,7 @@
   }
   function canTouchMagic(){
     if(document.hidden||pagePaused||materialPreview||resultActionSheet.classList.contains('show'))return false;
-    if(flowActive())return !flow.paused&&(flow.state==='DRAWING'||(flow.state==='WAITING'&&!flow.heldRelease));
+    if(flowActive())return !flow.paused&&!flow.committed&&(flow.state==='DRAWING'||flow.state==='WAITING');
     return effectPreview||session.state===STATES.STANDBY||session.state===STATES.INTERACTION;
   }
   function onMagicStart(e){
@@ -1813,12 +1818,13 @@
     flowPortal=new PortalScene(ctx,w,h,undefined,{...effectValues,
       trailEnabled:formal?effectValues.trailEnabled:true,trailHold:Math.max(1.3,effectValues.trailHold)});
     holdMagic.configure(effectValues);
+    tapStars.configure(effectValues);
     restartRevealFlow(element);
   }
   function restartRevealFlow(element=flow.element){
     audio.stop();
     flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'||element==='lightning'))});
-    cancelInput();interactionPrompt.reset();rankMessage.hidden=true;flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
+    cancelInput();interactionPrompt.reset();rankMessage.hidden=true;flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();tapStars.reset();
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
     if(element!==null){
@@ -1835,28 +1841,29 @@
     if(flow.paused||(flow.element!==null&&previewMaterialBlocked()))return;
     const before=flow.state;
     flowPortal.step(dt*(before==='DRAWING'||before==='WAITING'?1:.35),{
-      freezeTrails:before!=='DRAWING'&&before!=='WAITING',holdTrails:before==='WAITING'
+      freezeTrails:before!=='DRAWING'&&before!=='WAITING',holdTrails:true
     });
-    // If all earlier ink has faded, a later stationary tap is still only a tap.
-    if(before==='DRAWING'&&flow.pointerId===null&&flow.distance>0&&
-      flowPortal.settings.trailEnabled&&!flowPortal.trails.strokes.some(s=>flowPortal.trails.opacity(s)>.03)){
-      flow.reset(flow.element);interactionPrompt.reset();
-    }
+    tapStars.step(dt);
     flow.step(dt,timeline.now());
     if(formalReveal)interactionPrompt.step(dt,flow);
     if(before==='DRAWING'&&flow.completionSource==='autoHold')releasePointer(flowPortal.pointer.id);
     if(flow.state==='DRAWING'||flow.state==='RETURN'||flow.state==='WAITING'){
-      const transfer=flow.completionSource==='hold'?(flow.state==='RETURN'?flow.progress:1):null;
-      holdMagic.step(dt,flow.holdFrame,transfer);
+      const contact=flow.holdFrame;
+      // A quick tap or new stroke preserves the last released charge. Only a
+      // deliberate new hold moves that energy to another contact.
+      holdMagic.step(dt,holdMagic.mode==='sealed'&&!contact?.active?null:contact);
     }
     flowAtmosphere.step(dt,flow);
     if(before!=='GATHER'&&flow.state==='GATHER'){
       const ink=flowPortal.trails;
-      if(flow.heldRelease){
-        const energy=holdMagic.captureTrails(flowPortal.settings);
-        energy.strokes.unshift(...ink.strokes.filter(stroke=>stroke.points.length>1&&ink.opacity(stroke)>.03));
-        gather.capture(energy,flowPortal.width,flowPortal.height);
-      }else gather.capture(ink,flowPortal.width,flowPortal.height);
+      const particles=tapStars.captureParticles();
+      if(holdMagic.alpha>0)particles.push(...holdMagic.captureTrails(flowPortal.settings).holdParticles);
+      // Snapshot all three forms of input together, including with ink disabled.
+      const energy={width:ink.width,height:ink.height,time:ink.time,renderer:ink.renderer,
+        settings:{...ink.settings,trailEnabled:true,trailOpacity:100},holdParticles:particles,
+        strokes:ink.strokes.filter(stroke=>stroke.points.length>1&&ink.opacity(stroke)>.03),
+        opacity:stroke=>ink.opacity(stroke)*ink.settings.trailOpacity/100};
+      gather.capture(energy,flowPortal.width,flowPortal.height);
       if(formalReveal){
         session.transition(STATES.RESONANCE_COMPLETE);session.transition(STATES.GATHER);
         document.body.dataset.state=STATES.GATHER;
@@ -1955,6 +1962,7 @@
       flowPortal.draw(quality.profile,{transform,trails:false});
       holdMagic.draw(ctx);
       flowPortal.trails.draw(ctx);
+      tapStars.draw(ctx);
     }else{
       const dim=state==='GATHER'?.16*flow.progress:.16;
       flowPortal.draw(quality.profile,{transform,trails:false,dim});
@@ -1968,12 +1976,13 @@
         ?(scan?WaterRankEffects.sample(flow.elapsed,formalReveal?session.currentResult:FireScanTransition.previewForElement('water'),flow.formationDuration)
           :{value:0,profile:WaterRankEffects.profileForValue(0),time:frame.time*.3}):undefined;
       if(frame)elementBackdrop.draw(ctx,w,h,{element:flow.element,time:waterEffects?.time??frame.time,opacity:frame.opacity,focus:box,firePower,waterPower});
-      if(state==='GATHER'&&flow.heldRelease){
+      if(state==='GATHER'){
         const blend=Math.max(0,1-flow.progress/.055);
         holdMagic.draw(ctx,blend);
+        tapStars.draw(ctx,blend);
       }
       if(state==='GATHER'||state==='FORM'){
-        gather.draw(ctx,{showInk:!flow.heldRelease,progress:state==='GATHER'?flow.progress:1,formation:state==='FORM'?flow.progress:0,
+        gather.draw(ctx,{showInk:true,progress:state==='GATHER'?flow.progress:1,formation:state==='FORM'?flow.progress:0,
           width:w,height:h,element:flow.element,time:state==='GATHER'?flow.elapsed:flow.gatherDuration+frame.time,
           target});
       }
@@ -2008,7 +2017,7 @@
       LightFeathers.draw(ctx,{width:w,height:h,time,bursts:lightFeatherPlan(w,h,{formal:formalLight})});
     }
     if(flow.element===null)materialError.hidden=true;else updateMaterialError();
-    const labels={DRAWING:flow.holdFrame?.active?'持續按住聚能':'畫完後放開',RETURN:'魔力匯入中心',WAITING:flow.heldRelease?'魔力蓄勢':'可接著畫',GATHER:'魔力收束',AWAKEN:awakeningRenderer().sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
+    const labels={DRAWING:flow.holdFrame?.active?'持續按住聚能':'可畫符、點星芒或按住聚能',RETURN:'魔力匯入中心',WAITING:flow.committed?'魔力蓄勢':'可接著畫、點星芒或按住',GATHER:'魔力收束',AWAKEN:awakeningRenderer().sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
     const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.elapsed>=1.2?'魔力蓄勢':labels[state];
     if(materialStatus.textContent!==label)materialStatus.textContent=label;
     const titleOpacity=scan?scan.opacity:state==='REVEAL'?Math.max(0,Math.min(1,(flow.elapsed-.7)/.8)):

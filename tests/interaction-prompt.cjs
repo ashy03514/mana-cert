@@ -86,18 +86,22 @@ test('editable drawing WAITING never claims resonance and continuation stays edi
   assert.equal(pair.model.frame().key, 'gathering');
 });
 
-test('manual hold release locks once, announces resonance, and keeps original timings', () => {
+test('manual hold release remains editable until the quiet period completes', () => {
   const pair=fixture();
   touch(pair);
   advance(pair, 1.2);
   assert.equal(pair.model.frame().key, 'holding');
   assert.equal(pair.flow.up(1), true);
-  assert.equal(pair.flow.state, 'RETURN');
+  assert.equal(pair.flow.state, 'WAITING');
   assert.equal(pair.flow.heldRelease, true);
   const frames=[];
-  advance(pair, 2.25, frames);
+  advance(pair, 1.6, frames);
+  assert.equal(pair.model.frame().key, 'holding');
+  assert.equal(pair.model.committed, false);
+  advance(pair, .1, frames);
   assert.equal(pair.flow.state, 'GATHER');
   assert.equal(pair.flow.completionSource, 'hold');
+  advance(pair, .81, frames);
   assert.ok(frames.some(frame=>frame.key==='resonance'));
   assert.ok(frames.some(frame=>frame.key==='gathering'));
   const promotions=frames.filter((frame,i)=>frame.key==='resonance' && frames[i-1]?.key!=='resonance');
@@ -133,8 +137,16 @@ test('moving out of a hold changes to parsing and preserves the drawing interact
   assert.equal(pair.model.committed, false);
 });
 
-test('short taps and cancellations fade quietly without success, and can restart', () => {
-  for (const cancellation of [false, true]) {
+test('taps announce connected stars and cancellation fades without success', () => {
+  const tapped=fixture();
+  touch(tapped);advance(tapped,.1);tapped.flow.up(1);advance(tapped,.9);
+  assert.equal(tapped.flow.state,'WAITING');
+  assert.equal(tapped.model.frame().key,'stars');
+  assert.equal(tapped.model.committed,false);
+  touch(tapped,'',2);advance(tapped,.1);tapped.flow.up(2);advance(tapped,1.7);
+  assert.equal(tapped.flow.state,'GATHER');
+  assert.equal(tapped.model.frame().key,'resonance');
+  for (const cancellation of [true]) {
     const pair=fixture();
     touch(pair);
     advance(pair, cancellation?.95:.1);

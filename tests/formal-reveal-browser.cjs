@@ -111,8 +111,8 @@ const elements={fire:'火',water:'水',wind:'風',earth:'土',light:'光',dark:'
     assert.equal(await bodyState(),'STANDBY');
     assert.equal((await snapshot()).result.element,'火','the public switch settings select the committed element');
     await page.mouse.click(195,330);await advance(1500);
-    assert.ok(['STANDBY','INTERACTION'].includes(await bodyState()),'a blank tap cannot start a reveal');
-    assert.equal((await snapshot()).flow.state,'DRAWING');
+    assert.equal(await bodyState(),'INTERACTION','a tap starts interaction before its quiet period completes');
+    assert.equal((await snapshot()).flow.state,'WAITING');
     await stroke();await advance(2600);
     assert.equal((await snapshot()).flow.state,'DRAWING','holding a drawing never starts the release countdown');
     await page.mouse.up();

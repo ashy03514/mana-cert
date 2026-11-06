@@ -123,6 +123,8 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
       const s = window.holdObserved;
       return {
         state: s.flow?.state, elapsed: s.flow?.elapsed, hold: s.flow?.holdFrame,
+        tapCount: s.flow?.tapCount, committed: s.flow?.committed,
+        field: s.field && { x: s.field.x, y: s.field.y, mode: s.field.mode, alpha: s.field.alpha },
         completionSource: s.flow?.completionSource, begins: s.begins, result: s.result,
         same: s.result === s.session?.currentResult,
         unchanged: s.json === JSON.stringify(s.session?.currentResult),
@@ -210,7 +212,7 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
 
     // Force a basic magic outcome through the public settings so result wiring is exercised.
     await page.locator('#s_muggle').uncheck({ force: true });
-    for (const name of ['water', 'wind', 'earth', 'light', 'dark']) await page.locator('#s_' + name).uncheck({ force: true });
+    for (const name of ['water', 'wind', 'earth', 'light', 'dark', 'lightning']) await page.locator('#s_' + name).uncheck({ force: true });
     await page.locator('#tab_probabilities').click({ force: true, noWaitAfter: true });
     for (const rank of ['E', 'D', 'C', 'B', 'A', 'S', 'SS']) await input('chance_' + rank, rank === 'E' ? '100' : '0');
     await page.locator('#btnStart').click({ force: true, noWaitAfter: true });
@@ -222,8 +224,10 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     await advance(300);
     for (const offset of [3, -3, 2, -2]) { await moveTouch(218 + offset, prompt.y + 12); await advance(50); }
     await endTouch();
-    await advance(2200);
-    assert.equal((await snapshot()).state, 'DRAWING', 'short stationary touch and jitter cannot finish an appraisal');
+    await advance(1000);
+    assert.equal((await snapshot()).state, 'WAITING', 'a partial hold begins a resumable quiet period');
+    assert.equal((await snapshot()).completionSource, 'release');
+    assert.equal((await snapshot()).tapCount, 0, 'a partial hold does not manufacture a tap star');
 
     await startTouch(press.x, press.y);
     await advance(750);
@@ -278,8 +282,9 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     await advance(300);
     assert.equal((await snapshot()).hold.ready, false, 'a new press starts its charge from zero');
     await endTouch();
-    await advance(2000);
-    assert.equal((await snapshot()).state, 'DRAWING');
+    await advance(1000);
+    assert.equal((await snapshot()).state, 'WAITING', 'a fresh short touch adds a star and waits for more input');
+    assert.equal((await snapshot()).tapCount, 1, 'the cancelled hold contributes no tap');
     await startTouch(180, 430);
     await advance(600);
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
@@ -324,15 +329,26 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     await advance(1300);
     await page.screenshot({ path: path.join(os.tmpdir(), 'mana-hold-edge.png') });
     await endTouch();
-    assert.equal((await snapshot()).state, 'RETURN', 'a voluntary release after 1.2 seconds flies to center');
+    assert.equal((await snapshot()).state, 'WAITING', 'a voluntary release begins the same quiet period as ink or taps');
+    assert.equal((await snapshot()).committed, false, 'early release remains resumable');
     await advance(600);
     assert.equal((await snapshot()).state, 'WAITING');
-    await advance(1700);
+    assert.equal((await snapshot()).field.x, 30, 'the released ring stays at its contact point while waiting');
+    assert.equal((await snapshot()).field.mode, 'sealed');
+    await startTouch(65, 450);
+    assert.equal((await snapshot()).state, 'DRAWING', 'another press resumes a released hold');
+    await advance(1300);
+    await endTouch();
+    assert.equal((await snapshot()).releasePoint.x, 65);
+    assert.equal((await snapshot()).state, 'WAITING');
+    await advance(1690);
+    assert.equal((await snapshot()).state, 'WAITING', 'resuming creates a full new quiet period');
+    await advance(10);
     s = await snapshot();
     assert.equal(s.state, 'GATHER');
     assert.ok(s.orbCount >= 32, 'turning the ribbon off still allows long-press magic to be released');
     await assertStable(3);
-    console.log('PASS configured hold preview/formal pixels, preset, reset and reload; visible wide-field infall and growing ring, automatic off-center appraisal without lifting, manual early release, immutable result, cancellation, background time, drawing and offline disabled-ribbon flow.');
+    console.log('PASS configured hold preview/formal pixels, preset, reset and reload; visible wide-field infall and growing ring, automatic off-center appraisal without lifting, resumable early release, tap and partial-hold timing, immutable result, cancellation, background time, drawing and offline disabled-ribbon flow.');
   } finally {
     await browser.close();
   }

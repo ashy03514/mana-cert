@@ -74,9 +74,9 @@ const {chromium}=require(process.env.MANA_PLAYWRIGHT_MODULE||'C:/Users/ashy0/.ca
     await advance(1200);assert.equal(await status.isVisible(),false,'hidden before attribute reveal');
     assert.ok(await checkResult());
     await restart();
-    // Short tap / cancellation cannot report a successful charge.
+    // Taps show the new star status while their quiet period remains resumable.
     await page.mouse.move(218,430);await page.mouse.down();await advance(200);await page.mouse.up();await advance(1200);
-    assert.equal(await flowState(),'DRAWING');assert.equal(await status.isVisible(),false);
+    assert.equal(await flowState(),'WAITING');assert.equal(await state(),'stars');
     await page.mouse.down();await advance(1100);assert.equal(await state(),'holding');
     const beforePause=await status.getAttribute('style');
     await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await advance(5000);
