@@ -27,13 +27,15 @@
   }
   return {left:cx-width/2,right:cx+width/2,bottom,width};
  }
- function compose(width,height,base,{element,buttonTop=height-84,preview=false,referenceBox=base.box}={}){
+ function compose(width,height,base,{element,buttonTop=height-84,preview=false,referenceBox=base.box,messageHeight=0}={}){
   const wide=width>=height*1.35,font=base.numbers.fontSize,rankSize=font*1.55;
   const bottom=preview?height-174:buttonTop-18,pad=rankSize*.26+6;
+  const messageSpace=Number.isFinite(messageHeight)&&messageHeight>0?messageHeight+12:0;
+  const rankBottom=bottom-messageSpace;
   const titleHeight=21,gap=10,blockHeight=titleHeight+gap+font+gap+rankSize+pad*2;
   // On the reference phone, keep the name close to the full-sized subject.
   // The rank's complete sparkle envelope still clears the bottom action.
-  const titleTop=Math.min(height*.60,bottom-blockHeight),valueTop=titleTop+titleHeight+gap;
+  const titleTop=Math.min(height*.60,rankBottom-blockHeight),valueTop=titleTop+titleHeight+gap;
   const rankTop=valueTop+font+gap+pad,x=wide?width*.76:width/2;
   const effectBottom=wide?height-30:titleTop-14;
   const ref=bounds(referenceBox,element),scale=1;
@@ -48,7 +50,8 @@
   return {...base,box,sideBySide:wide,
    numbers:{...base.numbers,x},
    composition:{titleTop,titleY:titleTop+titleHeight,valueY:valueTop+font*.82,
-    rankY:rankTop+rankSize*.82,rankSize,effectBottom,bottom,envelope,scale,offsetY},
+    rankY:rankTop+rankSize*.82,rankSize,effectBottom,bottom,envelope,scale,offsetY,
+    rankBottom,messageY:rankBottom+12,messageHeight:messageSpace?messageHeight:0},
    readout:{x:x-(wide?width*.20:width*.43),y:titleTop-8,width:wide?width*.40:width*.86,height:bottom-titleTop+16}};
  }
  root.ResultLayout=Object.freeze({compose,bounds});

@@ -72,6 +72,14 @@
     pointer-events:none;
   }
   body:not([data-state="STANDBY"]) #waitingPrompt, #waitingPrompt:empty { display:none; }
+  body[data-state="STANDBY"] #waitingPrompt { animation:waitingPromptBreath 4.8s ease-in-out infinite; }
+  @keyframes waitingPromptBreath {
+    0%,100% { opacity:0; }
+    45%,55% { opacity:1; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    body[data-state="STANDBY"] #waitingPrompt { animation:none; opacity:1; }
+  }
   #interactionPrompt { z-index:2; color:#eef7ff; white-space:normal;
     --prompt-size:22px; --prompt-tracking:2px; --prompt-leading:1.5; --prompt-color:#eef7ff; }
   #interactionPrompt[hidden] { display:none; }
@@ -91,11 +99,20 @@
   }
   .interactionPromptLive { position:absolute; width:1px; height:1px; padding:0;
     overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
-  #waitingPromptSettings textarea {
+  #waitingPromptSettings textarea, #rankMessageSettings input[type="text"] {
     display:block; width:100%; margin:6px 0; padding:10px 12px; resize:vertical;
     border:1px solid #ad906566; border-radius:9px; background:#ffffffb3; color:#503f2a;
     font:inherit; font-size:16px; line-height:1.5; user-select:text; -webkit-user-select:text;
   }
+  .rankMessageField { margin-top:12px; }
+  #rankMessage {
+    position:fixed; z-index:30; margin:0; transform:translateX(-50%); pointer-events:none;
+    text-align:center; font-weight:400; line-height:1.55; letter-spacing:.06em;
+    white-space:normal; overflow-wrap:anywhere; color:#f2eddf;
+    text-shadow:0 1px 5px #080915,0 0 10px #c8dfff45;
+  }
+  #rankMessage[hidden] { display:none; }
+  #rankMessage[data-element="light"] { color:#71501f; text-shadow:0 1px 8px #fff9e0; }
   .waitingPromptSample { margin:10px 0 0; padding:14px; border-radius:10px;
     background:radial-gradient(ellipse at center,#101126,#24223f); }
   .waitingPromptSample figcaption { margin-bottom:8px; color:#bfbcd2; font-size:12px; }
@@ -787,6 +804,17 @@
       <figure class="waitingPromptSample"><figcaption>文字預覽</figcaption><p id="waitingPromptPreview" class="waitingPromptCopy"></p></figure>
       <p id="waitingPromptSaveError" class="effectHint" role="status" hidden>已套用至本次鑑定，此裝置目前無法儲存設定。</p>
     </details>
+    <details id="rankMessageSettings" class="effectGroup">
+      <summary>鑑定結果文案</summary>
+      <label><input id="rankMessageEnabled" type="checkbox" checked> 顯示階級專屬文案</label>
+      <p class="effectHint">最終階級確定後，文案會出現在階級下方。每級最多 40 字，留白則隱藏該級文案。</p>
+      <div class="effectControl">
+        <label for="rankMessageSize">文字大小</label><output id="rankMessageSizeValue" for="rankMessageSize"></output>
+        <input id="rankMessageSize" type="range" min="12" max="22" step="1">
+      </div>
+      <div id="rankMessageFields"></div>
+      <p id="rankMessageSaveError" class="effectHint" role="status" hidden>已套用至本次鑑定，此裝置目前無法儲存設定。</p>
+    </details>
     </section>
     <section id="panel_probabilities" class="settingsPanel probabilitySection" role="tabpanel" aria-labelledby="tab_probabilities" hidden>
       <div class="probabilityHeading"><h2>機率設定</h2><button id="restoreProbabilities" class="btn btnGhost" type="button">回復預設值</button></div>
@@ -937,7 +965,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="164" title="目前載入頁面的版本">目前版本 v164</span>
+        <span id="appVersion" data-version="166" title="目前載入頁面的版本">目前版本 v166</span>
       </div>
     </div>
     </div>
@@ -1026,6 +1054,7 @@
   <span id="fireScanValue">000</span>
   <span id="fireScanRank">—</span>
 </div>
+<p id="rankMessage" hidden></p>
 <button id="formalReplay" type="button" aria-label="開啟鑑定後操作" aria-haspopup="dialog" aria-controls="resultActionSheet" aria-expanded="false" hidden>
   <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><path fill="currentColor" d="M32 2 C35 26 38 29 62 32 C38 35 35 38 32 62 C29 38 26 35 2 32 C26 29 29 26 32 2Z"/></svg>
 </button>
@@ -1067,6 +1096,7 @@
 <script src="./js/waiting-prompt.js"></script>
 <script src="./js/interaction-prompt.js"></script>
 <script src="./js/rank-lettering.js"></script>
+<script src="./js/rank-message.js"></script>
 <script src="./js/result-layout.js"></script>
 <script src="./js/result-system.js"></script>
 <script src="./js/ribbon-renderer.js"></script>
@@ -1162,6 +1192,33 @@
   let effectValues=EffectSettings.load(effectStorage);
   WaitingPromptSettings.mount(document,effectStorage);
   const interactionPrompt=new InteractionPrompt.View(document.getElementById('interactionPrompt'));
+  const rankMessageSettings=RankMessage.mount(document,effectStorage);
+  const rankMessage=document.getElementById('rankMessage');
+  let rankMessageMeasure={key:'',height:0};
+  function measureRankMessage(w,h){
+    const values=rankMessageSettings.values;
+    const text=formalReveal?RankMessage.frame(values,session.currentResult,0,0).text:'';
+    if(!text)return 0;
+    const width=Math.min(w*(w>=h*1.35 ? .36 : .86),420),key=JSON.stringify([text,values.size,width]);
+    if(rankMessageMeasure.key!==key){
+      // Measure the actual wrapped copy while invisible. No final result is
+      // exposed before confirmation, and layout does not jump when it appears.
+      rankMessage.style.visibility='hidden';rankMessage.hidden=false;
+      rankMessage.style.width=width+'px';rankMessage.style.fontSize=values.size+'px';
+      rankMessage.textContent=text;
+      rankMessageMeasure={key,height:rankMessage.getBoundingClientRect().height};
+      rankMessage.hidden=true;rankMessage.style.visibility='';
+    }
+    return rankMessageMeasure.height;
+  }
+  function drawRankMessage(layout,completeAt){
+    const frame=RankMessage.frame(rankMessageSettings.values,session.currentResult,flow.elapsed,completeAt);
+    rankMessage.hidden=frame.opacity<=0||!frame.text;
+    rankMessage.style.opacity=String(frame.opacity);
+    rankMessage.style.left=layout.numbers.x+'px';
+    rankMessage.style.top=layout.composition.messageY+'px';
+    rankMessage.dataset.element=flow.element;
+  }
 
   function getViewportSize(){
     return window.visualViewport
@@ -1431,7 +1488,7 @@
     closeResultActions(false);
   }
   function resetPortal(){
-    cancelInput();interactionPrompt.reset();
+    cancelInput();interactionPrompt.reset();rankMessage.hidden=true;
     oceanReveal?.dispose();oceanReveal=null;
     lightningStorm?.dispose();lightningStorm=null;
     windTornado?.dispose();windTornado=null;
@@ -1761,7 +1818,7 @@
   function restartRevealFlow(element=flow.element){
     audio.stop();
     flow.configure(effectValues,{lightAwakening:formalReveal||flowPreview,darkAwakening:formalReveal||flowPreview,holdAtReveal:formalReveal||element==='fire'||element==='water'||(flowPreview&&(element==='wind'||element==='earth'||element==='light'||element==='dark'||element==='lightning'))});
-    cancelInput();interactionPrompt.reset();flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
+    cancelInput();interactionPrompt.reset();rankMessage.hidden=true;flow.reset(element);flowPortal.reset();flowAtmosphere.reset();holdMagic.reset();
     gather.capture(flowPortal.trails,flowPortal.width,flowPortal.height);
     // A muggle has no element. Do not substitute the renderer's last selection.
     if(element!==null){
@@ -1839,7 +1896,7 @@
     revealTitle.style.left=n.x+'px';revealTitle.style.top=titleY+'px';
   }
   function fitResultLayout(w,h,base,element,referenceBox=base.box){
-    return ResultLayout.compose(w,h,base,{element,referenceBox,buttonTop:resultButtonTop,preview:flowPreview});
+    return ResultLayout.compose(w,h,base,{element,referenceBox,buttonTop:resultButtonTop,preview:flowPreview,messageHeight:measureRankMessage(w,h)});
   }
   function formalMaterialLayout(w,h,shift=0,windProfile,earthProfile){
     const element=flow.element;
@@ -1964,6 +2021,9 @@
     }
     if(scan)drawFireScan(scan,scanLayout);else hideFireScan();
     formalReplay.hidden=!formalReveal||(scan?(!scan.complete||(formalLight&&!lightEffects.complete)||(formalDark&&!darkEffects.complete)):state!=='REVEAL'||titleOpacity<1);
+    if(formalReveal&&scanLayout&&!formalReplay.hidden){
+      drawRankMessage(scanLayout,formalLight?lightEffects.completeAt:formalDark?darkEffects.completeAt:FireScanTransition.timing.complete);
+    }else rankMessage.hidden=true;
     if(formalReveal)document.getElementById('effectPreviewBack').hidden=true;
   }
   function openFlowPreview(event){
