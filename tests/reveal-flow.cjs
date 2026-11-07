@@ -32,17 +32,17 @@ advance(f,1.7);assert.equal(f.state,'GATHER');f.reset();
 f.down(1,20,40);advance(f,.2);f.up(1);
 assert.equal(f.state,'WAITING','a single stationary tap starts the quiet period');
 assert.deepEqual(f.lastTap,{x:20,y:40,sequence:1});assert.equal(f.tapCount,1);
-advance(f,1.7);assert.equal(f.state,'GATHER','a single tap can complete the appraisal');f.reset();
+advance(f,2.5);assert.equal(f.state,'GATHER','a single tap can complete the appraisal');f.reset();
 assert.equal(f.down(1,20,40),true);f.move(1,44,40);f.up(1);
 assert.equal(f.ready,true);assert.equal(f.state,'WAITING','a short sketch also starts the quiet period');
 f.down(1,60,40);f.move(1,84,40);f.up(1);
 assert.equal(f.ready,true);assert.equal(f.state,'WAITING','valid stroke distance accumulates without counting gaps');
-advance(f,1.1);assert.equal(f.state,'WAITING');close(f.progress,1.1/1.7,'quiet-period progress includes the post-wave hold');
+advance(f,1.1);assert.equal(f.state,'WAITING');close(f.progress,1.1/2.5,'quiet-period progress includes the post-wave hold');
 assert.equal(f.down(2,100,60),true);assert.equal(f.state,'DRAWING');assert.equal(f.elapsed,0);
 f.move(2,124,60);
 advance(f,2);assert.equal(f.state,'DRAWING','the contact stays interactive before the stationary deadline');
 assert.equal(f.holdFrame.active,true,'a stopped drawing becomes a charge without lifting');
-f.move(2,104,70);f.up(2);advance(f,1.69);
+f.move(2,104,70);f.up(2);advance(f,2.49);
 assert.equal(f.state,'WAITING','continuation receives a fresh quiet period');advance(f,.01);
 assert.equal(f.state,'GATHER');assert.equal(f.materialFrame,null);
 assert.equal(f.down(3,100,100),false,'transition ignores new drawing pointers');
@@ -74,7 +74,7 @@ for(const element of ['fire','water','wind','earth','light','dark']){
   f.reset(element);assert.equal(f.element,element);assert.equal(f.distance,0);
   const formation=(element==='fire'||element==='water')?1.2:.8;
   close(f.formationDuration,formation,element+' has its own formation duration');
-  sketch(f);advance(f,1.7);assert.equal(f.state,'GATHER');close(f.elapsed,0,'gather starts after the two waves and half-second hold');
+  sketch(f);advance(f,2.5);assert.equal(f.state,'GATHER');close(f.elapsed,0,'gather starts after the 2.5-second quiet period');
   advance(f,2.09);assert.equal(f.state,'GATHER','the last 10 ms still belong to the orb return');
   close(f.progress,2.09/2.1,'gather progress uses the extended orb animation');
   assert.equal(f.materialFrame,null,'material cannot start before the orbs finish gathering');
@@ -105,14 +105,14 @@ assert.equal(f.state,'DRAWING');assert.equal(f.element,'wind');assert.equal(f.pa
 assert.equal(f.pointerId,null);assert.equal(f.elapsed,0);assert.equal(f.materialFrame,null);
 f.reset('not-an-element');assert.equal(f.element,'fire','invalid selections use a known material');
 
-for(const [element,total] of [['fire',7.6],['water',7.6]]){
+for(const [element,total] of [['fire',8.4],['water',8.4]]){
   f.reset(element);sketch(f);advance(f,total-.01);
   assert.equal(f.state,'SETTLE',element+' is not done 10 ms before its complete release-to-afterglow duration');
   advance(f,.01);assert.equal(f.state,'DONE',element+' completes at exactly '+total+' seconds');
 }
 
 // A frame that crosses a phase boundary carries its fractional time forward.
-f.reset();sketch(f);advance(f,1.69);f.step(.03);
+f.reset();sketch(f);advance(f,2.49);f.step(.03);
 assert.equal(f.state,'GATHER');close(f.elapsed,.02,'fractional phase carry');
 advance(f,2.07);f.step(.03);
 assert.equal(f.state,'FORM');close(f.elapsed,.02,'orb return carries its fractional time into formation');
@@ -133,7 +133,7 @@ for(const element of ['fire','water','wind','earth','light','dark',null]){
   close(formal.formationDuration,formation,'formal formation duration follows the selected material');
   assert.equal(formal.gatherDuration,2.8,'reset preserves the configured burst duration');
   assert.equal(formal.burstRadius,120,'reset preserves the configured burst radius');
-  sketch(formal);advance(formal,1.7);assert.equal(formal.state,'GATHER');
+  sketch(formal);advance(formal,2.5);assert.equal(formal.state,'GATHER');
   advance(formal,2.79);assert.equal(formal.state,'GATHER');
   advance(formal,.01);assert.equal(formal.state,'FORM');
   advance(formal,formation-.01);formal.step(.03);
@@ -165,7 +165,7 @@ formal.reset('invalid');assert.equal(formal.element,'fire','only explicit null b
 formal.reset();assert.equal(formal.element,'fire','omitted selection retains the known default');
 formal.configure({burstDuration:2.8});
 assert.equal(formal.holdAtReveal,false,'ordinary preview configure explicitly clears formal mode');
-formal.reset('water');sketch(formal);advance(formal,8.4);
+formal.reset('water');sketch(formal);advance(formal,9.1);
 assert.equal(formal.state,'DONE','preview completion is restored after formal mode');
 close(formal.materialFrame.opacity,.45,'preview retains its original final opacity');
 close(formal.materialFrame.phase,3.8/6.4,'preview phase is not capped to formal holding phase');
@@ -195,7 +195,7 @@ assert.deepEqual([hold.releasePoint.x,hold.releasePoint.y],[200,300]);
 close(hold.releasePoint.age,1.2,'released charge age');
 assert.equal(hold.ready,true,'completed hold remains ready during its quiet period');
 assert.equal(hold.committed,false,'a voluntary release remains open to another gesture');
-advance(hold,1.69);assert.equal(hold.state,'WAITING');
+advance(hold,2.49);assert.equal(hold.state,'WAITING');
 hold.step(.03);assert.equal(hold.state,'GATHER');close(hold.elapsed,.02,'quiet period carries fractional time into gathering');
 advance(hold,2.08);assert.equal(hold.state,'AWAKEN','hold uses the selected rare-element opening');
 advance(hold,3.2);assert.equal(hold.state,'FORM');
@@ -231,7 +231,7 @@ hold.reset();hold.down(1,50,50);advance(hold,1.2);hold.up(1);advance(hold,.55);
 assert.equal(hold.down(2,80,90),true);assert.equal(hold.state,'DRAWING');assert.equal(hold.elapsed,0);
 assert.equal(hold.up(2),true);assert.equal(hold.completionSource,'tap');
 assert.deepEqual(hold.lastTap,{x:80,y:90,sequence:1});
-assert.equal(hold.releasePoint,null);advance(hold,1.69);assert.equal(hold.state,'WAITING');
+assert.equal(hold.releasePoint,null);advance(hold,2.49);assert.equal(hold.state,'WAITING');
 advance(hold,.01);assert.equal(hold.state,'GATHER');
 // A drawing still allows another stroke or a valid stationary charge during WAITING.
 hold.reset();sketch(hold);assert.equal(hold.down(3,180,220),true);
@@ -289,10 +289,10 @@ assert.equal(Object.isFrozen(taps.lastTap),true,'the host receives an immutable 
 const firstTap=taps.lastTap;
 assert.equal(taps.up(0),false);assert.equal(taps.up(0,{cancelled:true}),false);
 assert.equal(taps.lastTap,firstTap);assert.equal(taps.tapCount,1,'late pointerup and capture cleanup cannot duplicate a star');
-advance(taps,1.69);assert.equal(taps.state,'WAITING');
+advance(taps,2.49);assert.equal(taps.state,'WAITING');
 assert.equal(taps.down(1,140,180,4000),true);taps.up(1,{nowMs:4050});
 assert.deepEqual(taps.lastTap,{x:140,y:180,sequence:2});assert.equal(taps.elapsed,0);
-advance(taps,1.69);assert.equal(taps.state,'WAITING','each tap restarts the full quiet period');
+advance(taps,2.49);assert.equal(taps.state,'WAITING','each tap restarts the full quiet period');
 sketch(taps,2);assert.equal(taps.tapCount,2);assert.equal(taps.completionSource,'draw');
 assert.equal(taps.lastTap.sequence,2,'drawing never manufactures a star after earlier taps');
 taps.down(3,200,300,6000);taps.up(3,{nowMs:7200});
@@ -303,14 +303,14 @@ assert.equal(taps.tapCount,2,'cancellation preserves existing stars without addi
 advance(taps,2);assert.equal(taps.state,'DRAWING','lifecycle cancellation suspends the countdown');
 taps.down(5,50,70,9000);taps.up(5,{nowMs:9351});
 assert.equal(taps.completionSource,'release');assert.equal(taps.tapCount,2,'a partial hold is not a tap');
-advance(taps,1.7);assert.equal(taps.state,'GATHER','even a partial hold finishes after the quiet period');
+advance(taps,2.5);assert.equal(taps.state,'GATHER','even a partial hold finishes after the quiet period');
 taps.reset();assert.equal(taps.lastTap,null);assert.equal(taps.tapCount,0);assert.equal(taps.ready,false);
 taps.down(1,40,80,1000);taps.move(1,80,80,1100);taps.move(1,40,80,1150);taps.up(1,{nowMs:1200});
 assert.equal(taps.completionSource,'draw');assert.equal(taps.tapCount,0,'an out-and-back stroke is never misclassified as a tap');
 taps.down(2,60,90,2000);taps.step(.05,5000);
 assert.equal(taps.committed,true);assert.equal(taps.completionSource,'autoHold');assert.equal(taps.tapCount,0);
 assert.equal(taps.down(3,70,100,5100),false,'a completed automatic hold locks further gestures');
-advance(taps,1.7);assert.equal(taps.state,'GATHER');
+advance(taps,2.5);assert.equal(taps.state,'GATHER');
 
 // Each fast contact gets its own jitter allowance; past drawing does not leak
 // into later taps, and total jitter path length does not manufacture a stroke.

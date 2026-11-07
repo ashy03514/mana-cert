@@ -341,7 +341,7 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     await endTouch();
     assert.equal((await snapshot()).releasePoint.x, 65);
     assert.equal((await snapshot()).state, 'WAITING');
-    await advance(1690);
+    await advance(2490);
     assert.equal((await snapshot()).state, 'WAITING', 'resuming creates a full new quiet period');
     await advance(10);
     s = await snapshot();

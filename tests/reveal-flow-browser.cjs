@@ -122,7 +122,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await assertStatus('魔力蓄勢','the inward waves finish before the half-second charge hold');
     await advance(100);
     await assertStatus('魔力蓄勢','the burst cannot begin before the full charge hold');
-    await advance(400);
+    await advance(1200);
     await assertStatus('魔力收束');
     await capture('burst','2 / ORB BURST');
     await advance(600);

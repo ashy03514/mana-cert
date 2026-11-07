@@ -44,7 +44,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await page.getByText('屬性揭曉樣板',{exact:true}).click();
     await page.locator('#flowPreviewOpen').click();await advance(0);await draw();
     const shots=[];let time=0;
-    for(const [at,id] of [[.62,1],[.75,1],[.98,2],[1.11,2],[1.3,null],[1.68,null],[1.77,3],[1.9,3]]){
+    for(const [at,id] of [[.62,1],[.75,1],[.98,2],[1.11,2],[1.3,null],[1.68,null],[2.57,3],[2.7,3]]){
       await advance(Math.round((at-time)*1000));time=at;const f=await frame();
       assert.equal(f.sample?.id??null,id,'correct wave or quiet hold at '+at);
       assert.equal(f.state,id===3?'GATHER':'WAITING');

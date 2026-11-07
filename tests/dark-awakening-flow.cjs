@@ -8,7 +8,7 @@ function advance(flow,seconds){
  while(remaining>1e-9){const dt=Math.min(.05,remaining);flow.step(dt);remaining-=dt;}
 }
 function sketch(flow){assert.equal(flow.down(1,20,30),true);assert.equal(flow.move(1,55,30),true);assert.equal(flow.up(1),true);}
-function gather(flow){sketch(flow);advance(flow,1.7);assert.equal(flow.state,'GATHER');}
+function gather(flow){sketch(flow);advance(flow,2.5);assert.equal(flow.state,'GATHER');}
 const random=Math.random;
 Math.random=()=>{throw new Error('Presentation must not consume outcome randomness');};
 try{

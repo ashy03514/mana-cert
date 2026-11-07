@@ -2,8 +2,9 @@
 (function(root) {
   'use strict';
   const ELEMENTS=Object.freeze(['fire','water','wind','earth','light','dark','lightning']);
-  // Two inward waves finish at 1.2 s, then build pressure for another 0.5 s.
-  const DURATIONS=Object.freeze({RETURN:.55,WAITING:1.7,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
+  // Released touches allow 2.5 s for another gesture before gathering.
+  const DURATIONS=Object.freeze({RETURN:.55,WAITING:2.5,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
+  const AUTO_HOLD_WAIT=1.7;
   const NEXT=Object.freeze({RETURN:'WAITING',WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});
   const HOLD_SECONDS=3;
   const RELEASE_SECONDS=1.2;
@@ -50,7 +51,7 @@
     get awakeningEnabled(){return (this.lightAwakening&&this.element==='light')||(this.darkAwakening&&this.element==='dark');}
     get awakeningDuration(){return this.awakeningEnabled?(this.element==='dark'?3.2:DURATIONS.AWAKEN):0;}
     get formationDuration(){return this.awakeningEnabled&&this.element==='light' ? .6 : this.element==='fire'||this.element==='water'?1.2:DURATIONS.FORM;}
-    get duration(){if(this.state==='AWAKEN')return this.awakeningDuration;return this.state==='GATHER'?this.gatherDuration:this.state==='FORM'?this.formationDuration:DURATIONS[this.state];}
+    get duration(){if(this.state==='WAITING'&&this.completionSource==='autoHold')return AUTO_HOLD_WAIT;if(this.state==='AWAKEN')return this.awakeningDuration;return this.state==='GATHER'?this.gatherDuration:this.state==='FORM'?this.formationDuration:DURATIONS[this.state];}
     get progress(){
       if(this.state==='DONE')return 1;
       return this.duration?clamp(this.elapsed/this.duration):0;

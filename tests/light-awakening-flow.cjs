@@ -7,7 +7,7 @@ function advance(flow,seconds){
   while(left>1e-9){const step=Math.min(.05,left);flow.step(step);left-=step;}
 }
 function sketch(flow){assert.equal(flow.down(1,20,30),true);assert.equal(flow.move(1,55,30),true);assert.equal(flow.up(1),true);}
-function enterGather(flow){sketch(flow);advance(flow,1.7);assert.equal(flow.state,'GATHER');}
+function enterGather(flow){sketch(flow);advance(flow,2.5);assert.equal(flow.state,'GATHER');}
 
 // Opting in must not change basic elements, dark, or muggle timing. Light is
 // also unchanged unless the host explicitly enables this opening.

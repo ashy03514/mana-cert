@@ -22,7 +22,7 @@ assert.equal(sample('WAITING',.48).id,1,'first wave starts at .48 s');
 assert.equal(sample('WAITING',.839999).id,1,'first wave completes before second');
 assert.equal(sample('WAITING',.84).id,2,'second wave starts immediately after first ends');
 assert.equal(sample('WAITING',1.199999).id,2,'second wave lasts until the post-wave hold');
-assert.equal(sample('WAITING',1.2),null,'inward waves finish before the half-second hold');
+assert.equal(sample('WAITING',1.2),null,'inward waves finish before the post-wave hold');
 for(const elapsed of [1.2,1.25,1.5,1.699999]){
   assert.equal(sample('WAITING',elapsed),null,'the half-second post-wave hold contains no shockwave');
 }
@@ -151,17 +151,17 @@ for(const element of ['fire','water','wind','earth','light','dark',null]){
     advance(flow,.19);
     assert.equal(flow.state,'WAITING','second wave completion enters the hold instead of exploding');
     close(flow.elapsed,1.2,'second wave completes at the same original time');
-    assert.equal(sample(flow.state,flow.elapsed),null,'the half-second hold starts without a third wave');
+    assert.equal(sample(flow.state,flow.elapsed),null,'the post-wave hold starts without a third wave');
     const heldState=JSON.stringify(flow);
     flow.paused=true;advance(flow,5);
     flow.paused=false;
     assert.equal(JSON.stringify(flow),heldState,'pause also freezes the entire post-wave hold');
-    advance(flow,.49);
-    assert.equal(flow.state,'WAITING','a full half-second hold remains before explosion');
+    advance(flow,1.29);
+    assert.equal(flow.state,'WAITING','a full post-wave hold remains before explosion');
     assert.equal(sample(flow.state,flow.elapsed),null,'no shockwave appears during the hold');
     assert.equal(flow.materialFrame,null,'hold does not reveal the element prematurely');
     advance(flow,.01);
-    assert.equal(flow.state,'GATHER','explosion starts exactly half a second after the second wave');
+    assert.equal(flow.state,'GATHER','explosion starts exactly 2.5 seconds after release');
     close(flow.elapsed,0,'explosion receives a fresh animation clock');
     assert.equal(sample(flow.state,flow.elapsed).id,3,'third wave shares the explosion clock');
     advance(flow,.43);
@@ -175,7 +175,7 @@ assert.equal(sample(resume.state,resume.elapsed),null,'continuing the drawing im
 resume.move(2,100,40);resume.up(2);advance(resume,.49);
 assert.equal(sample(resume.state,resume.elapsed).id,1,'release after continuing restarts the wave sequence');
 
-for(const holdTime of [1.2,1.45,1.69]){
+for(const holdTime of [1.2,1.45,2.49]){
   const continued=new RevealFlow();continued.down(1,0,0);continued.move(1,50,40);continued.up(1);advance(continued,holdTime);
   assert.equal(continued.state,'WAITING');
   // Summed frame times can be a fraction of an ulp below exactly 1.2 s;
@@ -183,7 +183,7 @@ for(const holdTime of [1.2,1.45,1.69]){
   assert.equal(sample(continued.state,continued.elapsed)?.alpha??0,0);
   assert.equal(continued.down(2,70,40),true,'the post-wave hold still accepts continued drawing');
   continued.move(2,90,40);
-  advance(continued,5);assert.equal(continued.state,'DRAWING','continuing during the hold cancels the scheduled explosion');
+  for(let i=0;i<50;i++){continued.move(2,100+i*8,40);advance(continued,.1);}assert.equal(continued.state,'DRAWING','continuing during the hold cancels the scheduled explosion');
   continued.move(2,100,40);continued.up(2);advance(continued,.49);
   assert.equal(sample(continued.state,continued.elapsed).id,1,'release after the hold restarts from the first wave');
   advance(continued,1.01);continued.paused=true;continued.cancelPointer();
@@ -201,4 +201,4 @@ assert.ok(drawAt>=0,'formal and preview share the same wave draw path');
 assert.ok(drawAt>host.indexOf('flowPortal.draw')&&drawAt>host.indexOf('gather.draw'),'shockwaves draw over the atmosphere and explosion');
 assert.match(host,/RevealShockwaves\.draw\([^;]+elapsed:flow\.elapsed/,'host uses the shared pause-aware state clock');
 assert.match(host,/RevealShockwaves\.draw\([^;]+state/,'host passes the current flow state');
-console.log('Soft shockwave radial pixels, two inward waves, half-second hold, outward explosion, lifecycle and offline wiring checks passed.');
+console.log('Soft shockwave radial pixels, two inward waves, post-wave hold, outward explosion, lifecycle and offline wiring checks passed.');

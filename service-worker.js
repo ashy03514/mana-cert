@@ -1,4 +1,4 @@
-const CACHE_NAME = "mana-pwa-v3-portal-170";
+const CACHE_NAME = "mana-pwa-v3-portal-171";
 const ASSETS = [
   "./",
   "./index.html",
