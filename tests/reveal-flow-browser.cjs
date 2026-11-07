@@ -91,10 +91,10 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await advance(1500);
     await assertStatus('魔力蓄勢','a tap waits for the full quiet period');
 
-    // A meaningful stroke held down for longer than the waiting period stays drawable.
+    // A drawn stroke can settle into a hold without lifting the same finger.
     await stroke();
     await advance(2600);
-    await assertStatus('可畫符、點星芒或按住聚能','holding a drawn stroke must never auto-start');
+    await assertStatus('持續按住聚能','a stationary finger resumes charging at the end of its stroke');
     await page.mouse.up();
     await page.evaluate(()=>{window.__recordReleasedTrail=true;});
     await advance(0);
@@ -112,7 +112,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await page.mouse.down();
     await move(300,385);
     await advance(1400);
-    await assertStatus('可畫符、點星芒或按住聚能','continuing the stroke during the charge hold cancels the previous release timer');
+    await assertStatus('持續按住聚能','resumed ink can settle into charging again before release');
     await page.mouse.up();
     await advance(550);
     await assertStatus('可接著畫、點星芒或按住','the second release starts a fresh waiting interval');

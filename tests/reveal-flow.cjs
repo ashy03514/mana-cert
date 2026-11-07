@@ -33,14 +33,15 @@ f.down(1,20,40);advance(f,.2);f.up(1);
 assert.equal(f.state,'WAITING','a single stationary tap starts the quiet period');
 assert.deepEqual(f.lastTap,{x:20,y:40,sequence:1});assert.equal(f.tapCount,1);
 advance(f,1.7);assert.equal(f.state,'GATHER','a single tap can complete the appraisal');f.reset();
-assert.equal(f.down(1,20,40),true);f.move(1,43,40);f.up(1);
+assert.equal(f.down(1,20,40),true);f.move(1,44,40);f.up(1);
 assert.equal(f.ready,true);assert.equal(f.state,'WAITING','a short sketch also starts the quiet period');
-f.down(1,60,40);f.move(1,75,40);f.up(1);
+f.down(1,60,40);f.move(1,84,40);f.up(1);
 assert.equal(f.ready,true);assert.equal(f.state,'WAITING','valid stroke distance accumulates without counting gaps');
 advance(f,1.1);assert.equal(f.state,'WAITING');close(f.progress,1.1/1.7,'quiet-period progress includes the post-wave hold');
 assert.equal(f.down(2,100,60),true);assert.equal(f.state,'DRAWING');assert.equal(f.elapsed,0);
 f.move(2,124,60);
-advance(f,2);assert.equal(f.state,'DRAWING','continuing to hold keeps the drawing open');
+advance(f,2);assert.equal(f.state,'DRAWING','the contact stays interactive before the stationary deadline');
+assert.equal(f.holdFrame.active,true,'a stopped drawing becomes a charge without lifting');
 f.move(2,104,70);f.up(2);advance(f,1.69);
 assert.equal(f.state,'WAITING','continuation receives a fresh quiet period');advance(f,.01);
 assert.equal(f.state,'GATHER');assert.equal(f.materialFrame,null);
@@ -204,11 +205,13 @@ assert.equal(hold.holdFrame,null);assert.equal(hold.ready,false,'new rounds begi
 
 hold.down(1,200,300);advance(hold,1);
 hold.move(1,214,300);assert.ok(hold.holdFrame,'boundary jitter retains charge');
-hold.move(1,215,300);assert.equal(hold.holdFrame,null,'intentional movement becomes a drawn gesture');
+hold.move(1,240,300);assert.equal(hold.holdFrame,null,'intentional movement becomes a drawn gesture');
 hold.move(1,200,300);advance(hold,2);
-assert.equal(hold.holdFrame,null,'returning to the origin never changes a drawn gesture into hold');
-hold.up(1);assert.equal(hold.state,'WAITING');assert.equal(hold.completionSource,'draw');
-assert.equal(hold.releasePoint,null);
+assert.equal(hold.holdFrame.active,true,'a stopped stroke returns to charging even at its original position');
+assert.deepEqual([hold.holdFrame.x,hold.holdFrame.y],[200,300]);
+hold.up(1);assert.equal(hold.state,'WAITING');assert.equal(hold.completionSource,'hold');
+assert.deepEqual([hold.releasePoint.x,hold.releasePoint.y],[200,300]);
+assert.equal(hold.tapCount,0,'returning to hold never turns prior ink into a tap');
 
 hold.reset();hold.down(1,10,20);advance(hold,1);
 hold.up(1,{cancelled:true});advance(hold,5);
@@ -258,17 +261,19 @@ assert.equal(slow.releasePoint,null);assert.equal(slow.tapCount,0);
 slow.reset();slow.down(10,10,20,1000);slow.step(.6,1600);slow.cancelPointer();
 slow.down(11,10,20,9000);slow.up(11,{nowMs:9005});
 assert.equal(slow.state,'WAITING');assert.equal(slow.completionSource,'tap','cancelled contact time never carries to the next pointer');
-// A sparse frame cadence can deliver the deadline first via RAF, movement or lift.
-for(const event of ['frame','move','up']){
+// A sparse frame cadence can deliver the stationary deadline via RAF or lift.
+for(const event of ['frame','up']){
   slow.reset();slow.down(4,6,7,1000);slow.step(.2,1200);
   if(event==='frame')slow.step(10,11000);
-  if(event==='move')slow.move(4,100,105,4000);
   if(event==='up')slow.up(4,{nowMs:4000});
   assert.equal(slow.state,'WAITING',event+' commits the hold once at its deadline');
   assert.equal(slow.completionSource,'autoHold');
   assert.deepEqual(slow.releasePoint,{x:6,y:7,age:3});
   assert.equal(slow.elapsed,0,'a slow frame keeps the entire shockwave sequence visible');
 }
+slow.reset();slow.down(4,6,7,1000);slow.step(.2,1200);slow.move(4,100,105,4000);
+assert.equal(slow.state,'DRAWING','new meaningful movement wins over a stale stationary deadline');
+assert.equal(slow.completionSource,null);assert.equal(slow.holdFrame,null);
 slow.reset();slow.down(1,20,20,1000);slow.move(1,60,60,3999);slow.step(.1,4100);slow.up(1);
 assert.equal(slow.completionSource,'draw','intentional movement before the deadline takes priority');
 slow.reset();slow.down(1,22,23,1000);slow.step(2.9,3900);slow.up(1,{cancelled:true,nowMs:4000});
@@ -300,10 +305,84 @@ taps.down(5,50,70,9000);taps.up(5,{nowMs:9351});
 assert.equal(taps.completionSource,'release');assert.equal(taps.tapCount,2,'a partial hold is not a tap');
 advance(taps,1.7);assert.equal(taps.state,'GATHER','even a partial hold finishes after the quiet period');
 taps.reset();assert.equal(taps.lastTap,null);assert.equal(taps.tapCount,0);assert.equal(taps.ready,false);
-taps.down(1,40,80,1000);taps.move(1,55,80,1100);taps.move(1,40,80,1150);taps.up(1,{nowMs:1200});
+taps.down(1,40,80,1000);taps.move(1,80,80,1100);taps.move(1,40,80,1150);taps.up(1,{nowMs:1200});
 assert.equal(taps.completionSource,'draw');assert.equal(taps.tapCount,0,'an out-and-back stroke is never misclassified as a tap');
 taps.down(2,60,90,2000);taps.step(.05,5000);
 assert.equal(taps.committed,true);assert.equal(taps.completionSource,'autoHold');assert.equal(taps.tapCount,0);
 assert.equal(taps.down(3,70,100,5100),false,'a completed automatic hold locks further gestures');
 advance(taps,1.7);assert.equal(taps.state,'GATHER');
-console.log('Reveal flow: taps, mixed gestures, resumable release, automatic hold, cancellation, pause and reveal timing passed.');
+
+// Each fast contact gets its own jitter allowance; past drawing does not leak
+// into later taps, and total jitter path length does not manufacture a stroke.
+const quick=new RevealFlow();
+for(let i=0;i<20;i++){
+  const stamp=1000+i*180,x=60+i*9,y=170+i%3*25;
+  assert.equal(quick.down(i,x,y,stamp),true);
+  quick.move(i,x+22,y,stamp+20);
+  quick.move(i,x-21,y,stamp+45);
+  quick.move(i,x+12,y+15,stamp+65);
+  quick.move(i,x+22,y+1,stamp+80,{ending:true});
+  quick.up(i,{nowMs:stamp+80});
+  assert.equal(quick.completionSource,'tap','quick contact '+i+' remains a tap despite fingertip jitter');
+  assert.deepEqual(quick.lastTap,{x,y,sequence:i+1});
+}
+assert.equal(quick.distance,0);assert.equal(quick.tapCount,20);
+quick.down(30,100,200,5000);quick.move(30,180,220,5040);quick.up(30,{nowMs:5080});
+assert.equal(quick.completionSource,'draw','a clear fast swipe remains a drawing');
+assert.equal(quick.tapCount,20);
+quick.down(31,100,200,5200);quick.move(31,250,400,5280,{ending:true});quick.up(31,{nowMs:5280});
+assert.equal(quick.completionSource,'tap','a release-only coordinate jump cannot begin a stroke');
+assert.deepEqual(quick.lastTap,{x:100,y:200,sequence:21});
+quick.down(32,100,200,5400);quick.move(32,140,200,5450);
+const inkDistance=quick.distance;
+assert.equal(quick.move(32,180,200,5480,{ending:true}),true,'a lift still finishes an already moving stroke');
+assert.ok(quick.distance>inkDistance);quick.up(32,{nowMs:5480});
+assert.equal(quick.completionSource,'draw');assert.equal(quick.tapCount,21);
+
+// No further pointer events are required to recover from drawing into hold.
+const recovery=new RevealFlow();
+recovery.down(7,100,200,1000);recovery.move(7,180,240,1100);
+assert.equal(recovery.holdFrame,null);
+recovery.step(.34,1440);assert.equal(recovery.holdFrame,null,'brief pauses keep the active stroke');
+recovery.step(.01,1450);assert.equal(recovery.holdFrame.active,true,'350 ms of stillness enters hold via RAF');
+assert.deepEqual([recovery.holdFrame.x,recovery.holdFrame.y],[180,240],'charging starts at the stopped endpoint');
+close(recovery.holdFrame.age,.35,'charge age uses the time since meaningful motion');
+recovery.move(7,184,243,1750);recovery.step(.3,2050);
+assert.deepEqual([recovery.holdFrame.x,recovery.holdFrame.y],[180,240],'small hold jitter leaves the anchor stable');
+close(recovery.holdFrame.age,.95,'small hold jitter does not restart the charge');
+recovery.move(7,220,280,2100);assert.equal(recovery.holdFrame,null,'resumed drawing resets the stationary charge');
+recovery.step(.349,2449);assert.equal(recovery.holdFrame,null);
+recovery.step(.001,2450);assert.equal(recovery.holdFrame.active,true);
+assert.deepEqual([recovery.holdFrame.x,recovery.holdFrame.y],[220,280]);
+recovery.move(99,400,500,2600);recovery.up(99,{nowMs:2700});
+assert.equal(recovery.pointerId,7,'a second finger cannot move or release the active charge');
+recovery.step(.05,5099);assert.equal(recovery.state,'DRAWING');
+recovery.step(.001,5100);assert.equal(recovery.completionSource,'autoHold');
+assert.deepEqual(recovery.releasePoint,{x:220,y:280,age:3});
+assert.equal(recovery.tapCount,0,'drawing-to-hold automatic completion cannot create a star');
+
+// Slow movement accumulates against a fixed quiet anchor, rather than treating
+// each tiny successive step as stationary. Repeated bounded jitter may charge.
+const drift=new RevealFlow();
+drift.down(1,100,200,1000);drift.move(1,140,200,1100);
+for(let i=1;i<=80;i++){
+  const now=1100+i*100;
+  drift.move(1,140+i*4,200,now);drift.step(.1,now);
+  assert.equal(drift.state,'DRAWING');assert.equal(drift.holdFrame,null,'continuous slow drift never becomes a hold');
+}
+drift.up(1,{nowMs:9100});assert.equal(drift.completionSource,'draw');
+const partial=new RevealFlow();
+partial.down(1,30,40,1000);partial.move(1,90,80,1050);partial.step(.4,1450);partial.up(1,{nowMs:1450});
+assert.equal(partial.completionSource,'release','a short recovered hold is not confused with a new tap');
+assert.equal(partial.tapCount,0);
+partial.reset();partial.down(1,30,40,1000);partial.move(1,90,80,1100);partial.step(.4,1500);
+partial.paused=true;partial.paused=false;partial.step(5,6500);
+close(partial.holdFrame.age,.4,'background time cannot complete a recovered hold');
+partial.up(1,{cancelled:true,nowMs:9500});
+assert.equal(partial.state,'DRAWING');assert.equal(partial.tapCount,0);assert.equal(partial.holdFrame,null);
+partial.reset();partial.down(1,30,40,1000);partial.move(1,90,80,1100);partial.step(1.3,2400);
+assert.equal(partial.move(1,180,160,2450,{ending:true}),false,'lifting cannot break a recovered stationary hold');
+partial.up(1,{nowMs:2450});
+assert.equal(partial.completionSource,'hold');assert.deepEqual([partial.releasePoint.x,partial.releasePoint.y],[90,80]);
+assert.equal(partial.tapCount,0);
+console.log('Reveal flow: jitter-safe taps, recoverable draw/hold modes, quiet clocks, mixed gestures, cancellation, pause and reveal timing passed.');

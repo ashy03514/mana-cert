@@ -8,6 +8,8 @@
   const HOLD_SECONDS=3;
   const RELEASE_SECONDS=1.2;
   const TAP_SECONDS=.35;
+  const HOLD_SETTLE_SECONDS=.35;
+  const TAP_SLOP=24, DRAW_STILL_SLOP=6, HOLD_SLOP=14;
   const clamp=v=>Math.max(0,Math.min(1,v));
   const smooth=v=>{const x=clamp(v);return x*x*(3-2*x);};
 
@@ -26,6 +28,7 @@
       this.state='DRAWING';this.elapsed=0;this.paused=false;
       this.pointerId=null;this.distance=0;this._point=null;
       this._origin=null;this._holdAge=0;this._drawing=false;this._lastHoldMs=null;
+      this._start=null;this._lastSample=null;this._contactAge=0;this._hasDrawn=false;
       this.completionSource=null;this.releasePoint=null;
       this.tapCount=0;this.lastTap=null;
       return this;
@@ -41,7 +44,7 @@
     get holdFrame(){
       if(this.pointerId===null||this._drawing||!this._origin)return null;
       return {x:this._origin.x,y:this._origin.y,age:this._holdAge,
-        progress:clamp(this._holdAge/HOLD_SECONDS),active:this._holdAge>=.35,ready:this._holdAge+1e-9>=RELEASE_SECONDS};
+        progress:clamp(this._holdAge/HOLD_SECONDS),active:this._holdAge+1e-9>=HOLD_SETTLE_SECONDS,ready:this._holdAge+1e-9>=RELEASE_SECONDS};
     }
     get gatherDuration(){return this._gatherDuration;}
     get awakeningEnabled(){return (this.lightAwakening&&this.element==='light')||(this.darkAwakening&&this.element==='dark');}
@@ -74,34 +77,53 @@
         (this.state!=='DRAWING'&&(this.state!=='WAITING'||this.committed)))return false;
       this.pointerId=id;this._point={x,y};this.state='DRAWING';this.elapsed=0;
       this._origin={x,y};this._holdAge=0;this._drawing=false;
+      this._start={x,y};this._lastSample={x,y};this._contactAge=0;this._hasDrawn=false;
       this._lastHoldMs=Number.isFinite(nowMs)?nowMs:null;
       this.completionSource=null;this.releasePoint=null;
       return true;
     }
-    move(id,x,y,nowMs){
+    move(id,x,y,nowMs,{ending=false}={}){
       if(this.paused||this.pointerId===null||id!==this.pointerId||
         !Number.isFinite(x)||!Number.isFinite(y))return false;
-      // Ignore movement inside the original contact area. Repeated hand jitter
-      // must neither manufacture a stroke nor restart the charging animation.
-      if(!this._drawing){
-        if(this.advanceHold(0,nowMs))return false;
-        if(Math.hypot(x-this._origin.x,y-this._origin.y)<=14)return false;
-        this._drawing=true;this._holdAge=0;
+      if(ending){
+        // Lifting can shift a touch centroid. Its endpoint may finish existing
+        // ink, but cannot turn a tap/settled hold into a newly drawn gesture.
+        if(this.advanceHold(0,nowMs)||!this._drawing)return false;
+      }else{
+        this._lastSample={x,y};
+        const moving=this._hasDrawn
+          ?Math.hypot(x-this._origin.x,y-this._origin.y)>(this._drawing?DRAW_STILL_SLOP:HOLD_SLOP)
+          :Math.hypot(x-this._start.x,y-this._start.y)>=TAP_SLOP;
+        // Evaluate reported motion before a delayed frame can finish a hold.
+        if(moving){
+          this.advanceHold(0,nowMs,true);
+          this._origin={x,y};this._drawing=true;this._hasDrawn=true;
+        }else if(this.advanceHold(0,nowMs))return false;
+        if(!this._drawing)return false;
       }
       const distance=Math.hypot(x-this._point.x,y-this._point.y);
       if(distance<2)return false;
       this.distance=Math.min(1e6,this.distance+distance);this._point={x,y};
       return true;
     }
-    advanceHold(dt,nowMs){
+    advanceHold(dt,nowMs,moving=false){
       // Contact duration uses real active time, including the interval between
       // the last animation frame and pointerup on a low-frame-rate device.
+      let elapsed=0;
       if(Number.isFinite(nowMs)){
         if(this._lastHoldMs!==null&&nowMs<this._lastHoldMs)return;
-        if(this._lastHoldMs!==null)this._holdAge+=(nowMs-this._lastHoldMs)/1000;
+        if(this._lastHoldMs!==null)elapsed=(nowMs-this._lastHoldMs)/1000;
         this._lastHoldMs=nowMs;
       }else if(dt>0){
-        this._holdAge+=dt;this._lastHoldMs=null;
+        elapsed=dt;this._lastHoldMs=null;
+      }
+      this._contactAge+=elapsed;
+      this._holdAge=moving?0:this._holdAge+elapsed;
+      if(moving)return false;
+      // The same finger can draw, stop to charge, then draw again. The quiet
+      // clock also runs on RAF, so stopping needs no extra pointermove event.
+      if(this._drawing&&this._holdAge+1e-9>=HOLD_SETTLE_SECONDS){
+        this._drawing=false;this._origin={...this._lastSample};
       }
       if(this._holdAge+1e-9<HOLD_SECONDS)return false;
       this._holdAge=HOLD_SECONDS;
@@ -110,10 +132,11 @@
     }
     finishPress(source){
       this.completionSource=source;
-      if(source==='tap')this.lastTap=Object.freeze({x:this._origin.x,y:this._origin.y,sequence:++this.tapCount});
+      if(source==='tap')this.lastTap=Object.freeze({x:this._start.x,y:this._start.y,sequence:++this.tapCount});
       this.releasePoint=source==='hold'||source==='autoHold'
         ?{x:this._origin.x,y:this._origin.y,age:this._holdAge}:null;
       this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this._lastHoldMs=null;
+      this._start=null;this._lastSample=null;this._contactAge=0;this._hasDrawn=false;this._drawing=false;
       this.elapsed=0;
       // Every completed touch gets the same quiet period. Only a full automatic
       // hold commits early; a released charge can still be followed by ink or stars.
@@ -122,14 +145,17 @@
     up(id,{cancelled=false,nowMs}={}){
       if(this.paused||this.pointerId===null||id!==this.pointerId)return false;
       if(cancelled){this.cancelPointer();return true;}
-      if(!this._drawing&&this.advanceHold(0,nowMs))return true;
-      const source=this._drawing?'draw':this._holdAge<=TAP_SECONDS+1e-9?'tap':this.holdFrame?.ready?'hold':'release';
+      if(this.advanceHold(0,nowMs))return true;
+      const contact=this.holdFrame;
+      const source=!this._hasDrawn&&this._contactAge<=TAP_SECONDS+1e-9?'tap'
+        :contact?.ready?'hold':contact?.active?'release':this._hasDrawn?'draw':'release';
       this.finishPress(source);
       return true;
     }
     cancelPointer(){
       // Lifecycle cancellation must still release capture while animation is paused.
       this.pointerId=null;this._point=null;this._origin=null;this._holdAge=0;this._lastHoldMs=null;
+      this._start=null;this._lastSample=null;this._contactAge=0;this._hasDrawn=false;
       if(this.state==='DRAWING'||(this.state==='WAITING'&&!this.committed)){
         this.state='DRAWING';this.elapsed=0;this._drawing=false;
         this.completionSource=null;this.releasePoint=null;
@@ -137,7 +163,7 @@
     }
     step(dt,nowMs){
       if(this.paused||!Number.isFinite(dt)||dt<0)return;
-      if(this.state==='DRAWING'&&this.pointerId!==null&&!this._drawing){
+      if(this.state==='DRAWING'&&this.pointerId!==null){
         this.advanceHold(dt,nowMs);
         return;
       }

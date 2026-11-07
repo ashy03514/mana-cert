@@ -965,7 +965,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="167" title="目前載入頁面的版本">目前版本 v167</span>
+        <span id="appVersion" data-version="168" title="目前載入頁面的版本">目前版本 v168</span>
       </div>
     </div>
     </div>
@@ -1548,10 +1548,10 @@
       session.transition(STATES.INTERACTION);document.body.dataset.state=STATES.INTERACTION;
     }
   }
-  function moveMagicPoint(scene,id,x,y,time){
+  function moveMagicPoint(scene,id,x,y,time,ending=false){
     if(flowActive()){
       if(flow.pointerId!==id)return;
-      flow.move(id,x,y,timeline.now());
+      flow.move(id,x,y,timeline.now(),{ending});
       if(flow.completionSource==='autoHold'){
         releasePointer(id);
         return;
@@ -1573,7 +1573,7 @@
   }
   function onMagicEnd(e){
     if(e.type==='pointerup'&&canTouchMagic()&&e.pointerId===inputScene().pointer.id){
-      moveMagicPoint(inputScene(),e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now());
+      moveMagicPoint(inputScene(),e.pointerId,e.clientX,e.clientY,e.timeStamp??timeline.now(),true);
     }
     releasePointer(e.pointerId,e.type!=='pointerup');
   }

@@ -39,6 +39,14 @@ function sketch(pair, id=1) {
   pair.flow.move(id, 160, 200);
   pair.flow.up(id);
 }
+function continueDrawing(pair,id,seconds,frames) {
+  let time=0,index=0;
+  while(time<seconds-1e-9){
+    pair.flow.move(id,190+(index%2)*24,220);
+    const dt=Math.min(.1,seconds-time);advance(pair,dt,frames);
+    time+=dt;index++;
+  }
+}
 
 test('guide crossfades on accepted first touch without replacing saved copy', () => {
   const pair=fixture();
@@ -70,7 +78,7 @@ test('editable drawing WAITING never claims resonance and continuation stays edi
   touch(pair, '', 2);
   assert.deepEqual(pair.model.frame(), before, 'continuing a round does not replay the initial guide');
   pair.flow.move(2, 190, 220);
-  advance(pair, .9, frames);
+  continueDrawing(pair, 2, .9, frames);
   assert.equal(pair.flow.state, 'DRAWING');
   assert.equal(pair.model.frame().key, 'drawing');
   pair.flow.up(2);
@@ -131,10 +139,27 @@ test('moving out of a hold changes to parsing and preserves the drawing interact
   assert.equal(pair.model.frame().key, 'holding');
   pair.flow.move(1, 160, 200);
   assert.equal(pair.flow.holdFrame, null);
-  advance(pair, 2.2);
+  continueDrawing(pair, 1, 2.2);
   assert.equal(pair.flow.state, 'DRAWING');
   assert.equal(pair.model.frame().key, 'drawing');
   assert.equal(pair.model.committed, false);
+});
+
+test('stopping a stroke changes the status back to charging without lifting', () => {
+  const pair=fixture();touch(pair);pair.flow.move(1,190,220);
+  continueDrawing(pair,1,.9);
+  assert.equal(pair.model.frame().key,'drawing');
+  advance(pair,.9);
+  assert.equal(pair.flow.holdFrame.active,true);
+  assert.equal(pair.model.frame().key,'holding');
+  assert.equal(pair.model.committed,false);
+  pair.flow.move(1,300,300);continueDrawing(pair,1,.9);
+  assert.equal(pair.flow.holdFrame,null);
+  assert.equal(pair.model.frame().key,'drawing','moving again restores parsing after the status dwell');
+  advance(pair,3);
+  assert.equal(pair.flow.completionSource,'autoHold');
+  assert.equal(pair.model.frame().key,'resonance');
+  assert.equal(pair.flow.tapCount,0);
 });
 
 test('taps announce connected stars and cancellation fades without success', () => {

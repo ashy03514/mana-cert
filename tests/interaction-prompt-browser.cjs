@@ -61,7 +61,9 @@ const {chromium}=require(process.env.MANA_PLAYWRIGHT_MODULE||'C:/Users/ashy0/.ca
     const labelBox=await status.locator('[data-prompt-current]').boundingBox();
     assert.ok(Math.abs(labelBox.y-92)<.1,'visible copy remains at the fixed upper position');
     await page.screenshot({path:path.join(os.tmpdir(),'mana-prompt-v163-hold.png')});
-    await page.mouse.move(290,520,{steps:5});await advance(900);
+    for(const [x,y] of [[290,520],[260,490],[300,460],[270,430],[240,470]]){
+      await page.mouse.move(x,y,{steps:5});await advance(180);
+    }
     assert.equal(await state(),'drawing');
     await page.screenshot({path:path.join(os.tmpdir(),'mana-prompt-v163-drawing.png')});
     await page.mouse.up();await advance(600);

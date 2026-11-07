@@ -114,7 +114,8 @@ const elements={fire:'火',water:'水',wind:'風',earth:'土',light:'光',dark:'
     assert.equal(await bodyState(),'INTERACTION','a tap starts interaction before its quiet period completes');
     assert.equal((await snapshot()).flow.state,'WAITING');
     await stroke();await advance(2600);
-    assert.equal((await snapshot()).flow.state,'DRAWING','holding a drawing never starts the release countdown');
+    assert.equal((await snapshot()).flow.state,'DRAWING','a settled stroke is still interactive before three seconds');
+    assert.equal(await page.evaluate(()=>window.__formal.flow.holdFrame?.active),true,'a settled stroke charges without lifting');
     await page.mouse.up();
     await page.evaluate(()=>{window.__formal.recordTrail=true;});await advance(0);
     const released=await page.evaluate(()=>window.__formal.trail);
