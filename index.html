@@ -965,7 +965,7 @@
       <div id="pwaStatus" class="sumNote" role="status">正在確認離線狀態…</div>
       <div class="updateActions">
         <button id="checkUpdate" type="button" class="btn btnGhost">檢查更新</button>
-        <span id="appVersion" data-version="171" title="目前載入頁面的版本">目前版本 v171</span>
+        <span id="appVersion" data-version="172" title="目前載入頁面的版本">目前版本 v172</span>
       </div>
     </div>
     </div>
@@ -1853,7 +1853,7 @@
       // deliberate new hold moves that energy to another contact.
       holdMagic.step(dt,holdMagic.mode==='sealed'&&!contact?.active?null:contact);
     }
-    flowAtmosphere.step(dt,flow);
+    flowAtmosphere.step(dt,{state:flow.state,progress:flow.progress,elapsed:flow.waitingElapsed,burstRadius:flow.burstRadius});
     if(before!=='GATHER'&&flow.state==='GATHER'){
       const ink=flowPortal.trails;
       const particles=tapStars.captureParticles();
@@ -1995,7 +1995,7 @@
         FireRankSparkles.draw(ctx,w,h,{time:frame.time,mana:scan.value,box,element:flow.element});
       }
     }
-    RevealShockwaves.draw(ctx,{state,elapsed:flow.elapsed,width:w,height:h});
+    RevealShockwaves.draw(ctx,{state,elapsed:flow.waitingElapsed,width:w,height:h});
     if(flow.awakeningEnabled&&(state==='AWAKEN'||state==='FORM')){
       awakeningRenderer().draw(ctx,{width:w,height:h,target,elapsed:state==='AWAKEN'?flow.elapsed:flow.awakeningDuration+flow.elapsed,layer:state==='FORM'?'foreground':'all',includeFlame:flow.element!=='dark'});
     }
@@ -2018,7 +2018,7 @@
     }
     if(flow.element===null)materialError.hidden=true;else updateMaterialError();
     const labels={DRAWING:flow.holdFrame?.active?'持續按住聚能':'可畫符、點星芒或按住聚能',RETURN:'魔力匯入中心',WAITING:flow.committed?'魔力蓄勢':'可接著畫、點星芒或按住',GATHER:'魔力收束',AWAKEN:awakeningRenderer().sample(flow.elapsed).phase,FORM:'屬性形成',REVEAL:'屬性展開',SETTLE:'餘韻',DONE:'播放完成'};
-    const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.elapsed>=1.2?'魔力蓄勢':labels[state];
+    const label=flow.paused?'已暫停':scan?scan.label:state==='WAITING'&&flow.waitingElapsed>=1.2?'魔力蓄勢':labels[state];
     if(materialStatus.textContent!==label)materialStatus.textContent=label;
     const titleOpacity=scan?scan.opacity:state==='REVEAL'?Math.max(0,Math.min(1,(flow.elapsed-.7)/.8)):
       state==='SETTLE'||state==='DONE'?1:0;

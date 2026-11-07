@@ -144,7 +144,7 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     s = await snapshot(); assert.equal(s.stars.length, 4); assert.equal(s.links, 6);
     assert.equal(s.holdMode, 'sealed'); assert.ok(s.holdAlpha > 0);
     assert.deepEqual(s.holdPosition, { x: 195, y: 380 }, 'a later tap preserves the released charging ring at its original contact');
-    await advance(2490); assert.equal((await snapshot()).state, 'WAITING', 'the latest release resets the inactivity deadline');
+    await advance(3210); assert.equal((await snapshot()).state, 'WAITING', 'the latest release resets the inactivity deadline');
     await advance(20); s = await snapshot();
     assert.equal(s.state, 'GATHER'); assert.ok(s.orbs > 0); assert.ok(s.sourceStrokes > 0);
     for (const p of s.stars) assert.ok(s.sourceParticles.some(q => Math.hypot(p.x - q.x, p.y - q.y) < 20), 'tap stars supply particles to the shared explosion');
@@ -169,7 +169,7 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     await page.locator('#effect_trailEnabled').uncheck({ force: true });
     await click('#btnStart'); await advance(0);
     assert.deepEqual((await snapshot()).stars, []);
-    await tap(220, 390); await advance(2500); s = await snapshot();
+    await tap(220, 390); await advance(3220); s = await snapshot();
     assert.equal(s.state, 'GATHER'); assert.equal(s.stars.length, 1);
     assert.ok(s.orbs > 0, 'a single tap supplies a real explosion with the brush disabled');
     assert.equal(s.gatherOpacity, 1, 'brush opacity cannot dim the independent tap or hold explosion');
@@ -178,7 +178,7 @@ const { chromium } = require(process.env.MANA_PLAYWRIGHT_MODULE || 'C:/Users/ash
     await finish(); await retry();
     await down(180, 400); await advance(800); await up();
     assert.equal((await snapshot()).holdMode, 'sealed', 'a visible partial charge stays available after release');
-    await advance(2500); s = await snapshot();
+    await advance(3220); s = await snapshot();
     assert.equal(s.state, 'GATHER'); assert.equal(s.stars.length, 0);
     assert.ok(s.orbs > 0 && s.sourceParticles.length > 0, 'a partial hold supplies real energy after inactivity');
     assert.equal(s.gatherOpacity, 1);

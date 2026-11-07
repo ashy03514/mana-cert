@@ -89,7 +89,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     // A single star enters the resumable quiet period before gathering.
     await page.mouse.click(195,330);
     await advance(1500);
-    await assertStatus('魔力蓄勢','a tap waits for the full quiet period');
+    await assertStatus('可接著畫、點星芒或按住','a tap waits for the full quiet period');
 
     // A drawn stroke can settle into a hold without lifting the same finger.
     await stroke();
@@ -107,7 +107,7 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     assert.notEqual(movingTrail.image,releasedTrail.image,'the ribbon pixels themselves move after release');
     await page.evaluate(()=>{window.__recordReleasedTrail=false;});
     await advance(1150);
-    await assertStatus('魔力蓄勢','input remains resumable during the charge hold after both inward waves');
+    await assertStatus('可接著畫、點星芒或按住','input remains resumable during the charge hold after both inward waves');
     await page.mouse.move(250,350);
     await page.mouse.down();
     await move(300,385);
@@ -118,11 +118,11 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await assertStatus('可接著畫、點星芒或按住','the second release starts a fresh waiting interval');
     await capture('waiting','1 / RELEASE WAIT');
 
-    await advance(1000);
+    await advance(2520);
     await assertStatus('魔力蓄勢','the inward waves finish before the half-second charge hold');
     await advance(100);
     await assertStatus('魔力蓄勢','the burst cannot begin before the full charge hold');
-    await advance(1200);
+    await advance(400);
     await assertStatus('魔力收束');
     await capture('burst','2 / ORB BURST');
     await advance(600);

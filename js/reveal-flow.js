@@ -2,9 +2,11 @@
 (function(root) {
   'use strict';
   const ELEMENTS=Object.freeze(['fire','water','wind','earth','light','dark','lightning']);
-  // Released touches allow 2.5 s for another gesture before gathering.
-  const DURATIONS=Object.freeze({RETURN:.55,WAITING:2.5,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
+  // The first inward wave starts at .48 on the choreography clock. Released
+  // touches delay that clock so the first wave begins exactly 2 s after lift.
+  const RELEASE_DELAY=2-.48;
   const AUTO_HOLD_WAIT=1.7;
+  const DURATIONS=Object.freeze({RETURN:.55,WAITING:RELEASE_DELAY+AUTO_HOLD_WAIT,GATHER:2.1,AWAKEN:1.9,FORM:.8,REVEAL:1.8,SETTLE:.8});
   const NEXT=Object.freeze({RETURN:'WAITING',WAITING:'GATHER',GATHER:'FORM',AWAKEN:'FORM',FORM:'REVEAL',REVEAL:'SETTLE',SETTLE:'DONE'});
   const HOLD_SECONDS=3;
   const RELEASE_SECONDS=1.2;
@@ -40,6 +42,7 @@
       if(value)this._lastHoldMs=null;
     }
     get heldRelease(){return this.releasePoint!==null;}
+    get waitingElapsed(){return this.state==='WAITING'&&this.completionSource!=='autoHold'?this.elapsed-RELEASE_DELAY:this.elapsed;}
     get committed(){return this.state!=='DRAWING'&&(this.state!=='WAITING'||this.completionSource==='autoHold');}
     get ready(){return this.distance>0||this.tapCount>0||this.holdFrame?.ready===true||this.heldRelease;}
     get holdFrame(){

@@ -7,7 +7,7 @@ function advance(flow,seconds){
   while(left>1e-9){const step=Math.min(.05,left);flow.step(step);left-=step;}
 }
 function sketch(flow){assert.equal(flow.down(1,20,30),true);assert.equal(flow.move(1,55,30),true);assert.equal(flow.up(1),true);}
-function enterGather(flow){sketch(flow);advance(flow,2.5);assert.equal(flow.state,'GATHER');}
+function enterGather(flow){sketch(flow);advance(flow,3.22);assert.equal(flow.state,'GATHER');}
 
 // Opting in must not change basic elements, dark, or muggle timing. Light is
 // also unchanged unless the host explicitly enables this opening.
@@ -17,7 +17,7 @@ for(const element of ['fire','water','wind','earth','dark',null]){
     assert.equal(flow.awakeningEnabled,false);assert.equal(flow.awakeningDuration,0);
     const duration=element==='fire'||element==='water'?1.2:.8;
     assert.equal(flow.formationDuration,duration);enterGather(flow);advance(flow,2.1);
-    assert.equal(flow.state,'FORM');assert.equal(flow.materialFrame.time,0);
+    assert.equal(flow.state,'FORM');close(flow.materialFrame.time,0,'formation starts at zero');
     advance(flow,duration);assert.equal(flow.state,'REVEAL');close(flow.materialFrame.time,duration,'normal material clock');
   }
 }

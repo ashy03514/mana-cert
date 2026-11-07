@@ -141,51 +141,63 @@ for(const element of ['fire','water','wind','earth','light','dark',null]){
   for(const burstDuration of [1.2,2.1,4]){
     const flow=new RevealFlow({burstDuration},{holdAtReveal:true});
     flow.reset(element);flow.down(1,10,10);flow.move(1,80,60);flow.up(1);
-    advance(flow,.65);
-    assert.equal(sample(flow.state,flow.elapsed).id,1);
-    const paused=sample(flow.state,flow.elapsed);
+    advance(flow,2.17);
+    assert.equal(sample(flow.state,flow.waitingElapsed).id,1);
+    const paused=sample(flow.state,flow.waitingElapsed);
     flow.paused=true;advance(flow,5);
-    assert.deepEqual(sample(flow.state,flow.elapsed),paused,'flow pause freezes the ring clock');
+    assert.deepEqual(sample(flow.state,flow.waitingElapsed),paused,'flow pause freezes the ring clock');
     flow.paused=false;advance(flow,.36);
-    assert.equal(sample(flow.state,flow.elapsed).id,2);
+    assert.equal(sample(flow.state,flow.waitingElapsed).id,2);
     advance(flow,.19);
     assert.equal(flow.state,'WAITING','second wave completion enters the hold instead of exploding');
-    close(flow.elapsed,1.2,'second wave completes at the same original time');
-    assert.equal(sample(flow.state,flow.elapsed),null,'the post-wave hold starts without a third wave');
+    close(flow.elapsed,2.72,'second wave completes at the same original time');
+    assert.equal(sample(flow.state,flow.waitingElapsed)?.alpha??0,0,'the post-wave hold starts without a visible wave');
     const heldState=JSON.stringify(flow);
     flow.paused=true;advance(flow,5);
     flow.paused=false;
     assert.equal(JSON.stringify(flow),heldState,'pause also freezes the entire post-wave hold');
-    advance(flow,1.29);
+    advance(flow,.49);
     assert.equal(flow.state,'WAITING','a full post-wave hold remains before explosion');
-    assert.equal(sample(flow.state,flow.elapsed),null,'no shockwave appears during the hold');
+    assert.equal(sample(flow.state,flow.waitingElapsed),null,'no shockwave appears during the hold');
     assert.equal(flow.materialFrame,null,'hold does not reveal the element prematurely');
     advance(flow,.01);
-    assert.equal(flow.state,'GATHER','explosion starts exactly 2.5 seconds after release');
+    assert.equal(flow.state,'GATHER','explosion starts exactly 3.22 seconds after release');
     close(flow.elapsed,0,'explosion receives a fresh animation clock');
-    assert.equal(sample(flow.state,flow.elapsed).id,3,'third wave shares the explosion clock');
+    assert.equal(sample(flow.state,flow.waitingElapsed).id,3,'third wave shares the explosion clock');
     advance(flow,.43);
-    assert.equal(sample(flow.state,flow.elapsed),null,'shockwave does not alter the later gather duration');
+    assert.equal(sample(flow.state,flow.waitingElapsed),null,'shockwave does not alter the later gather duration');
   }
 }
-const resume=new RevealFlow();resume.down(1,0,0);resume.move(1,50,40);resume.up(1);advance(resume,.65);
-assert.equal(sample(resume.state,resume.elapsed).id,1);
+// All voluntary releases share the two-second quiet window, then two waves.
+for(const gesture of ['tap','draw','hold']){
+  const flow=new RevealFlow();flow.down(1,20,40);
+  if(gesture==='draw')flow.move(1,80,40);
+  if(gesture==='hold')advance(flow,1.3);
+  flow.up(1);
+  let previous=0;
+  for(const [at,id] of [[1.99,null],[2.01,1],[2.37,2],[2.73,null],[3.22,3]]){
+    advance(flow,at-previous);previous=at;
+    assert.equal(sample(flow.state,flow.waitingElapsed)?.id??null,id,gesture+' wave at '+at);
+  }
+}
+const resume=new RevealFlow();resume.down(1,0,0);resume.move(1,50,40);resume.up(1);advance(resume,2.17);
+assert.equal(sample(resume.state,resume.waitingElapsed).id,1);
 assert.equal(resume.down(2,70,40),true,'drawing can resume during the first wave');
-assert.equal(sample(resume.state,resume.elapsed),null,'continuing the drawing immediately cancels the pending ring');
-resume.move(2,100,40);resume.up(2);advance(resume,.49);
-assert.equal(sample(resume.state,resume.elapsed).id,1,'release after continuing restarts the wave sequence');
+assert.equal(sample(resume.state,resume.waitingElapsed),null,'continuing the drawing immediately cancels the pending ring');
+resume.move(2,100,40);resume.up(2);advance(resume,2.01);
+assert.equal(sample(resume.state,resume.waitingElapsed).id,1,'release after continuing restarts the wave sequence');
 
-for(const holdTime of [1.2,1.45,2.49]){
+for(const holdTime of [2.72,2.9,3.21]){
   const continued=new RevealFlow();continued.down(1,0,0);continued.move(1,50,40);continued.up(1);advance(continued,holdTime);
   assert.equal(continued.state,'WAITING');
   // Summed frame times can be a fraction of an ulp below exactly 1.2 s;
   // the previous front must already be completely invisible there.
-  assert.equal(sample(continued.state,continued.elapsed)?.alpha??0,0);
+  assert.equal(sample(continued.state,continued.waitingElapsed)?.alpha??0,0);
   assert.equal(continued.down(2,70,40),true,'the post-wave hold still accepts continued drawing');
   continued.move(2,90,40);
   for(let i=0;i<50;i++){continued.move(2,100+i*8,40);advance(continued,.1);}assert.equal(continued.state,'DRAWING','continuing during the hold cancels the scheduled explosion');
-  continued.move(2,100,40);continued.up(2);advance(continued,.49);
-  assert.equal(sample(continued.state,continued.elapsed).id,1,'release after the hold restarts from the first wave');
+  continued.move(2,100,40);continued.up(2);advance(continued,2.01);
+  assert.equal(sample(continued.state,continued.waitingElapsed).id,1,'release after the hold restarts from the first wave');
   advance(continued,1.01);continued.paused=true;continued.cancelPointer();
   assert.equal(continued.state,'DRAWING','lifecycle cancellation clears the hold even while paused');
   continued.paused=false;advance(continued,5);
@@ -199,6 +211,6 @@ const host=html.slice(html.indexOf('function drawRevealFlow(){'),html.indexOf('f
 const drawAt=host.indexOf('RevealShockwaves.draw');
 assert.ok(drawAt>=0,'formal and preview share the same wave draw path');
 assert.ok(drawAt>host.indexOf('flowPortal.draw')&&drawAt>host.indexOf('gather.draw'),'shockwaves draw over the atmosphere and explosion');
-assert.match(host,/RevealShockwaves\.draw\([^;]+elapsed:flow\.elapsed/,'host uses the shared pause-aware state clock');
+assert.match(host,/RevealShockwaves\.draw\([^;]+elapsed:flow\.waitingElapsed/,'host uses the shared pause-aware state clock');
 assert.match(host,/RevealShockwaves\.draw\([^;]+state/,'host passes the current flow state');
 console.log('Soft shockwave radial pixels, two inward waves, post-wave hold, outward explosion, lifecycle and offline wiring checks passed.');

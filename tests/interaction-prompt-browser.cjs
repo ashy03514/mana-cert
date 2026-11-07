@@ -71,7 +71,7 @@ const {chromium}=require(process.env.MANA_PLAYWRIGHT_MODULE||'C:/Users/ashy0/.ca
     await page.mouse.move(180,450);await page.mouse.down();await page.mouse.move(280,370,{steps:5});
     await advance(200);await page.mouse.up();await advance(1200);
     assert.equal(await flowState(),'WAITING');assert.equal(await state(),'drawing','resumable drawing must not announce completion');
-    await advance(550);assert.equal(await flowState(),'GATHER');assert.equal(await state(),'resonance');
+    await advance(2070);assert.equal(await flowState(),'GATHER');assert.equal(await state(),'resonance');
     await advance(1100);assert.equal(await state(),'gathering');
     await advance(1200);assert.equal(await status.isVisible(),false,'hidden before attribute reveal');
     assert.ok(await checkResult());

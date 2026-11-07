@@ -70,7 +70,7 @@ test('editable drawing WAITING never claims resonance and continuation stays edi
   const pair=fixture();
   sketch(pair);
   const frames=[];
-  advance(pair, 2.4, frames);
+  advance(pair, 3.12, frames);
   assert.equal(pair.flow.state, 'WAITING');
   assert.equal(pair.model.frame().key, 'drawing');
   assert.ok(frames.every(frame=>!['resonance','gathering'].includes(frame.key)));
@@ -82,7 +82,7 @@ test('editable drawing WAITING never claims resonance and continuation stays edi
   assert.equal(pair.flow.state, 'DRAWING');
   assert.equal(pair.model.frame().key, 'drawing');
   pair.flow.up(2);
-  advance(pair, 2.49, frames);
+  advance(pair, 3.21, frames);
   assert.equal(pair.flow.state, 'WAITING');
   assert.equal(pair.model.frame().key, 'drawing');
   advance(pair, .01);
@@ -103,7 +103,7 @@ test('manual hold release remains editable until the quiet period completes', ()
   assert.equal(pair.flow.state, 'WAITING');
   assert.equal(pair.flow.heldRelease, true);
   const frames=[];
-  advance(pair, 2.4, frames);
+  advance(pair, 3.12, frames);
   assert.equal(pair.model.frame().key, 'holding');
   assert.equal(pair.model.committed, false);
   advance(pair, .1, frames);
@@ -168,7 +168,7 @@ test('taps announce connected stars and cancellation fades without success', () 
   assert.equal(tapped.flow.state,'WAITING');
   assert.equal(tapped.model.frame().key,'stars');
   assert.equal(tapped.model.committed,false);
-  touch(tapped,'',2);advance(tapped,.1);tapped.flow.up(2);advance(tapped,2.5);
+  touch(tapped,'',2);advance(tapped,.1);tapped.flow.up(2);advance(tapped,3.22);
   assert.equal(tapped.flow.state,'GATHER');
   assert.equal(tapped.model.frame().key,'resonance');
   for (const cancellation of [true]) {
@@ -214,7 +214,7 @@ test('base, rare and muggle paths hide before revealing without changing reveal 
     for (const duration of [1.2,2.1,4]) {
       const pair=fixture(element,{burstDuration:duration},{lightAwakening:true,darkAwakening:true,holdAtReveal:true});
       sketch(pair);
-      advance(pair,2.5);
+      advance(pair,3.22);
       assert.equal(pair.flow.state,'GATHER');
       const frames=[];
       advance(pair,duration-.1,frames);

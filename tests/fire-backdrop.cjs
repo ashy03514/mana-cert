@@ -86,7 +86,7 @@ for(const [width,height] of [[390,844],[844,390]]){
 const flow=new RevealFlow({}, {holdAtReveal:true});
 flow.reset('fire');flow.down(1,10,10);flow.move(1,60,60);flow.up(1);
 assert.equal(flow.materialFrame,null,'drawing and gather have no attribute backdrop clock');
-advance(flow,2.5+flow.gatherDuration);
+advance(flow,3.22+flow.gatherDuration);
 assert.equal(flow.state,'FORM');close(flow.materialFrame.time,0,'backdrop begins with ignition');
 advance(flow,flow.formationDuration-.01);
 const beforeBoundary=flow.materialFrame.time;
@@ -101,7 +101,7 @@ assert.ok(pausedPixels.equals(frame(flow.materialFrame.time).pixels),'paused bac
 flow.paused=false;advance(flow,20);
 assert.equal(flow.state,'REVEAL','formal animation remains live in attribute reveal');
 close(flow.materialFrame.time,pauseTime+20,'formal energy continues to run');
-flow.reset('fire');flow.down(1,10,10);flow.move(1,60,60);flow.up(1);advance(flow,2.5+flow.gatherDuration);
+flow.reset('fire');flow.down(1,10,10);flow.move(1,60,60);flow.up(1);advance(flow,3.22+flow.gatherDuration);
 close(flow.materialFrame.time,0,'replay resets energy clock');
 assert.ok(frame(0).pixels.equals(frame(flow.materialFrame.time).pixels),'replay has the same initial energy state');
 

@@ -4,7 +4,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {pathToFileURL}=require('node:url');
 const {chromium}=require(process.env.MANA_PLAYWRIGHT_MODULE||'C:/Users/ashy0/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const {createCanvas,loadImage}=require(process.env.MANA_CANVAS_MODULE||'C:/Users/ashy0/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/@napi-rs/canvas');
-const artifact=name=>path.join(__dirname,'../artifacts',name);
+const artifact=name=>path.join(require('node:os').tmpdir(),name);
 (async()=>{
   const browser=await chromium.launch({headless:true,executablePath:process.env.MANA_CHROME||'C:/Program Files/Google/Chrome/Application/chrome.exe',
     args:['--enable-unsafe-swiftshader','--use-angle=swiftshader']});
@@ -43,14 +43,16 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     await page.locator('#tab_effects').click();
     await page.getByText('屬性揭曉樣板',{exact:true}).click();
     await page.locator('#flowPreviewOpen').click();await advance(0);await draw();
-    const shots=[];let time=0;
-    for(const [at,id] of [[.62,1],[.75,1],[.98,2],[1.11,2],[1.3,null],[1.68,null],[2.57,3],[2.7,3]]){
+    await advance(1990);assert.equal((await frame()).sample,null,'no inward wave before two seconds');
+    assert.equal(await page.evaluate(()=>pressurePose.dot.x),350,'no early ambient contraction');
+    const shots=[];let time=1.99;
+    for(const [at,id] of [[2.14,1],[2.27,1],[2.5,2],[2.63,2],[2.82,null],[3.2,null],[3.29,3],[3.42,3]]){
       await advance(Math.round((at-time)*1000));time=at;const f=await frame();
       assert.equal(f.sample?.id??null,id,'correct wave or quiet hold at '+at);
       assert.equal(f.state,id===3?'GATHER':'WAITING');
       if(id===null)assert.equal(await page.locator('#materialStatus').textContent(),'魔力蓄勢');
       shots.push({at,id,image:await snapshot(),radius:f.sample?.radius,pressure:await page.evaluate(()=>pressurePose)});
-      if(at===.98||at===1.3){
+      if(at===2.5||at===2.82){
         await page.locator('#materialPause').click();const paused=await snapshot(),before=await frame();
         await advance(1000);assert.equal(await snapshot(),paused);assert.deepEqual(await frame(),before);
         await page.locator('#materialPause').click();
@@ -70,19 +72,19 @@ const artifact=name=>path.join(__dirname,'../artifacts',name);
     }
     fs.writeFileSync(artifact('reveal-shockwaves-sequence.png'),sheet.toBuffer('image/png'));
     // Resuming input during anticipation cancels both rings immediately.
-    await page.locator('#materialReplay').click();await advance(0);await draw();await advance(650);
+    await page.locator('#materialReplay').click();await advance(0);await draw();await advance(2170);
     assert.equal((await frame()).sample.id,1);
     await page.mouse.move(140,370);await page.mouse.down();await advance(30);
     assert.equal((await frame()).state,'DRAWING');assert.equal((await frame()).sample,null);
     await page.mouse.up();
     // The same light-blue sequence enters from the production start button.
     await page.locator('#effectPreviewBack').click();await page.locator('#btnStart').click();await advance(0);await draw();
-    await advance(680);assert.equal((await frame()).sample.id,1);
+    await advance(2200);assert.equal((await frame()).sample.id,1);
     await advance(360);assert.equal((await frame()).sample.id,2);
     await advance(240);assert.equal((await frame()).sample,null);assert.equal((await frame()).state,'WAITING');
     await advance(500);assert.equal((await frame()).sample.id,3);
     assert.equal(await page.locator('body').getAttribute('data-state'),'GATHER');
-    await page.screenshot({path:artifact('reveal-shockwaves-formal.png')});
+    fs.writeFileSync(artifact('reveal-shockwaves-formal.png'),Buffer.from((await snapshot()).split(',')[1],'base64'));
     assert.deepEqual(errors,[]);
     console.log('Shockwaves browser: soft inward waves, half-second mist compression before explosion, outward wave, pause/resume/cancel and formal entry passed.');
   }finally{await browser.close();}
