@@ -9,7 +9,7 @@
   const speeds = document.querySelectorAll('[data-speed]');
   const stills = document.querySelectorAll('[data-time]');
   const renderer=new LightningStormRenderer();
-  const cycleSeconds=4.4/1.5;
+  const cycleSeconds=1.2;
   let width=0,height=0,pixelRatio=1;
   let elapsed=0,rate=1,playing=true,previous=null;
   function resize(){

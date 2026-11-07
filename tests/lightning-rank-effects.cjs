@@ -9,7 +9,15 @@ for(const name of ['config','fire-scan-transition','lightning-rank-effects']){
 }
 const L=env.LightningRankEffects,F=env.FireScanTransition,C=env.ManaConfig;
 const period=4.4/1.5,hit=1.28,formation=.8,keys=Object.keys(L.forRank('SS')).filter(k=>k!=='rank');
-for(const key of keys)assert.equal(L.forRank('SS')[key],1,'SS preserves original '+key);
+for(const key of keys)assert.equal(L.forRank('SS')[key],key==='orbScale'?2:1,'SS endpoint for '+key);
+const expectedOrbs=[.6,.86,1.12,1.36,1.6,1.8,2];
+for(const [i,rank] of ['E','D','C','B','A','S','SS'].entries()){
+ assert.equal(L.forRank(rank).orbScale,expectedOrbs[i],rank+' preserves the existing core ratio at twice the original diameter');
+ assert.equal(L.forRank(rank).continuousGain,i>=5?1:0);
+ assert.equal(L.forRank(rank).plasmaGain,i===6?1:0);
+}
+for(const key of ['skyStrength','strikeWidth','doubleGain','tripleGain','strikeRate'])
+ assert.equal(L.forRank('S')[key],1,'S inherits the former SS falling-strike '+key);
 for(const rank of ['E','D','C','B','A','S','SS']){
  const result=Object.freeze({type:'magic',element:'雷',rank,mana:C.ranks[rank].range[1]});
  const endpoint=L.sample(8,result,formation);
@@ -20,7 +28,7 @@ for(const rank of ['E','D','C','B','A','S','SS']){
   const s=L.sample(t,result,formation);records.push(s);
   assert.ok(s.time>=before.time-1e-10,'motion clock never reverses');
   assert.ok(s.stormTime>=before.stormTime-1e-10,'strike schedule never reverses');
-  for(const key of keys){assert.ok(Number.isFinite(s.profile[key]));assert.ok(s.profile[key]>=-1e-12&&s.profile[key]<=1+1e-12);}
+  for(const key of keys){assert.ok(Number.isFinite(s.profile[key]));assert.ok(s.profile[key]>=-1e-12&&s.profile[key]<=(key==='orbScale'?2:1)+1e-12);}
   if(rank==='E'||rank==='D'){assert.equal(s.profile.skyStrength,0);assert.equal(s.stormTime,0);}
   if(t>.01){
    for(const key of keys)assert.ok(Math.abs(s.profile[key]-before.profile[key])<.025,'no abrupt transition in '+key);
@@ -59,4 +67,4 @@ assert.equal(final.profile.rank,'SS');assert.ok(Number.isFinite(final.time)&&Num
 const saved=JSON.stringify(L.sample(3.8,ss,formation));
 for(let mana=360;mana<400;mana++)L.sample(25,{mana},formation);
 assert.equal(JSON.stringify(L.sample(3.8,ss,formation)),saved);
-console.log('PASS lightning tiers, eased growth, integrated clocks, real-second salvos, fixed strike profiles, SS parity and deterministic replay');
+console.log('PASS lightning tier cores, S inheritance, SS plasma, eased growth, integrated clocks, real-second salvos, fixed strike profiles and deterministic replay');

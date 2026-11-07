@@ -1,6 +1,6 @@
 (function(root){
   'use strict';
-  const cycleSeconds=4.4/1.5,hitTime=1.28,tau=Math.PI*2;
+  const cycleSeconds=4.4/1.5,hitTime=1.28,rainInterval=.58,tau=Math.PI*2;
   const clamp=n=>Math.max(0,Math.min(1,n));
   const smooth=n=>{n=clamp(n);return n*n*(3-2*n);};
   function stateAt(t,strikeSeed,effects) {
@@ -10,15 +10,34 @@
     const age = stormTime % cycleSeconds;
     const since = effects?.impactAge??(age-hitTime);
     const cycle=strikeSeed+Math.floor(stormTime/cycleSeconds);
-    const strokes=LightningDischarge.strikePhases(cycle,since).map((p,i)=>({...p,
-      strength:strikeProfile.skyStrength*(i===0?1:i===1?strikeProfile.doubleGain:strikeProfile.tripleGain)}));
-    const flash=Math.max(0,...strokes.map(p=>p.flash*p.strength));
-    const afterglow=Math.max(0,...strokes.map(p=>p.afterglow*p.strength));
+    const continuous=clamp(profile.continuousGain||0),plasmaGain=clamp(profile.plasmaGain||0);
+    const phases=(seed,age,rank,gain)=>LightningDischarge.strikePhases(seed,age).map((p,i)=>({...p,
+      strength:gain*rank.skyStrength*(i===0?1:i===1?rank.doubleGain:rank.tripleGain)}));
+    const salvos=[];
+    const ordinaryGain=(1-continuous)*(1-plasmaGain);
+    if(ordinaryGain>.001)salvos.push({cycle,profile:strikeProfile,strokes:phases(cycle,since,strikeProfile,ordinaryGain)});
+    const rainGain=continuous*(1-plasmaGain);
+    if(rainGain>.001){
+      const latest=Math.floor(t/rainInterval);
+      // Three overlapping, independently seeded salvos retain the former SS
+      // large/medium/double/triple strikes without a dark waiting interval.
+      for(let offset=2;offset>=0;offset--){
+        const event=latest-offset,seed=strikeSeed+event;
+        salvos.push({cycle:seed,profile,strokes:phases(seed,t-event*rainInterval-.16,profile,rainGain)});
+      }
+    }
+    const strokes=salvos.flatMap(salvo=>salvo.strokes);
+    const plasmaState=plasmaGain>0?LightningDischarge.plasmaState(t):null;
+    const burst=plasmaState?.burst||0;
+    const flash=Math.max(plasmaGain*(.16+.84*burst),...strokes.map(p=>p.flash*p.strength),0);
+    const afterglow=Math.max(plasmaGain*(.68+.32*burst),...strokes.map(p=>p.afterglow*p.strength),0);
     const descending=strokes.some(p=>p.strength>.01 && p.upper>0 && p.impactAge<0);
+    const ordinaryCharge=since<0?0.18+0.82*smooth(age/hitTime):0.18+0.70*Math.exp(-since*4);
+    const stormCharge=ordinaryCharge*(1-continuous)+(.72+.08*Math.sin(t*4))*continuous;
     return {
-      strokes, flash, afterglow, impactAge: since, profile, strikeProfile,
-      charge: since < 0 ? 0.18 + 0.82 * smooth(age / hitTime) : 0.18 + 0.70 * Math.exp(-since * 4),
-      name: profile.skyStrength<.01?'電流聚集':descending ? '金雷直落' : flash>.20 ? '雷核命中' : since<0 ? '雷核蓄能' : afterglow>0 ? '餘弧消散' : '雷核待機',
+      strokes,salvos,plasmaGain,plasmaTime:t,plasmaState,flash,afterglow,impactAge:since,profile,strikeProfile,
+      charge:stormCharge*(1-plasmaGain)+(.86+.10*Math.sin(t*3.7))*plasmaGain,
+      name:plasmaGain>.5?'電漿貫流':continuous>.5?'連續雷暴':profile.skyStrength<.01?'電流聚集':descending ? '金雷直落' : flash>.20 ? '雷核命中' : since<0 ? '雷核蓄能' : afterglow>0 ? '餘弧消散' : '雷核待機',
       value: t >= hitTime ? 999 : 900 + Math.min(98, Math.floor(99 * t / hitTime))
     };
   }
@@ -62,6 +81,7 @@
     const unit = Math.min(width, height);
     const age = t % 2;
     const ambience=p.profile.skyLight;
+    const plasma=p.plasmaGain||0,burst=p.plasmaState?.burst||0;
     // Delayed patches conduct sideways through the air every two seconds.
     for (const side of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
@@ -77,10 +97,23 @@
     const chargedSky = Math.max(0, p.charge - 0.46)*p.profile.skyStrength;
     if (chargedSky > 0 || p.flash > 0.008) {
       const fork = LightningDischarge.contact(width, height, cycle);
-      glow(ctx, fork.x, 0, width * 0.67, height * 0.23, '246,188,68', (chargedSky * 0.24 + p.flash * 0.27) * skyExposure);
+      glow(ctx, fork.x, 0, width * 0.67, height * 0.23, '246,188,68', (chargedSky * 0.24 + p.flash * 0.27) * skyExposure*(1-plasma));
     }
     if (p.flash > 0.008) {
-      glow(ctx, cx, cy, width * 0.9, height * 0.72, '255,248,218', 0.63 * p.flash * skyExposure, 0.45);
+      glow(ctx, cx, cy, width * 0.9, height * 0.72, '255,248,218', 0.63 * p.flash * skyExposure*(1-plasma), 0.45);
+    }
+    if(plasma>.001){
+      // The four source clouds, travelling charge and core response share the
+      // discharge clock. Keep warm illumination around a readable gold core.
+      const channels=LightningDischarge.plasmaPaths(width,height,p.plasmaTime);
+      channels.forEach((channel,i)=>{
+        const source=channel.points[0],charge=p.plasmaState.sky[i];
+        const exposure=plasma*(.22+.38*charge+.10*burst);
+        glow(ctx,source.x,height*.015,width*.27,height*.23,'236,164,52',exposure,.5);
+        glow(ctx,source.x,height*.012,width*.085,height*.075,'255,238,178',exposure*.85,.4);
+      });
+      glow(ctx,cx,cy,width*.82,height*.59,'255,189,62',plasma*(.16+.34*burst),.48);
+      glow(ctx,cx,cy-height*.13,width*.5,height*.34,'247,218,143',plasma*(.045+.13*burst),.4);
     }
     // Ion motes rise and brighten around the advancing leaders.
     for (let i = 0; i < 32; i++) {
@@ -122,7 +155,7 @@
       g.setTransform(scale,0,0,scale,0,0);
       g.drawImage(this.sky,0,0,width,height);
       g.save();g.translate(box.x,box.y);
-      drawField(g,box.width,box.height,time,p,cycle,LightningDischarge.strikeType(cycle)==='medium'?.58:1);
+      drawField(g,box.width,box.height,time,p,cycle,(p.profile.continuousGain||0)>.01?1:LightningDischarge.strikeType(cycle)==='medium'?.58:1);
       LightningDischarge.draw(g,box.width,box.height,time,cycle,p);
       g.restore();
       ctx.save();ctx.globalAlpha=opacity;

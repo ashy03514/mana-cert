@@ -1,7 +1,7 @@
 (() => {
   'use strict';
-  let cached;
-  const full=Object.freeze({arcReach:1,arcWidth:1,arcSecondary:1,branches:1,orbScale:1,brightness:1,skyStrength:1,strikeWidth:1,doubleGain:1,tripleGain:1,sparks:1});
+  const scenes=new Map();
+  const full=Object.freeze({arcReach:1,arcWidth:1,arcSecondary:1,branches:1,orbScale:2,brightness:1,skyStrength:1,strikeWidth:1,doubleGain:1,tripleGain:1,sparks:1});
 
   function randomStream(seed) {
     let value = seed >>> 0;
@@ -90,7 +90,8 @@
   }
 
   function scene(width, height, cycle) {
-    if (cached && cached.width===width && cached.height===height && cached.cycle===cycle) return cached;
+    const key=width+':'+height+':'+cycle;
+    if(scenes.has(key))return scenes.get(key);
     const rnd=randomStream(Math.imul(cycle+5, 1597334677));
     const unit=Math.max(.52, Math.min(width/390, height/495));
     const span=Math.min(width*.49, height*.61);
@@ -169,8 +170,211 @@
         size:(fast ? 1.2+1.0*rnd() : .38+1.35*rnd()**2)*unit
       };
     });
-    cached={width,height,cycle,unit,core,strokes,type,sparks};
-    return cached;
+    const art={width,height,cycle,unit,core,strokes,type,sparks};
+    // Continuous salvos overlap. Keep their channels stable without rebuilding
+    // every branch each frame, while resize/long-running playback stays bounded.
+    if(scenes.size>=12)scenes.delete(scenes.keys().next().value);
+    scenes.set(key,art);
+    return art;
+  }
+
+  const plasmaPeriod=1.2,plasmaFlight=.38,plasmaLaunch=.04;
+  function plasmaState(time=0) {
+    const clock=Number.isFinite(time)?time:0,event=Math.floor(clock/plasmaPeriod);
+    const age=clock-event*plasmaPeriod,impactAge=age-plasmaLaunch-plasmaFlight;
+    const pulse=t=>t<0?0:clamp(t/.035)*Math.exp(-Math.max(0,t-.055)*6.2);
+    const sky=Array.from({length:4},(_,i)=>{
+      const distance=Math.abs(age-(.015+i*.022));
+      const wrapped=Math.min(distance,plasmaPeriod-distance);
+      return .22+.78*Math.exp(-wrapped*wrapped/.009);
+    });
+    return {event,age,impactAge,burst:clamp(pulse(impactAge)+pulse(impactAge+plasmaPeriod)),
+      sky,packet:clamp((age-plasmaLaunch)/plasmaFlight)};
+  }
+
+  function plasmaPaths(width,height,time=0) {
+    if(!(width>0&&height>0)||!Number.isFinite(width+height))return [];
+    const clock=Number.isFinite(time)?time:0;
+    const core={x:width*.5,y:height*.76},paths=[];
+    for(let lane=0;lane<4;lane++){
+      const phase=lane*2.39996323;
+      const sky={x:width*(.12+.253333333333*lane+.014*Math.sin(clock*.73+phase)),y:-height*.06};
+      const points=[];
+      for(let step=0;step<=64;step++){
+        const u=step/64,envelope=Math.sin(Math.PI*u);
+        // Endpoints remain welded to the sky and core; turbulence travels along
+        // the connected column instead of periodically replacing a lightning tree.
+        const bend=width*envelope*(.040*Math.sin(u*6.4-clock*2.1+phase)
+          +.016*Math.sin(u*17+clock*4.4+phase*.7)
+          +.004*Math.sin(u*63-clock*13.2+phase));
+        points.push({x:mix(sky.x,core.x,u)+bend,y:mix(sky.y,core.y,u)});
+      }
+      points[0]=sky;points[points.length-1]={...core};
+      paths.push({points,phase,width:(9.5+lane%2*2.2)*1.7});
+    }
+    return paths;
+  }
+
+  function beamPoint(beam,u) {
+    const at=clamp(u)*(beam.points.length-1),i=Math.min(beam.points.length-2,Math.floor(at));
+    const a=beam.points[i],b=beam.points[i+1],f=at-i;
+    return {x:mix(a.x,b.x,f),y:mix(a.y,b.y,f)};
+  }
+  function traceBeam(ctx,beam,from=0,to=1) {
+    const a=beamPoint(beam,from),b=beamPoint(beam,to);
+    ctx.moveTo(a.x,a.y);
+    for(let i=Math.floor(from*(beam.points.length-1))+1;i<to*(beam.points.length-1);i++)
+      ctx.lineTo(beam.points[i].x,beam.points[i].y);
+    ctx.lineTo(b.x,b.y);
+  }
+  function maskCore(ctx,art,radius) {
+    ctx.beginPath();ctx.rect(-art.width,-art.height,art.width*3,art.height*3);
+    ctx.moveTo(art.core.x+radius,art.core.y);
+    ctx.arc(art.core.x,art.core.y,radius,0,Math.PI*2);ctx.clip('evenodd');
+  }
+
+  // Twelve live branch slots have independent lifetimes. Rebuild only when a
+  // slot starts a new discharge; paths stay welded to their moving beam roots.
+  const plasmaBranchSlots=Array.from({length:12},(_,i)=>({period:.32+(i%4)*.047,offset:i*.371,event:null,path:null,fork:null}));
+  function drawPlasmaBranches(ctx,art,paths,time,gain,burst) {
+    for(let i=0;i<plasmaBranchSlots.length;i++){
+      const slot=plasmaBranchSlots[i],clock=time/slot.period+slot.offset,event=Math.floor(clock),age=clock-event;
+      if(age>.88)continue;
+      if(slot.event!==event){
+        const rnd=randomStream(Math.imul(event+71,1597334677)+Math.imul(i+13,2246822519));
+        const hand=i%2?1:-1,reach=52+76*rnd(),dy=(rnd()-.58)*reach*.9;
+        slot.path=makeChannel([{x:0,y:0},{x:hand*reach*.46,y:dy*.32},
+          {x:hand*reach,y:dy}],rnd,1,.48);
+        const root=sample(slot.path,.42+.22*rnd());
+        slot.fork=makeChannel([root,{x:root.x+hand*reach*.46,y:root.y+(i%2?1:-1)*reach*.38}],rnd,1,.48);
+        slot.event=event;
+      }
+      const anchor=beamPoint(paths[Math.floor(i/3)],.17+(i%3)*.23);
+      const strength=gain*clamp(age/.10)*clamp((.88-age)/.31)*(.60+.40*burst);
+      ctx.save();ctx.translate(anchor.x,anchor.y);ctx.scale(art.unit,art.unit);
+      ctx.beginPath();trace(ctx,slot.path,0,clamp(age/.23));
+      if(age>.17)trace(ctx,slot.fork,0,clamp((age-.17)/.24));
+      glowStroke(ctx,5.8,'#f5a72e',strength*.23);
+      glowStroke(ctx,2.0,'#ffcf58',strength*.83);
+      glowStroke(ctx,.82,'#fff9dc',strength);ctx.restore();
+    }
+    const jumpClock=time/.43,jumpEvent=Math.floor(jumpClock),jumpAge=jumpClock-jumpEvent;
+    if(jumpAge<.65){
+      const pair=((jumpEvent%3)+3)%3,u=.28+.18*Math.sin(jumpEvent*2.17);
+      const a=beamPoint(paths[pair],u),b=beamPoint(paths[pair+1],u+.055);
+      ctx.beginPath();ctx.moveTo(a.x,a.y);
+      for(let i=1;i<=16;i++){
+        const p=i/16,kink=Math.sin(Math.PI*p)*Math.sin(i*4.7+jumpEvent)*12*art.unit;
+        ctx.lineTo(mix(a.x,b.x,p),mix(a.y,b.y,p)+kink);
+      }
+      const strength=gain*Math.sin(Math.PI*jumpAge/.65)*(.65+.35*burst);
+      glowStroke(ctx,7*art.unit,'#ffb52d',strength*.24);
+      glowStroke(ctx,2.3*art.unit,'#ffe481',strength);
+      glowStroke(ctx,.85*art.unit,'#fffbe6',strength);
+    }
+  }
+
+  function drawPlasma(ctx,art,time,gain,coreRadius,state) {
+    if(gain<.002)return;
+    const paths=plasmaPaths(art.width,art.height,time);
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    ctx.lineCap='round';ctx.lineJoin='round';
+    // Channels conduct into the orb surface. Leaving its interior to the orb
+    // renderer preserves the enlarged gold body instead of a white intersection.
+    maskCore(ctx,art,coreRadius*.88);
+    drawPlasmaBranches(ctx,art,paths,time,gain,state.burst);
+    for(const beam of paths){
+      const pulse=.84+.10*Math.sin(time*5.1+beam.phase)+.06*Math.sin(time*9.7-beam.phase);
+      const width=beam.width*art.unit*(.93+.07*Math.sin(time*4.2+beam.phase)+.08*state.burst);
+      ctx.beginPath();traceBeam(ctx,beam);
+      // A broad transparent envelope and narrower hot body read as a sustained
+      // volume of plasma. Every channel remains visible throughout its pulse.
+      ctx.save();ctx.shadowColor='#ffab22';ctx.shadowBlur=width*1.4*ctx.getTransform().a;
+      glowStroke(ctx,width*1.6,'#ffab22',gain*pulse*.27);ctx.restore();
+      glowStroke(ctx,width*1.85,'#ffb528',gain*pulse*.25);
+      glowStroke(ctx,width,'#ffdb62',gain*pulse*.73);
+      glowStroke(ctx,width*.46,'#fff0b8',gain*pulse*.93);
+      glowStroke(ctx,width*.18,'#ffffec',gain*pulse);
+      for(const side of [-1,1]){
+        ctx.beginPath();
+        for(let i=0;i<beam.points.length;i++){
+          const u=i/(beam.points.length-1),p=beam.points[i];
+          const x=p.x+Math.sin(Math.PI*u)*width*(side*.43
+            +.22*Math.sin(u*37-time*8.3+beam.phase+side));
+          if(i)ctx.lineTo(x,p.y);else ctx.moveTo(x,p.y);
+        }
+        glowStroke(ctx,width*.13,'#fff7d7',gain*(.63+.12*Math.sin(time*6.7+beam.phase+side)));
+      }
+      // A smaller flow remains visible between the major injections. The large
+      // packet reaches u=1 at the exact core-impact time used by the sky/burst.
+      const flowing=((time*1.7+beam.phase*.13)%1+1)%1;
+      ctx.beginPath();traceBeam(ctx,beam,Math.max(0,flowing-.11),flowing);
+      glowStroke(ctx,width*.62,'#fff3bf',gain*.48);
+      if(state.age>=plasmaLaunch&&state.impactAge<=.025){
+        ctx.beginPath();traceBeam(ctx,beam,Math.max(0,state.packet-.22),Math.min(1,state.packet+.025));
+        glowStroke(ctx,width*1.52,'#ffd56a',gain*.64);
+        glowStroke(ctx,width*.83,'#fff8d5',gain*.94);
+        glowStroke(ctx,width*.35,'#fffff2',gain);
+      }
+    }
+    ctx.restore();
+  }
+
+  const plasmaSparks=new Map();
+  function burstSparks(event) {
+    if(plasmaSparks.has(event))return plasmaSparks.get(event);
+    const rnd=randomStream(Math.imul(event+217,2654435761));
+    const sparks=Array.from({length:60},(_,i)=>({angle:(i+rnd()*.8)/60*Math.PI*2,
+      reach:84+150*rnd(),life:.40+.34*rnd(),size:i%3? .7+rnd()*.6:1.4+rnd()*.7}));
+    if(plasmaSparks.size>=4)plasmaSparks.delete(plasmaSparks.keys().next().value);
+    plasmaSparks.set(event,sparks);return sparks;
+  }
+  function drawPlasmaImpact(ctx,art,state,gain,radius) {
+    if(gain<.002)return;
+    const age=state.impactAge<0?state.impactAge+plasmaPeriod:state.impactAge;
+    const event=state.event-(state.impactAge<0?1:0),burst=state.burst;
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+    maskCore(ctx,art,radius*.94);
+    if(burst>.004){
+      const size=Math.min(art.width*.47,145*art.unit);
+      const bloom=ctx.createRadialGradient(art.core.x,art.core.y,radius*.7,art.core.x,art.core.y,size);
+      bloom.addColorStop(0,'#fff4bfbb');bloom.addColorStop(.22,'#ffd55c8c');
+      bloom.addColorStop(.65,'#ffad2833');bloom.addColorStop(1,'#ff9c1600');
+      ctx.fillStyle=bloom;ctx.globalAlpha=gain*burst;
+      ctx.fillRect(art.core.x-size,art.core.y-size,size*2,size*2);
+    }
+    if(age<.62){
+      const expansion=1-Math.exp(-age*7),r=radius+(142*art.unit-radius)*expansion;
+      const fade=gain*Math.sin(Math.PI*clamp(age/.62))*(1-age/.62);
+      // Three broken, rippling fronts read as outward pressure, not a static rim.
+      for(let sector=0;sector<3;sector++){
+        ctx.beginPath();
+        for(let i=0;i<=24;i++){
+          const a=sector*Math.PI*2/3+i/24*1.7+event*.7;
+          const ripple=1+.035*Math.sin(a*13-age*25)+.018*Math.sin(a*29+event);
+          const x=art.core.x+Math.cos(a)*r*ripple;
+          const y=art.core.y+Math.sin(a)*r*.82*ripple;
+          if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);
+        }
+        glowStroke(ctx,(9-6*expansion)*art.unit,'#ffb632',fade*.38);
+        glowStroke(ctx,(2.5-1.5*expansion)*art.unit,'#fff0a7',fade);
+      }
+    }
+    for(const spark of burstSparks(event)){
+      if(age>=spark.life)continue;
+      const progress=(age+.012)/spark.life,tail=Math.max(0,age-.045)/spark.life;
+      const downward=Math.max(0,Math.sin(spark.angle));
+      const lowerReach=Math.max(0,140-radius/art.unit);
+      const reach=Math.min(spark.reach,downward>.01?lowerReach/downward:240)*art.unit;
+      const distance=u=>radius+reach*(1-Math.exp(-Math.max(0,u)*2.9));
+      const tip=distance(progress),back=distance(tail);
+      const dx=Math.cos(spark.angle),dy=Math.sin(spark.angle),fade=gain*Math.pow(Math.max(0,1-progress),1.15);
+      ctx.beginPath();ctx.moveTo(art.core.x+dx*back,art.core.y+dy*back);
+      ctx.lineTo(art.core.x+dx*tip,art.core.y+dy*tip);
+      glowStroke(ctx,spark.size*3.2*art.unit,'#ffb12b',fade*.32);
+      glowStroke(ctx,spark.size*art.unit,'#fff1b0',fade);
+    }
+    ctx.restore();
   }
 
   function trace(ctx,ch,from,to) {
@@ -223,9 +427,10 @@
 
   function drawCorona(ctx,art,time,cycle,phase) {
     const profile=phase.profile||full;
+    const plasma=clamp(phase.plasmaGain||0);
     ctx.save();
     ctx.translate(art.core.x,art.core.y);
-    ctx.scale(art.unit,art.unit);
+    ctx.scale(art.unit*(1+plasma*.38),art.unit*(1+plasma*.13));
     ctx.globalCompositeOperation='lighter';
     ctx.lineCap='round';
     ctx.lineJoin='round';
@@ -241,10 +446,10 @@
       if (age>=1) continue;
       const lead=clamp(age/ch.rise);
       const echo=Math.exp(-((age-ch.restrike)**2)/.0018);
-      const width=ch.width*profile.arcWidth;
+      const width=ch.width*profile.arcWidth*(1+plasma*.25);
       const reach=profile.arcReach;
       const strength=ch.hot*profile.brightness*(i<8?1:profile.arcSecondary)*clamp(age/.055)*clamp((1-age)/.23)*
-        (.53+.27*phase.charge+.45*echo+.40*phase.flash);
+        (.53+.27*phase.charge+.45*echo+.40*phase.flash)*(1+plasma*.20);
       if (strength<.025) continue;
       const tail=.32*clamp((age-.76)/.24);
       ctx.beginPath();
@@ -264,10 +469,17 @@
   }
 
 
+  function orbRadius(art,time,phase) {
+    const flutter=.5+.3*Math.sin(time*8.1)+.2*Math.sin(time*13.7+.8);
+    const plasma=clamp(phase.plasmaGain||0),burst=phase.plasmaState?.burst||0;
+    const flash=mix(phase.flash,.1,plasma);
+    return (10.8+2.4*phase.charge+2.1*flash+.85*flutter)*art.unit*(phase.profile||full).orbScale*(1+.18*plasma*burst);
+  }
+
   function drawEnergyOrb(ctx, art, time, phase) {
     const profile=phase.profile||full;
     const flutter=.5+.3*Math.sin(time*8.1)+.2*Math.sin(time*13.7+.8);
-    const radius=(10.8+2.4*phase.charge+2.1*phase.flash+.85*flutter)*art.unit*profile.orbScale;
+    const radius=orbRadius(art,time,phase);
     const hotX=-.14+.12*Math.sin(time*2.6), hotY=-.10+.10*Math.sin(time*3.7);
     ctx.save();
     ctx.translate(art.core.x,art.core.y);
@@ -430,16 +642,7 @@
     }
   }
 
-  function draw(ctx,width,height,time,cycle,phase) {
-    if (width <= 0 || height <= 0) return;
-    const art=scene(width,height,cycle);
-    drawCorona(ctx,art,time,cycle,phase);
-    drawEnergyOrb(ctx,art,time,phase);
-    const phases=phase.strokes || strikePhases(cycle,phase.impactAge);
-    const strikeProfile=phase.strikeProfile||full;
-    ctx.save();
-    ctx.globalCompositeOperation='lighter';
-    ctx.lineCap='round'; ctx.lineJoin='round';
+  function drawSalvo(ctx,art,phases,strikeProfile) {
     for (let i=0;i<art.strokes.length;i++) {
       const stroke=art.strokes[i], local=phases[i];
       if (!local || (local.strength??1)<.002 || !(local.upper>0 || local.lower>0)) continue;
@@ -456,8 +659,30 @@
         drawSparks(ctx,art,local.impactAge,strikeProfile,local.strength??1);
       }
     }
-    ctx.restore();
   }
-  window.LightningDischarge={draw,contact,strikeType,strikeDelays,strikePhases};
+
+  function draw(ctx,width,height,time,cycle,phase) {
+    if (width <= 0 || height <= 0) return;
+    const art=scene(width,height,cycle);
+    const plasma=clamp(phase.plasmaGain||0),plasmaTime=phase.plasmaTime??time;
+    if(plasma&&!phase.plasmaState)phase={...phase,plasmaState:plasmaState(plasmaTime)};
+    drawCorona(ctx,art,time,cycle,phase);
+    const salvos=phase.salvos||[{cycle,strokes:phase.strokes||strikePhases(cycle,phase.impactAge),profile:phase.strikeProfile||full}];
+    ctx.save();
+    ctx.globalCompositeOperation='lighter';
+    ctx.lineCap='round';ctx.lineJoin='round';
+    for(const salvo of salvos){
+      drawSalvo(ctx,scene(width,height,salvo.cycle),salvo.strokes,salvo.profile||phase.strikeProfile||full);
+    }
+    ctx.restore();
+    const radius=orbRadius(art,time,phase);
+    if(plasma){
+      drawPlasmaImpact(ctx,art,phase.plasmaState,plasma,radius);
+      drawPlasma(ctx,art,plasmaTime,plasma,radius,phase.plasmaState);
+    }
+    // The luminous orb covers the junction of all four live plasma channels.
+    drawEnergyOrb(ctx,art,time,phase);
+  }
+  window.LightningDischarge={draw,contact,strikeType,strikeDelays,strikePhases,plasmaPaths,plasmaState};
 })();
 
